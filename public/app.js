@@ -453,7 +453,7 @@ async function revMistakes() {
 async function pgTests() {
   const [list, ex] = await Promise.all([get('/api/tests'), get('/api/exams/' + S.user.exam_id)]); const exam = ex.exam;
   const o = { kind: 'full_mock', subject: exam.subjects[0], topic: '', count: 20, difficulty: 'any', minutes: '' }; const form = h('div', { class: 'card stack' });
-  const KINDS = [['full_mock', 'Full Mock'], ['sectional', 'Sectional Mock'], ['subject', 'Subject Test'], ['topic', 'Topic Test'], ['pyq', 'PYQ Test'], ['pyq_pattern', 'PYQ Pattern Mock'], ['ai_mock', 'AI Generated Mock'], ['weak_topic', 'Weak Topic Test']];
+  const KINDS = [['full_mock', 'Full Exam Simulation'], ['sectional', 'Sectional Mock'], ['subject', 'Subject Test'], ['topic', 'Topic Test'], ['pyq', 'PYQ Test'], ['pyq_pattern', 'PYQ Pattern Mock'], ['ai_mock', 'AI Generated Mock'], ['weak_topic', 'Weak Topic Test']];
   function draw() {
     const needS = ['sectional', 'subject', 'topic'].includes(o.kind), needT = o.kind === 'topic', needN = ['full_mock', 'sectional', 'subject', 'topic', 'weak_topic', 'pyq_pattern', 'ai_mock'].includes(o.kind), needD = ['subject', 'topic', 'full_mock', 'sectional', 'ai_mock'].includes(o.kind);
     const topics = exam.syllabus.find(s => s.subject === o.subject)?.topics || []; if (needT && !topics.includes(o.topic)) o.topic = topics[0];
