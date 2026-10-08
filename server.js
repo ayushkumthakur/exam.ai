@@ -752,6 +752,25 @@ route('POST', '/api/admin/ca', ADM, (c) => {
   return { id: Number(id) };
 });
 route('DELETE', '/api/admin/ca/:id', ADM, (c) => { db.prepare('DELETE FROM current_affairs WHERE id=?').run(+c.params.id); return { ok: true }; });
+route('POST', '/api/admin/ca/refresh', ADM, async (c) => {
+  if (!ai.aiEnabled() || ai.aiProvider() !== 'gemini') throw bad('Grounded current-affairs refresh needs the Gemini provider.');
+  const examIds = listExams().map(e => e.id);
+  const r = await ai.generateCurrentAffairs({ today: dayStr(), days: Math.min(14, Math.max(1, +c.body.days || 7)), examList: examIds, maxItems: Math.min(15, Math.max(5, +c.body.maxItems || 12)) });
+  if (!r.ok) throw bad(ai.friendlyError(r.error));
+  const inserted = [], skipped = [];
+  for (const x of r.items || []) {
+    try {
+      const exists = db.prepare('SELECT id FROM current_affairs WHERE title=? AND event_date=?').get(x.title, x.event_date);
+      if (exists) { skipped.push(x.title); continue; }
+      const exams = ',' + [...new Set(x.exams)].join(',') + ',';
+      const id = db.prepare('INSERT INTO current_affairs (title,summary,category,exams,event_date,source,created_at) VALUES (?,?,?,?,?,?,?)')
+        .run(x.title, x.summary, x.category, exams, x.event_date, x.source_url, now()).lastInsertRowid;
+      inserted.push(Number(id));
+    } catch { skipped.push(x.title); }
+  }
+  return { ok: true, searched_days: c.body.days || 7, inserted: inserted.length, skipped: skipped.length, ids: inserted };
+});
+
 route('GET', '/api/admin/reports', ADM, () => ({ reports: db.prepare(`SELECT f.id,f.kind,f.note,f.status,f.created_at,u.email, c.content answer,
   (SELECT content FROM ai_conversations p WHERE p.user_id=c.user_id AND p.id<c.id AND p.role='user' ORDER BY p.id DESC LIMIT 1) question
   FROM ai_feedback f JOIN users u ON u.id=f.user_id LEFT JOIN ai_conversations c ON c.id=f.conversation_id WHERE f.kind='report' ORDER BY f.status='open' DESC, f.id DESC LIMIT 100`).all() }));
