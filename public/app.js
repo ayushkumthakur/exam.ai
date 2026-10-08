@@ -1,0 +1,419 @@
+'use strict';
+// ---------- helpers ----------
+const $ = (s, el = document) => el.querySelector(s);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === false || v == null) continue;
+    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'class') el.className = v;
+    else if (k === 'value') el.value = v;
+    else if (k === 'html') throw new Error('no raw html');
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const kid of kids.flat(Infinity)) { if (kid == null || kid === false) continue; el.append(kid.nodeType ? kid : document.createTextNode(String(kid))); }
+  return el;
+}
+const svg = (d) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); s.append(p); return s; };
+const ICONS = { home: 'M3 11l9-8 9 8M5 10v10h14V10', practice: 'M4 5h16M4 12h16M4 19h10', revision: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5', pyqs: 'M6 3h9l4 4v14H6zM14 3v5h5', tests: 'M9 11l3 3 8-8M4 4h10M4 10h3M4 16h8', ca: 'M4 5h13v14H4zM17 8h3v9a2 2 0 0 1-2 2M7 9h7M7 13h7', tutor: 'M4 5h16v11H9l-5 4zM8 10h8', plan: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', progress: 'M4 20V10M10 20V4M16 20v-7M22 20H2', profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0', more: 'M5 12h.01M12 12h.01M19 12h.01', library: 'M5 4h5v16H5zM12 4h3l4 16h-3z', admin: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z' };
+const logo = () => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 32 32'); s.innerHTML = '<rect width="32" height="32" rx="8" fill="#1d2b64"/><path d="M7 22V10l9 3 9-3v12l-9-3z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><circle cx="24" cy="7" r="2.4" fill="#f2a43a"/>'; return s; };
+const toast = (m) => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600); };
+const pct = (v) => v === null || v === undefined ? '–' : v + '%';
+const fmtDate = (t) => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+
+async function api(method, url, body) {
+  let r;
+  try { r = await fetch(url, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' }); }
+  catch { throw Object.assign(new Error('Network problem. Check your connection and try again.'), { network: true, retry: true }); }
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401 && S.user) { S.user = null; location.hash = '#/'; renderAuth(); }
+  if (!r.ok) throw Object.assign(new Error(data.error || 'Something went wrong.'), { status: r.status, data, retry: data.retry });
+  return data;
+}
+const get = (u) => api('GET', u), post = (u, b) => api('POST', u, b || {}), put = (u, b) => api('PUT', u, b);
+
+// Render a safe subset of markdown (bold, lists, headings) into DOM nodes; never uses innerHTML.
+function md(text) {
+  const root = h('div', { class: 'md' }); let list = null;
+  const inline = (s) => { const out = []; s.split(/(\*\*[^*]+\*\*)/).forEach(p => out.push(/^\*\*[^*]+\*\*$/.test(p) ? h('strong', {}, p.slice(2, -2)) : p)); return out; };
+  for (const line of String(text).split('\n')) {
+    const li = /^\s*(?:[-*•]|\d+[.)])\s+(.*)$/.exec(line);
+    if (li) { if (!list) { list = h('ul'); root.append(list); } list.append(h('li', {}, inline(li[1]))); continue; }
+    list = null; if (!line.trim()) continue;
+    const hd = /^#{1,4}\s+(.*)$/.exec(line);
+    root.append(hd ? h('h4', {}, inline(hd[1])) : h('p', {}, inline(line)));
+  }
+  return root;
+}
+const SRC = { VERIFIED_PYQ: ['Verified PYQ', 'pyq'], AI_GENERATED: ['AI Generated Practice', 'ai'], PYQ_PATTERN: ['PYQ Pattern Question', 'pat'], ADMIN_PRACTICE: ['Admin Practice Question', 'adm'] };
+const srcBadge = (q) => { const [l, c] = SRC[q.source_type] || ['', 'adm']; return h('span', { class: 'badge ' + c }, q.pyq ? `${l} · ${q.pyq.year || ''} ${q.pyq.paper || ''}`.trim() : l); };
+
+function errBox(e, retryFn) {
+  return h('div', { class: 'err', role: 'alert' }, h('div', {}, e.message || 'Something went wrong.'), retryFn && e.retry !== false ? h('button', { class: 'btn sm', style: 'margin-top:.5rem', onclick: retryFn }, 'Try Again') : null);
+}
+// Run an async loader into a container; failures stay local so the rest of the app keeps working.
+async function load(box, fn) {
+  box.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Loading…'));
+  try { const n = await fn(); box.replaceChildren(n); } catch (e) { box.replaceChildren(errBox(e, () => load(box, fn))); }
+}
+const cleanups = [];
+const onLeave = (f) => cleanups.push(f);
+function runCleanups() { while (cleanups.length) { try { cleanups.pop()(); } catch { } } }
+
+// ---------- state ----------
+const S = { user: null, config: {}, exams: [], exam: null };
+const NAV = [['home', 'Home'], ['practice', 'Practice'], ['revision', 'Revision'], ['pyqs', 'PYQs'], ['tests', 'Tests'], ['ca', 'Current Affairs'], ['tutor', 'AI Tutor'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['profile', 'Profile']];
+const MOBILE = [['home', 'Home'], ['practice', 'Practice'], ['tests', 'Tests'], ['tutor', 'AI Tutor'], ['more', 'More']];
+
+async function boot() {
+  try {
+    S.config = await get('/api/config'); S.exams = (await get('/api/exams')).exams;
+    S.user = (await get('/api/me')).user;
+  } catch (e) { $('#app').replaceChildren(h('div', { class: 'auth' }, h('div', { class: 'card' }, errBox(e, () => location.reload())))); return; }
+  route();
+}
+window.addEventListener('hashchange', () => route());
+
+function route() {
+  runCleanups();
+  if (!S.user) return renderAuth();
+  if (!S.user.onboarded) return renderOnboarding();
+  const [path, qs] = (location.hash.slice(2) || 'home').split('?');
+  const parts = path.split('/'); const params = new URLSearchParams(qs || '');
+  S.exam = S.exams.find(e => e.id === S.user.exam_id);
+  renderShell(parts[0], parts, params);
+}
+const go = (hash) => { if (location.hash === hash) route(); else location.hash = hash; };
+const q = (o) => '?' + new URLSearchParams(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== '')).toString();
+
+// ---------- auth ----------
+function renderAuth() {
+  const app = $('#app'); let email = '', timer = null, resendAt = 0, expAt = 0;
+  const card = h('div', { class: 'card stack' }); app.replaceChildren(h('div', { class: 'auth' }, card));
+  onLeave(() => clearInterval(timer));
+  function stepEmail(msg) {
+    clearInterval(timer);
+    const inp = h('input', { type: 'email', inputmode: 'email', autocomplete: 'email', placeholder: 'you@example.com', value: email, required: true, 'aria-label': 'Email address' });
+    const err = h('div'); const btn = h('button', { class: 'btn primary', style: 'width:100%', type: 'submit' }, 'Send OTP');
+    card.replaceChildren(h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'), h('div', {}, h('h1', {}, 'Log in or sign up'), h('p', { class: 'muted' }, 'Enter your email. We’ll send a 6-digit code. No password needed.')),
+      msg ? h('div', { class: 'info' }, msg) : null,
+      h('form', { onsubmit: async (ev) => { ev.preventDefault(); email = inp.value.trim(); btn.disabled = true; btn.replaceChildren(h('span', { class: 'spin' })); err.replaceChildren();
+        try { const r = await post('/api/auth/send-otp', { email }); resendAt = Date.now() + r.resend_in * 1000; expAt = Date.now() + r.expires_in * 1000; stepCode(r.dev_otp); }
+        catch (e) { err.replaceChildren(errBox(e)); btn.disabled = false; btn.replaceChildren('Send OTP'); } } }, inp, err, h('div', { style: 'margin-top:1rem' }, btn)));
+    inp.focus();
+  }
+  function stepCode(devOtp) {
+    const boxes = Array.from({ length: 6 }, (_, i) => h('input', { inputmode: 'numeric', maxlength: 1, autocomplete: i === 0 ? 'one-time-code' : 'off', 'aria-label': 'Digit ' + (i + 1) }));
+    const err = h('div'), info = h('div', { class: 'small muted center' }), verify = h('button', { class: 'btn primary', style: 'width:100%' }, 'Verify & Continue');
+    const resend = h('button', { class: 'btn ghost sm', type: 'button' }, 'Resend OTP');
+    const code = () => boxes.map(b => b.value).join('');
+    async function submit() {
+      if (code().length !== 6) return; verify.disabled = true; verify.replaceChildren(h('span', { class: 'spin' })); err.replaceChildren();
+      try { const r = await post('/api/auth/verify-otp', { email, code: code() }); S.user = r.user; location.hash = '#/'; route(); }
+      catch (e) { err.replaceChildren(errBox(e)); verify.disabled = false; verify.replaceChildren('Verify & Continue'); if (e.data?.expired) { expAt = 0; } boxes.forEach(b => b.value = ''); boxes[0].focus(); }
+    }
+    boxes.forEach((b, i) => {
+      b.addEventListener('input', () => { b.value = b.value.replace(/\D/g, '').slice(-1); if (b.value && boxes[i + 1]) boxes[i + 1].focus(); if (code().length === 6) submit(); });
+      b.addEventListener('keydown', (e) => { if (e.key === 'Backspace' && !b.value && boxes[i - 1]) boxes[i - 1].focus(); });
+      b.addEventListener('paste', (e) => { const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6); if (t.length > 1) { e.preventDefault(); t.split('').forEach((c, j) => boxes[j].value = c); boxes[Math.min(t.length, 5)].focus(); if (t.length === 6) submit(); } });
+    });
+    resend.onclick = async () => { resend.disabled = true; err.replaceChildren(); try { const r = await post('/api/auth/send-otp', { email }); resendAt = Date.now() + r.resend_in * 1000; expAt = Date.now() + r.expires_in * 1000; toast('A new code was sent'); if (r.dev_otp) $('#dev').textContent = 'Dev mode: your code is ' + r.dev_otp; } catch (e) { err.replaceChildren(errBox(e)); } };
+    verify.onclick = submit;
+    card.replaceChildren(h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'), h('div', {}, h('h1', {}, 'Enter your code'), h('p', { class: 'muted' }, 'We sent a 6-digit code to ', h('b', {}, email), '.')),
+      devOtp ? h('div', { class: 'note', id: 'dev' }, 'Dev mode (no email provider configured): your code is ' + devOtp) : h('div', { id: 'dev' }),
+      h('div', { class: 'otp', role: 'group', 'aria-label': 'One-time code' }, boxes), err, verify, info, h('div', { class: 'row between' }, resend, h('button', { class: 'btn ghost sm', onclick: () => stepEmail() }, 'Change email')));
+    boxes[0].focus();
+    const tick = () => { const rs = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000)), ex = Math.max(0, Math.ceil((expAt - Date.now()) / 1000));
+      resend.disabled = rs > 0; resend.textContent = rs > 0 ? `Resend OTP in ${rs}s` : 'Resend OTP';
+      info.textContent = ex > 0 ? `Code expires in ${Math.floor(ex / 60)}:${String(ex % 60).padStart(2, '0')}` : 'This code has expired. Please resend a new one.'; verify.disabled = ex === 0 && !verify.querySelector('.spin'); };
+    tick(); clearInterval(timer); timer = setInterval(tick, 500);
+  }
+  stepEmail();
+}
+
+// ---------- onboarding ----------
+function renderOnboarding() {
+  const d = { name: S.user.name || '', exam_id: S.user.exam_id || '', level: '', target_date: '', daily_minutes: 0, stage: 'Preparing' };
+  const app = $('#app'); const card = h('div', { class: 'card stack' }); app.replaceChildren(h('div', { class: 'auth' }, h('div', { style: 'width:100%;max-width:640px' }, card)));
+  const steps = (n) => h('div', { class: 'steps' }, [0, 1].map(i => h('i', { class: i <= n ? 'on' : '' })));
+  function s1() {
+    let filter = '', cat = 'All'; const cats = ['All', ...new Set(S.exams.map(e => e.category))];
+    const grid = h('div', { class: 'examgrid', role: 'listbox' }), chips = h('div', { class: 'chips' }), next = h('button', { class: 'btn primary', disabled: !d.exam_id }, 'Continue');
+    const draw = () => {
+      chips.replaceChildren(...cats.map(c => h('button', { class: 'chip' + (c === cat ? ' on' : ''), onclick: () => { cat = c; draw(); } }, c)));
+      const list = S.exams.filter(e => (cat === 'All' || e.category === cat) && e.name.toLowerCase().includes(filter));
+      grid.replaceChildren(...(list.length ? list.map(e => h('button', { class: 'exam' + (e.id === d.exam_id ? ' on' : ''), role: 'option', 'aria-selected': e.id === d.exam_id, onclick: () => { d.exam_id = e.id; next.disabled = false; draw(); } }, h('b', {}, e.name), h('span', { class: 'small muted' }, e.category))) : [h('div', { class: 'empty' }, 'No exam matches your search.')]));
+    };
+    next.onclick = s2;
+    card.replaceChildren(h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'), steps(0), h('h1', {}, 'What are you preparing for?'), h('p', { class: 'muted' }, 'This shapes your syllabus, practice, tests and plan.'),
+      h('input', { type: 'search', placeholder: 'Search exams…', 'aria-label': 'Search exams', oninput: (e) => { filter = e.target.value.toLowerCase(); draw(); } }), chips, grid, h('div', { class: 'row', style: 'justify-content:flex-end' }, next)); draw();
+  }
+  function s2() {
+    const err = h('div'), min = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+    const pick = (opts, key, fmt) => h('div', { class: 'chips' }, opts.map(o => { const b = h('button', { type: 'button', class: 'chip' + (d[key] === o ? ' on' : ''), onclick: () => { d[key] = o; b.parentNode.querySelectorAll('.chip').forEach(c => c.classList.remove('on')); b.classList.add('on'); } }, fmt ? fmt(o) : o); return b; }));
+    const name = h('input', { value: d.name, placeholder: 'Your name', maxlength: 60, autocomplete: 'given-name' }), date = h('input', { type: 'date', min, value: d.target_date });
+    const finish = h('button', { class: 'btn primary', onclick: async () => {
+      d.name = name.value.trim(); d.target_date = date.value; err.replaceChildren();
+      if (!d.name || !d.level || !d.target_date || !d.daily_minutes) { err.replaceChildren(h('div', { class: 'err' }, 'Please fill in your name, level, target date and daily study time.')); return; }
+      finish.disabled = true; try { const r = await post('/api/me/onboarding', d); S.user = r.user; planReady(); } catch (e) { err.replaceChildren(errBox(e)); finish.disabled = false; } } }, 'Create my plan');
+    card.replaceChildren(h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'), steps(1), h('h1', {}, 'A few quick details'),
+      h('label', {}, 'Your name'), name, h('label', {}, 'Preparation level'), pick(['Beginner', 'Intermediate', 'Advanced'], 'level'),
+      h('label', {}, 'Target exam date'), date, h('label', {}, 'Daily study time'), pick([60, 120, 180, 240, 300], 'daily_minutes', m => m === 300 ? '5+ hours' : m / 60 + (m === 60 ? ' hour' : ' hours')),
+      h('label', {}, 'Preparation stage (optional)'), pick(['Just Started', 'Preparing', 'Revision'], 'stage'), err,
+      h('div', { class: 'row between', style: 'margin-top:1rem' }, h('button', { class: 'btn ghost', onclick: s1 }, 'Back'), finish));
+  }
+  function planReady() {
+    card.replaceChildren(h('div', { class: 'center stack', style: 'padding:1.5rem 0' }, h('div', { style: 'font-size:3rem' }, '🎯'), h('h1', {}, 'Your preparation plan is ready!'), h('p', { class: 'muted' }, 'Personalised for ' + S.exams.find(e => e.id === S.user.exam_id).name),
+      h('button', { class: 'btn primary', onclick: () => { location.hash = '#/home'; route(); } }, 'Go to my dashboard')));
+  }
+  s1();
+}
+
+// ---------- shell ----------
+function renderShell(page, parts, params) {
+  const navItem = ([k, label], cls = '') => h('a', { class: 'nav' + (k === page || (k === 'more' && !MOBILE.some(m => m[0] === page)) ? ' on' : '') + cls, href: '#/' + k }, svg(ICONS[k] || ICONS.more), label);
+  const main = h('div', { class: 'page', id: 'page' });
+  const isAdmin = S.user.role === 'admin';
+  const sideItems = [...NAV, ['library', 'My Library'], ...(isAdmin ? [['admin', 'Admin']] : [])];
+  const search = h('form', { role: 'search', onsubmit: (e) => { e.preventDefault(); const v = e.target.q.value.trim(); if (v.length >= 2) go('#/search' + q({ q: v })); } }, h('input', { name: 'q', type: 'search', placeholder: 'Search topics, questions, PYQs, notes…', 'aria-label': 'Search', value: page === 'search' ? params.get('q') || '' : '' }));
+  $('#app').replaceChildren(h('div', { class: 'shell' },
+    h('nav', { class: 'side', 'aria-label': 'Main' }, h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'), sideItems.map(i => navItem(i))),
+    h('div', { class: 'main' }, h('div', { class: 'top' }, h('div', { class: 'brand' }, logo(), h('span', {}, 'Exam AI')), search, h('span', { class: 'badge' }, S.exam ? S.exam.name : '')), main)),
+    h('nav', { class: 'bottom', 'aria-label': 'Primary' }, MOBILE.map(i => navItem(i))));
+  const pages = { home: pgHome, practice: pgPractice, revision: pgRevision, pyqs: pgPyqs, tests: pgTests, test: pgTestTake, result: pgResult, ca: pgCA, tutor: pgTutor, plan: pgPlan, progress: pgProgress, profile: pgProfile, library: pgLibrary, search: pgSearch, more: pgMore, admin: pgAdmin };
+  const fn = pages[page] || pgHome; window.scrollTo(0, 0);
+  load(main, () => fn(parts, params));
+}
+function pgMore() {
+  return h('div', { class: 'stack' }, h('h1', {}, 'More'), h('div', { class: 'grid g2' }, [['revision', 'Revision'], ['pyqs', 'PYQs'], ['ca', 'Current Affairs'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['library', 'My Library'], ['profile', 'Profile'], ...(S.user.role === 'admin' ? [['admin', 'Admin']] : [])].map(([k, l]) => h('a', { class: 'card nav', href: '#/' + k }, svg(ICONS[k] || ICONS.more), l))));
+}
+
+// ---------- action router (recommendation CTAs) ----------
+async function doAction(a) {
+  if (a.type === 'test') return go('#/test/' + a.id);
+  if (a.type === 'revision') return go('#/revision' + q({ subject: a.subject, topic: a.topic }));
+  if (a.type === 'practice') return go('#/practice' + q({ subject: a.subject, topic: a.topic, start: 1 }));
+  if (a.type === 'topic_test') return startTest({ kind: 'topic', subject: a.subject, topic: a.topic, count: 10 });
+  if (a.type === 'mistakes') return go('#/revision?mistakes=1');
+  if (a.type === 'current_affairs') return go('#/ca');
+  if (a.type === 'tutor') return go('#/tutor');
+}
+async function startTest(body) {
+  try { const r = await post('/api/tests/create', body); (r.notices || []).forEach(n => toast(n)); go('#/test/' + r.id); } catch (e) { toast(e.message); }
+}
+
+// ---------- home ----------
+async function pgHome() {
+  const d = await get('/api/home');
+  const reco = d.recommendation;
+  return h('div', { class: 'stack' },
+    h('div', { class: 'hero' }, h('h1', {}, `${d.greeting}, ${d.name} 👋`), h('p', {}, `Preparing for ${d.exam.name}`), h('p', {}, d.days_left === null ? '' : d.days_left > 0 ? `${d.days_left} days remaining` : d.days_left === 0 ? 'Exam day is today. Best of luck!' : 'Your target date has passed. Update it in Profile.')),
+    h('div', { class: 'grid g2' },
+      h('div', { class: 'card' }, h('h3', {}, 'Today’s Target'), h('div', { class: 'row between' }, h('span', {}, `${d.today.questions} / ${d.target.questions} questions`), h('span', { class: 'muted small' }, `${d.today.minutes} / ${d.target.minutes} min`)), h('div', { class: 'bar', style: 'margin-top:.5rem' }, h('i', { style: `width:${Math.min(100, Math.round(100 * d.today.questions / Math.max(1, d.target.questions)))}%` }))),
+      h('div', { class: 'card reco' }, h('span', { class: 'badge warn' }, 'What should I do now?'), h('h2', { style: 'margin-top:.4rem' }, reco.title), h('p', {}, reco.detail), h('button', { class: 'btn accent', onclick: () => doAction(reco.action) }, reco.cta))),
+    h('div', { class: 'grid g3' }, [['Streak', d.streak + (d.streak === 1 ? ' day' : ' days')], ['Questions solved', d.questions_solved], ['Accuracy', pct(d.accuracy)]].map(([l, v]) => h('div', { class: 'card stat' }, h('span', { class: 'muted small' }, l), h('b', {}, v)))),
+    h('div', { class: 'grid g2' },
+      h('div', { class: 'card' }, h('h3', {}, 'Continue Studying'), d.continue ? h('p', {}, d.continue.subject + ' → ' + d.continue.topic) : h('p', { class: 'muted' }, 'Start your first practice set.'),
+        h('div', { class: 'row' }, h('button', { class: 'btn primary sm', onclick: () => go('#/practice' + q({ subject: d.continue?.subject, topic: d.continue?.topic, start: d.continue ? 1 : undefined })) }, 'Practice Now'), h('button', { class: 'btn sm', onclick: () => go('#/tutor') }, 'Ask AI')),
+        h('div', { class: 'stack', style: 'margin-top:1rem' }, d.subject_progress.map(s => h('div', {}, h('div', { class: 'row between small' }, h('span', {}, s.subject), h('span', { class: 'muted' }, `${s.covered}/${s.total} topics started`)), h('div', { class: 'bar' }, h('i', { style: `width:${Math.round(100 * s.covered / s.total)}%` })))))),
+      h('div', { class: 'card' }, h('h3', {}, 'Weak Topics'), d.weak_topics.length ? h('div', { class: 'list' }, d.weak_topics.map(w => h('div', { class: 'row between' }, h('span', {}, h('b', {}, w.topic), h('span', { class: 'muted small' }, ' · ' + w.subject)), h('span', { class: 'row' }, h('span', { class: 'badge bad' }, w.accuracy + '%'), h('button', { class: 'btn sm', onclick: () => go('#/revision' + q({ subject: w.subject, topic: w.topic })) }, 'Revise'))))) : h('p', { class: 'muted' }, 'No weak topics yet. Answer at least 3 questions per topic and they will appear here.'))),
+    h('div', { class: 'grid g2' },
+      h('div', { class: 'card' }, h('h3', {}, 'Upcoming Test'), h('p', {}, d.upcoming_test.title), h('button', { class: 'btn sm', onclick: () => d.upcoming_test.resume ? go('#/test/' + d.upcoming_test.id) : go('#/tests') }, d.upcoming_test.resume ? 'Resume Test' : 'Take Test')),
+      h('div', { class: 'card' }, h('h3', {}, 'Current Affairs'), d.current_affairs.length ? h('div', { class: 'list' }, d.current_affairs.map(c => h('div', {}, h('span', { class: 'badge' }, c.category), ' ', c.title))) : h('p', { class: 'muted' }, 'Nothing added yet.'), h('a', { class: 'btn sm', href: '#/ca', style: 'margin-top:.5rem' }, 'Open'))),
+    h('div', { class: 'card' }, h('h3', {}, 'Recent Performance'), d.recent_tests.length ? h('table', {}, h('tbody', {}, d.recent_tests.map(t => h('tr', {}, h('td', {}, t.title), h('td', {}, `${t.score}/${t.max}`), h('td', {}, pct(t.accuracy)), h('td', {}, h('a', { href: '#/result/' + t.id }, 'View')))))) : h('p', { class: 'muted' }, 'No tests taken yet.')));
+}
+
+// ---------- question session runner (practice / mistakes / PYQ) ----------
+function runSession(questions, { mode = 'practice', onFinish, title } = {}) {
+  let i = 0, correct = 0, startedAt = 0; const box = h('div', { class: 'stack' });
+  function show() {
+    if (i >= questions.length) return finish();
+    const qn = questions[i]; let chosen = null, locked = false; startedAt = Date.now();
+    const fb = h('div'), opts = h('div'), submit = h('button', { class: 'btn primary', disabled: true }, 'Check Answer');
+    const letters = 'ABCDEF';
+    const drawOpts = (res) => opts.replaceChildren(...qn.options.map((o, k) => h('button', { class: 'opt' + (res ? (k === res.correct_index ? ' right' : (k === chosen ? ' wrong' : '')) : (k === chosen ? ' sel' : '')), disabled: locked, 'aria-pressed': k === chosen, onclick: () => { chosen = k; submit.disabled = false; drawOpts(); } }, h('span', { class: 'k' }, letters[k]), h('span', {}, o))));
+    submit.onclick = async () => {
+      locked = true; submit.disabled = true; submit.replaceChildren(h('span', { class: 'spin' }));
+      try {
+        const r = await post('/api/practice/answer', { question_id: qn.id, choice: chosen, time_ms: Date.now() - startedAt, mode }); if (r.correct) correct++;
+        drawOpts(r); submit.remove(); fb.replaceChildren(feedback(r, qn, qn.options)); fb.append(h('div', { class: 'row', style: 'margin-top:1rem' },
+          h('button', { class: 'btn primary', onclick: () => { i++; show(); } }, i + 1 < questions.length ? 'Next Question →' : 'Finish'),
+          bookmarkBtn('question', qn.id, qn.text), h('button', { class: 'btn', onclick: () => go('#/tutor' + q({ ask: 'Explain this question in detail: ' + qn.text })) }, 'Ask AI')));
+      } catch (e) { locked = false; submit.disabled = false; submit.textContent = 'Check Answer'; fb.replaceChildren(errBox(e, () => submit.onclick())); drawOpts(); }
+    };
+    drawOpts();
+    box.replaceChildren(h('div', { class: 'row between' }, h('b', {}, title || 'Practice'), h('span', { class: 'muted small' }, `Question ${i + 1} of ${questions.length}`)), h('div', { class: 'bar' }, h('i', { style: `width:${Math.round(100 * i / questions.length)}%` })),
+      h('div', { class: 'card stack' }, h('div', { class: 'row' }, srcBadge(qn), h('span', { class: 'badge' }, qn.subject + ' · ' + qn.topic), h('span', { class: 'badge' }, qn.difficulty)), h('div', { class: 'q-text' }, qn.text), opts, submit, fb));
+  }
+  function finish() {
+    box.replaceChildren(h('div', { class: 'card center stack' }, h('div', { style: 'font-size:2.5rem' }, correct / questions.length >= .7 ? '🎉' : '💪'), h('h2', {}, `${correct} / ${questions.length} correct`), h('div', { class: 'bar ' + (correct / questions.length >= .7 ? 'ok' : 'warn') }, h('i', { style: `width:${Math.round(100 * correct / questions.length)}%` })),
+      h('p', { class: 'muted' }, correct < questions.length ? 'Wrong answers were added to My Mistakes so you can revise them.' : 'Perfect set. Try a harder one.'),
+      h('div', { class: 'row', style: 'justify-content:center' }, h('button', { class: 'btn primary', onclick: () => onFinish && onFinish() }, 'Continue'), correct < questions.length ? h('a', { class: 'btn', href: '#/revision?mistakes=1' }, 'Revise My Mistakes') : null)));
+  }
+  show(); return box;
+}
+function feedback(r, qn, options) {
+  const wrap = h('div', {});
+  wrap.append(h('div', { class: 'sol ' + (r.correct ? 'good' : 'badc') }, h('h4', {}, r.correct ? 'Correct ✓' : 'Not quite ✗'), h('div', {}, h('b', {}, 'Correct Answer: '), `${'ABCDEF'[r.correct_index]} — ${options[r.correct_index]}`)));
+  if (!r.correct && r.mistake) wrap.append(h('div', { class: 'sol badc' }, h('h4', {}, 'Mistake analysis'), h('p', {}, h('b', {}, 'Your Answer: '), r.mistake.your_answer), h('p', {}, h('b', {}, 'Correct Answer: '), r.mistake.correct_answer), h('p', {}, h('b', {}, 'Where You Went Wrong: '), r.mistake.where_wrong), h('p', {}, h('b', {}, 'Correct Concept: '), r.mistake.correct_concept), h('p', {}, h('b', {}, 'How to Avoid This Mistake: '), r.mistake.how_to_avoid)));
+  else { wrap.append(h('div', { class: 'sol' }, h('h4', {}, 'Why?'), h('p', {}, r.explanation))); if (r.concept) wrap.append(h('div', { class: 'sol' }, h('h4', {}, 'Concept'), h('p', {}, r.concept))); }
+  if (r.tip && r.correct) wrap.append(h('div', { class: 'sol' }, h('h4', {}, 'Exam Tip'), h('p', {}, r.tip)));
+  return wrap;
+}
+function bookmarkBtn(kind, ref, title, body) {
+  const b = h('button', { class: 'btn', onclick: async () => { try { const r = await post('/api/bookmarks', { kind, ref_id: String(ref), title: String(title).slice(0, 180), body }); toast(r.saved ? 'Saved to My Library' : 'Removed from My Library'); } catch (e) { toast(e.message); } } }, '🔖 Bookmark');
+  return b;
+}
+
+// ---------- practice ----------
+async function pgPractice(parts, params) {
+  const ex = (await get('/api/exams/' + S.user.exam_id)).exam; const box = h('div', { class: 'stack' });
+  const sel = { subject: params.get('subject') || '', topic: params.get('topic') || '', difficulty: '', source: '' };
+  async function start(src) {
+    box.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Preparing questions…'));
+    try {
+      const r = await get('/api/practice/questions' + q({ ...sel, source: src ?? sel.source, limit: 10 }));
+      if (!r.questions.length) { setup(h('div', { class: 'note' }, 'No questions found for this selection yet. Try another topic, or generate questions with the AI Tutor.')); return; }
+      box.replaceChildren(runSession(r.questions, { mode: 'practice', title: sel.topic || sel.subject || 'Mixed practice', onFinish: () => setup() }));
+    } catch (e) { setup(errBox(e, () => start(src))); }
+  }
+  function setup(extra) {
+    const subj = h('select', { 'aria-label': 'Subject', onchange: (e) => { sel.subject = e.target.value; sel.topic = ''; setup(); } }, h('option', { value: '' }, 'All subjects'), ex.syllabus.map(s => h('option', { value: s.subject, selected: s.subject === sel.subject }, s.subject)));
+    const topics = ex.syllabus.find(s => s.subject === sel.subject)?.topics || [];
+    const top = h('select', { 'aria-label': 'Topic', disabled: !sel.subject, onchange: (e) => sel.topic = e.target.value }, h('option', { value: '' }, 'All topics'), topics.map(t => h('option', { value: t, selected: t === sel.topic }, t)));
+    const dif = h('select', { 'aria-label': 'Difficulty', onchange: (e) => sel.difficulty = e.target.value }, [['', 'Any difficulty'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === sel.difficulty }, l)));
+    box.replaceChildren(h('h1', {}, 'Practice'), h('p', { class: 'muted' }, `Questions for ${ex.name} only. Every question shows where it came from.`), extra || null,
+      h('div', { class: 'card stack' }, h('div', { class: 'grid g3' }, h('div', {}, h('label', {}, 'Subject'), subj), h('div', {}, h('label', {}, 'Topic'), top), h('div', {}, h('label', {}, 'Difficulty'), dif)),
+        h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => start() }, 'Practice Now'), h('a', { class: 'btn', href: '#/revision?mistakes=1' }, 'Revise My Mistakes'), S.config.ai_enabled ? h('button', { class: 'btn', onclick: () => genPanel() }, '✨ Generate AI questions') : null)));
+  }
+  function genPanel() {
+    if (!sel.subject || !sel.topic) { toast('Pick a subject and topic first.'); return; }
+    box.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Generating and validating questions…'));
+    post('/api/ai/generate', { subject: sel.subject, topic: sel.topic, difficulty: sel.difficulty || 'medium', count: 5 }).then(r => box.replaceChildren(runSession(r.questions, { mode: 'practice', title: 'AI Generated Practice', onFinish: () => setup() }))).catch(e => setup(errBox(e, genPanel)));
+  }
+  if (params.get('start')) start(); else setup();
+  return box;
+}
+
+// ---------- PYQs ----------
+async function pgPyqs() {
+  const [p, an] = await Promise.all([get('/api/pyq/papers'), get('/api/pyq/analysis')]); const box = h('div', { class: 'stack' });
+  return h('div', { class: 'stack' }, h('h1', {}, 'Previous Year Questions'), h('div', { class: 'info' }, 'Only questions an admin has verified against an official source appear here, labelled “Verified PYQ”. AI-written questions are never shown as PYQs.'),
+    h('div', { class: 'card' }, h('h3', {}, 'Verified papers'), p.papers.length ? h('div', { class: 'list' }, p.papers.map(x => h('div', { class: 'row between' }, h('span', {}, h('b', {}, `${x.year} · ${x.paper}`), x.shift ? ` · ${x.shift}` : '', h('span', { class: 'muted small' }, ` · ${x.questions} questions`)), h('button', { class: 'btn sm primary', onclick: () => startTest({ kind: 'pyq', year: x.year, paper: x.paper, shift: x.shift }) }, 'Take as test')))) : h('div', { class: 'empty' }, 'No verified PYQ papers have been added for your exam yet. Admins can add them from the Admin panel.')),
+    h('div', { class: 'card' }, h('h3', {}, 'PYQ analysis'), an.sufficient ? h('div', { class: 'stack' }, h('p', { class: 'small muted' }, `Based on ${an.total} verified questions.`), h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, 'Top topics'), h('th', {}, 'Questions'))), h('tbody', {}, an.top_topics.map(t => h('tr', {}, h('td', {}, `${t.subject} → ${t.topic}`), h('td', {}, t.n)))))) : h('p', { class: 'muted' }, an.message)));
+}
+
+// ---------- revision ----------
+async function pgRevision(parts, params) {
+  if (params.get('mistakes')) return revMistakes();
+  if (params.get('topic')) return revTopic(params.get('subject'), params.get('topic'));
+  const r = await get('/api/revision/queue'); const label = { high: ['High Priority', 'bad'], medium: ['Medium Priority', 'warn'], low: ['Low Priority', ''] };
+  return h('div', { class: 'stack' }, h('div', { class: 'row between' }, h('h1', {}, 'Revision'), h('a', { class: 'btn primary', href: '#/revision?mistakes=1' }, 'Revise My Mistakes')),
+    h('p', { class: 'muted' }, 'Revise → test → analyse → repeat. Priorities come from your own answers; spaced reminders at 1, 3, 7 and 14 days.'),
+    r.queue.length ? ['high', 'medium', 'low'].map(pr => { const items = r.queue.filter(x => x.priority === pr); return items.length ? h('div', { class: 'card' }, h('span', { class: 'badge ' + label[pr][1] }, label[pr][0]), h('div', { class: 'list' }, items.map(x => h('div', { class: 'row between' }, h('span', {}, h('b', {}, x.topic), h('span', { class: 'muted small' }, ` · ${x.subject} · ${x.reason}`)), h('button', { class: 'btn sm primary', onclick: () => go('#/revision' + q({ subject: x.subject, topic: x.topic })) }, 'Revise')))) ) : null; })
+      : h('div', { class: 'card empty' }, 'Nothing needs revision yet. Practise some questions and the system will tell you what to revise.'),
+    h('div', { class: 'card' }, h('h3', {}, 'Pick any topic'), topicPicker((s, t) => go('#/revision' + q({ subject: s, topic: t })))));
+}
+function topicPicker(onPick) {
+  const ex = S.examDetail; const wrap = h('div'); get('/api/exams/' + S.user.exam_id).then(({ exam }) => {
+    let subj = exam.syllabus[0].subject; const draw = () => wrap.replaceChildren(h('div', { class: 'chips' }, exam.syllabus.map(s => h('button', { class: 'chip' + (s.subject === subj ? ' on' : ''), onclick: () => { subj = s.subject; draw(); } }, s.subject))), h('div', { class: 'chips', style: 'margin-top:.6rem' }, exam.syllabus.find(s => s.subject === subj).topics.map(t => h('button', { class: 'chip', onclick: () => onPick(subj, t) }, t)))); draw();
+  }).catch(e => wrap.replaceChildren(errBox(e))); return wrap;
+}
+async function revTopic(subject, topic) {
+  const c = await get('/api/revision/content' + q({ subject, topic })); const box = h('div', { class: 'stack' }); const n = c.notes;
+  const sec = (t, items) => items && items.length ? h('div', { class: 'card' }, h('h3', {}, t), h('ul', {}, items.map(x => h('li', {}, x)))) : null;
+  const aiBox = h('div');
+  const aiBtn = (kind, label) => h('button', { class: 'btn sm', onclick: async (e) => { e.target.disabled = true; aiBox.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Generating…')); try { const r = await post('/api/ai/notes', { kind, subject, topic }); aiBox.replaceChildren(h('div', { class: 'card' }, h('span', { class: 'badge ai' }, 'AI Generated · double-check key facts'), md(r.text))); } catch (er) { aiBox.replaceChildren(errBox(er, () => e.target.click())); } e.target.disabled = false; } }, label);
+  box.append(h('div', { class: 'row between' }, h('div', {}, h('span', { class: 'badge' }, 'Step 1 of 4 · Revision'), h('h1', {}, topic), h('p', { class: 'muted' }, subject)), h('a', { class: 'btn ghost', href: '#/revision' }, '← All topics')));
+  if (n) { box.append(sec('Concepts', n.concepts), sec('Important formulas', n.formulas), sec('Key points', n.keypoints), n.examples?.length ? h('div', { class: 'card' }, h('h3', {}, 'Solved examples'), n.examples.map(x => h('div', { class: 'sol' }, h('b', {}, x.q), h('p', {}, x.a)))) : null); }
+  else box.append(h('div', { class: 'info' }, 'No curated notes exist for this topic yet.' + (c.ai_available ? ' You can generate notes below.' : ' Ask your admin to enable AI to generate notes.')));
+  if (c.mistakes.length) box.append(h('div', { class: 'card' }, h('h3', {}, 'Your previous mistakes here'), h('div', { class: 'list' }, c.mistakes.map(m => h('div', {}, h('div', {}, m.text), h('p', { class: 'small muted' }, m.concept || m.explanation))))));
+  if (c.pyq_concepts.length) box.append(h('div', { class: 'card' }, h('h3', {}, 'Important PYQ concepts'), h('ul', {}, c.pyq_concepts.map(p => h('li', {}, p.concept || p.text)))));
+  if (c.ai_available) box.append(h('div', { class: 'card' }, h('h3', {}, 'Generate study material'), h('div', { class: 'row' }, aiBtn('short', 'Short notes'), aiBtn('formula', 'Formula sheet'), aiBtn('onepage', 'One-page sheet'), aiBtn('flashcards', 'Flashcards')), aiBox));
+  const done = h('button', { class: 'btn primary', onclick: async () => { done.disabled = true; try { await post('/api/revision/complete', { subject, topic }); toast('Revision complete 🎯'); startTest({ kind: 'topic', subject, topic, count: 10 }); } catch (e) { toast(e.message); done.disabled = false; } } }, 'I’ve revised → Start Test');
+  box.append(h('div', { class: 'row' }, done, h('button', { class: 'btn', onclick: () => go('#/practice' + q({ subject, topic, start: 1 })) }, 'Practice first')));
+  return box;
+}
+async function revMistakes() {
+  const r = await get('/api/mistakes?limit=10');
+  if (!r.total) return h('div', { class: 'stack' }, h('h1', {}, 'Revise My Mistakes'), h('div', { class: 'card empty' }, 'No unresolved mistakes. Nice work!'));
+  return h('div', { class: 'stack' }, h('div', { class: 'info' }, `${r.total} unresolved mistake(s). Get one right to lower its weakness score; get it wrong and it rises.`), runSession(r.mistakes, { mode: 'mistake', title: 'Revise My Mistakes', onFinish: () => go('#/revision') }));
+}
+
+// ---------- tests ----------
+async function pgTests() {
+  const [list, ex] = await Promise.all([get('/api/tests'), get('/api/exams/' + S.user.exam_id)]); const exam = ex.exam;
+  const o = { kind: 'full_mock', subject: exam.subjects[0], topic: '', count: 10, difficulty: 'any', minutes: '' }; const form = h('div', { class: 'card stack' });
+  const KINDS = [['full_mock', 'Full Mock'], ['sectional', 'Sectional Mock'], ['subject', 'Subject Test'], ['topic', 'Topic Test'], ['pyq', 'PYQ Test'], ['pyq_pattern', 'PYQ Pattern Mock'], ['ai_mock', 'AI Generated Mock'], ['weak_topic', 'Weak Topic Test']];
+  function draw() {
+    const needS = ['sectional', 'subject', 'topic'].includes(o.kind), needT = o.kind === 'topic', needN = ['subject', 'topic', 'weak_topic', 'pyq_pattern', 'ai_mock'].includes(o.kind), needD = ['subject', 'topic', 'full_mock', 'sectional', 'ai_mock'].includes(o.kind);
+    const topics = exam.syllabus.find(s => s.subject === o.subject)?.topics || []; if (needT && !topics.includes(o.topic)) o.topic = topics[0];
+    const f = (l, el) => h('div', {}, h('label', {}, l), el);
+    form.replaceChildren(h('h2', {}, 'Create My Test'), h('div', { class: 'chips' }, KINDS.map(([k, l]) => h('button', { class: 'chip' + (o.kind === k ? ' on' : ''), onclick: () => { o.kind = k; draw(); } }, l))),
+      o.kind === 'full_mock' ? h('div', { class: 'info' }, `${exam.name} pattern: ${exam.pattern.sections.map(s => `${s.subject} ${s.questions}`).join(' · ')} · ${exam.pattern.minutes} min · negative marking per section.` + (exam.verified ? '' : ' (Pattern is an approximate default. Confirm with the official notification.)')) : null,
+      h('div', { class: 'grid g3' }, needS ? f('Subject', h('select', { onchange: (e) => { o.subject = e.target.value; draw(); } }, exam.syllabus.map(s => h('option', { value: s.subject, selected: s.subject === o.subject }, s.subject)))) : null,
+        needT ? f('Topic', h('select', { onchange: (e) => o.topic = e.target.value }, topics.map(t => h('option', { value: t, selected: t === o.topic }, t)))) : null,
+        needN ? f('Number of questions', h('input', { type: 'number', min: 1, max: 100, value: o.count, oninput: (e) => o.count = +e.target.value })) : null,
+        needD ? f('Difficulty', h('select', { onchange: (e) => o.difficulty = e.target.value }, [['any', 'Any'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === o.difficulty }, l)))) : null,
+        f('Duration (minutes, optional)', h('input', { type: 'number', min: 1, max: 300, placeholder: 'Auto', value: o.minutes, oninput: (e) => o.minutes = e.target.value }))),
+      h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => { e.target.disabled = true; e.target.replaceChildren(h('span', { class: 'spin' }), ' Building…'); await startTest({ ...o, minutes: o.minutes || undefined }); e.target.disabled = false; e.target.textContent = 'Start Test'; } }, 'Start Test'));
+  } draw();
+  return h('div', { class: 'stack' }, h('h1', {}, 'Tests'), form,
+    h('div', { class: 'card' }, h('h3', {}, 'Your tests'), list.tests.length ? h('div', { class: 'list' }, list.tests.map(t => h('div', { class: 'row between' }, h('span', {}, h('b', {}, t.title), h('span', { class: 'muted small' }, ` · ${fmtDate(t.started_at)}`)), t.status === 'active' ? h('a', { class: 'btn sm accent', href: '#/test/' + t.id }, 'Resume Test') : h('span', { class: 'row' }, h('span', { class: 'badge' }, `${t.score}/${t.max} · ${pct(t.accuracy)}`), h('a', { class: 'btn sm', href: '#/result/' + t.id }, 'Analysis'))))) : h('p', { class: 'muted' }, 'No tests yet.')));
+}
+const fmtClock = (s) => `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+async function pgTestTake(parts) {
+  const { test } = await get('/api/tests/' + parts[1]);
+  if (test.status !== 'active') { location.replace('#/result/' + test.id); return h('div'); }
+  const st = { answers: { ...test.answers }, marked: new Set(test.marked.map(String)), times: { ...test.times }, idx: Math.min(test.current_idx || 0, test.questions.length - 1), dirty: false, submitting: false };
+  const skew = test.serverNow - Date.now(); // keeps the timer honest even if the device clock is off
+  const remaining = () => Math.max(0, Math.round((test.deadline - (Date.now() + skew)) / 1000));
+  let enteredAt = Date.now(); const root = h('div', { class: 'stack' }), body = h('div'), pal = h('div'), timerEl = h('span', { class: 'timer' }), saveEl = h('span', { class: 'small muted' });
+  const payload = () => ({ answers: st.answers, marked: [...st.marked].map(Number), times: st.times, current_idx: st.idx });
+  const bank = () => { const id = test.questions[st.idx].id; st.times[id] = (st.times[id] || 0) + (Date.now() - enteredAt); enteredAt = Date.now(); };
+  async function save() { if (!st.dirty || st.submitting) return; bank(); try { await put('/api/tests/' + test.id + '/save', payload()); st.dirty = false; saveEl.textContent = 'Saved ✓'; } catch { saveEl.textContent = 'Offline, will retry…'; } }
+  const autosave = setInterval(save, 8000); const tk = setInterval(() => { const r = remaining(); timerEl.textContent = fmtClock(r); timerEl.classList.toggle('low', r < 300); if (r === 0 && !st.submitting) submit(true); }, 500);
+  const onHide = () => { if (document.hidden) save(); }; document.addEventListener('visibilitychange', onHide);
+  onLeave(() => { clearInterval(autosave); clearInterval(tk); document.removeEventListener('visibilitychange', onHide); save(); });
+  const touch = () => { st.dirty = true; saveEl.textContent = ''; };
+  function draw() {
+    const qn = test.questions[st.idx], letters = 'ABCDEF';
+    body.replaceChildren(h('div', { class: 'card stack' }, h('div', { class: 'row between' }, h('div', { class: 'row' }, srcBadge(qn), h('span', { class: 'badge' }, qn.subject)), h('span', { class: 'muted small' }, `Question ${st.idx + 1} of ${test.questions.length}`)), h('div', { class: 'q-text' }, qn.text),
+      h('div', {}, qn.options.map((o, k) => h('button', { class: 'opt' + (st.answers[qn.id] === k ? ' sel' : ''), 'aria-pressed': st.answers[qn.id] === k, onclick: () => { st.answers[qn.id] = k; touch(); draw(); } }, h('span', { class: 'k' }, letters[k]), h('span', {}, o)))),
+      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { delete st.answers[qn.id]; touch(); draw(); } }, 'Clear'), h('button', { class: 'btn', onclick: () => { const k = String(qn.id); st.marked.has(k) ? st.marked.delete(k) : st.marked.add(k); touch(); draw(); } }, st.marked.has(String(qn.id)) ? '★ Unmark' : '☆ Mark for review'),
+        h('span', { class: 'grow' }), h('button', { class: 'btn', disabled: st.idx === 0, onclick: () => move(-1) }, '← Prev'), h('button', { class: 'btn primary', disabled: st.idx === test.questions.length - 1, onclick: () => move(1) }, 'Next →'))));
+    pal.replaceChildren(h('div', { class: 'pal' }, test.questions.map((x, i) => h('button', { class: (st.answers[x.id] !== undefined ? 'ans ' : '') + (st.marked.has(String(x.id)) ? 'mk ' : '') + (i === st.idx ? 'cur' : ''), 'aria-label': `Question ${i + 1}`, onclick: () => { bank(); st.idx = i; touch(); draw(); } }, i + 1))),
+      h('p', { class: 'small muted', style: 'margin-top:.6rem' }, `${Object.keys(st.answers).length} answered · ${st.marked.size} marked`));
+  }
+  function move(d) { bank(); st.idx += d; touch(); draw(); }
+  async function submit(auto) {
+    if (st.submitting) return; if (!auto && !confirm(`Submit now? ${test.questions.length - Object.keys(st.answers).length} question(s) are unanswered.`)) return;
+    st.submitting = true; bank(); const btn = $('#submitBtn'); if (btn) { btn.disabled = true; btn.replaceChildren(h('span', { class: 'spin' }), ' Submitting…'); }
+    try { await post('/api/tests/' + test.id + '/submit', payload()); location.hash = '#/result/' + test.id; }
+    catch (e) { st.submitting = false; if (btn) { btn.disabled = false; btn.textContent = 'Retry Submit'; } toast('Submit failed. Your answers are safe. Tap Retry Submit.'); }
+  }
+  draw(); timerEl.textContent = fmtClock(remaining());
+  root.append(h('div', { class: 'card row between', style: 'position:sticky;top:60px;z-index:4' }, h('div', {}, h('b', {}, test.title), h('div', {}, saveEl)), timerEl, h('button', { class: 'btn accent', id: 'submitBtn', onclick: () => submit(false) }, 'Submit Test')),
+    h('div', { class: 'split' }, body, h('div', { class: 'card' }, h('h3', {}, 'Questions'), pal)));
+  return root;
+}
+
+async function pgResult(parts) {
+  const { test } = await get('/api/tests/' + parts[1]); if (test.status === 'active') { location.replace('#/test/' + test.id); return h('div'); }
+  const r = test.result, c = r.coaching; const list = (t, a) => a && a.length ? h('div', { class: 'sol' }, h('h4', {}, t), h('ul', {}, a.map(x => h('li', {}, x)))) : null;
+  const follow = h('button', { class: 'btn accent', onclick: () => c.recommended_revision ? go('#/revision' + q({ subject: c.recommended_revision.subject, topic: c.recommended_revision.topic })) : go('#/practice') }, 'Follow AI Recommendation');
+  return h('div', { class: 'stack' }, h('div', { class: 'hero' }, h('p', {}, test.title), h('h1', {}, `${r.score} / ${r.max}`), h('p', {}, `Accuracy ${pct(r.accuracy)} · ${r.correct} correct · ${r.wrong} wrong · ${r.skipped} skipped`)),
+    h('div', { class: 'card' }, h('h2', {}, 'AI Analysis'), list('What went well', c.went_well), list('What went wrong', c.went_wrong), list('Time management', c.time_problems), list('Accuracy', c.accuracy_problems),
+      c.strong_topics.length ? h('p', {}, h('b', {}, 'Strong topics: '), c.strong_topics.join(', ')) : null, c.weak_topics.length ? h('p', {}, h('b', {}, 'Weak topics: '), c.weak_topics.join(', ')) : null,
+      c.recommended_revision ? h('p', {}, h('b', {}, 'Recommended revision: '), `${c.recommended_revision.topic} (${c.recommended_revision.subject})`) : null, h('p', {}, h('b', {}, 'Recommended next test: '), c.recommended_test.topic ? `${c.recommended_test.topic} topic test` : `${c.recommended_test.subject} test`),
+      h('div', { class: 'row' }, follow, h('button', { class: 'btn', onclick: () => startTest(c.recommended_test) }, 'Take recommended test'))),
+    h('div', { class: 'card' }, h('h3', {}, 'By subject'), h('table', {}, h('thead', {}, h('tr', {}, ['Subject', 'Attempted', 'Correct', 'Score'].map(x => h('th', {}, x)))), h('tbody', {}, Object.entries(r.by_subject).map(([s, v]) => h('tr', {}, h('td', {}, s), h('td', {}, `${v.attempted}/${v.total}`), h('td', {}, v.correct), h('td', {}, `${Math.round(v.score * 100) / 100}/${v.max}`)))))),
+    h('h2', {}, 'Review'), test.questions.map((qn, i) => { const ch = test.answers[qn.id], ok = ch === qn.answer;
+      return h('div', { class: 'card stack' }, h('div', { class: 'row between' }, h('span', { class: 'row' }, h('b', {}, 'Q' + (i + 1)), srcBadge(qn), h('span', { class: 'badge' }, qn.topic)), h('span', { class: 'badge ' + (ch === undefined ? '' : ok ? 'ok' : 'bad') }, ch === undefined ? 'Skipped' : ok ? 'Correct' : 'Wrong')), h('div', { class: 'q-text' }, qn.text),
+        h('div', {}, qn.options.map((o, k) => h('div', { class: 'opt ' + (k === qn.answer ? 'right' : k === ch ? 'wrong' : '') }, h('span', { class: 'k' }, 'ABCDEF'[k]), h('span', {}, o)))),
+        ok ? h('div', { class: 'sol' }, h('h4', {}, 'Why?'), h('p', {}, qn.explanation)) : h('div', { class: 'sol badc' }, h('h4', {}, 'Mistake analysis'), ch !== undefined ? h('p', {}, h('b', {}, 'Your Answer: '), qn.options[ch]) : null, h('p', {}, h('b', {}, 'Correct Answer: '), qn.options[qn.answer]), h('p', {}, h('b', {}, ch === undefined ? 'Why this is correct: ' : 'Where You Went Wrong: '), qn.explanation), qn.concept ? h('p', {}, h('b', {}, 'Correct Concept: '), qn.concept) : null, qn.tip ? h('p', {}, h('b', {}, 'How to Avoid This Mistake: '), qn.tip) : null),
+        h('div', { class: 'row' }, bookmarkBtn('question', qn.id, qn.text))); }));
+}
+
+boot();
