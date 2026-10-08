@@ -102,18 +102,99 @@ async function pgTutor(parts, params) {
 
 // ---------- current affairs ----------
 async function pgCA() {
-  let cat = ''; const list = h('div', { class: 'stack' });
+  let cat = '';
+  const list = h('div', { class: 'stack' });
+
+  function renderItems(items) {
+    list.replaceChildren();
+    const chips = h('div', { class: 'chips' });
+    chips.append(h('button', {
+      class: 'chip' + (!cat ? ' on' : ''),
+      onclick: () => { cat = ''; draw(); }
+    }, 'All'));
+    for (const c of (Array.isArray(items.categories) ? items.categories : [])) {
+      chips.append(h('button', {
+        class: 'chip' + (cat === c ? ' on' : ''),
+        onclick: () => { cat = c; draw(); }
+      }, c));
+    }
+    list.append(chips);
+
+    if (!items.items || !items.items.length) {
+      list.append(h('div', { class: 'card empty' },
+        'No current-affairs items have been added for your exam yet.'));
+      return;
+    }
+
+    for (const it of items.items) {
+      const slot = h('div');
+      const actions = h('div', { class: 'row' });
+      actions.append(bookmarkBtn('ca', it.id, it.title, it.summary));
+      if (S.config.ai_enabled) {
+        const explain = h('button', {
+          class: 'btn',
+          onclick: async (e) => {
+            e.target.disabled = true;
+            slot.replaceChildren(h('span', { class: 'spin' }));
+            try {
+              const x = await post('/api/ai/ca-explain', { id: it.id });
+              slot.replaceChildren(h('div', { class: 'sol' }, md(x.reply)));
+            } catch (er) {
+              slot.replaceChildren(errBox(er));
+            } finally {
+              e.target.disabled = false;
+            }
+          }
+        }, 'Explain & connect to my exam');
+        actions.append(explain);
+      }
+
+      const meta = h('div', { class: 'row' },
+        h('span', { class: 'badge' }, it.category || 'General'),
+        it.event_date ? h('span', { class: 'muted small' }, it.event_date) : null
+      );
+      const card = h('div', { class: 'card stack' },
+        meta,
+        h('h3', {}, it.title || 'Current affair'),
+        h('p', {}, it.summary || ''),
+        it.source ? h('p', { class: 'small muted' }, 'Source: ' + it.source) : null,
+        actions,
+        slot
+      );
+      list.append(card);
+    }
+  }
+
   async function draw() {
     list.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Loading…'));
-    try { const r = await get('/api/ca' + q({ category: cat }));
-      list.replaceChildren(h('div', { class: 'chips' }, h('button', { class: 'chip' + (!cat ? ' on' : ''), onclick: () => { cat = ''; draw(); } }, 'All'), r.categories.map(c => h('button', { class: 'chip' + (cat === c ? ' on' : ''), onclick: () => { cat = c; draw(); } }, c))),
-        r.items.length ? r.items.map(it => { const slot = h('div'); return h('div', { class: 'card stack' }, h('div', { class: 'row' }, h('span', { class: 'badge' }, it.category), it.event_date ? h('span', { class: 'muted small' }, it.event_date) : null), h('h3', {}, it.title), h('p', {}, it.summary), it.source ? h('p', { class: 'small muted' }, 'Source: ' + it.source) : null,
-          h('div', { class: 'row' }, bookmarkBtn('ca', it.id, it.title, it.summary), S.config.ai_enabled ? h('button', { class: 'btn', onclick: async (e) => { e.target.disabled = true; slot.replaceChildren(h('span', { class: 'spin' })); try { const x = await post('/api/ai/ca-explain', { id: it.id }); slot.replaceChildren(h('div', { class: 'sol' }, md(x.reply))); } catch (er) { slot.replaceChildren(errBox(er)); } e.target.disabled = false; } }, 'Explain & connect to my exam') : null), slot); })
-          : h('div', { class: 'card empty' }, 'No current-affairs items have been added for your exam yet. Admins add verified items in the Admin panel. Nothing is auto-generated, so you never see invented news.'));
-    } catch (e) { list.replaceChildren(errBox(e, draw)); } }
+    try {
+      const r = await get('/api/ca' + q({ category: cat }));
+      renderItems(r);
+    } catch (e) {
+      list.replaceChildren(errBox(e, draw));
+    }
+  }
+
   draw();
-  const quiz = h('button', { class: 'btn primary', onclick: async () => { quiz.disabled = true; try { const r = await post('/api/ai/ca-quiz'); list.replaceChildren(runSession(r.questions, { title: 'Current Affairs Quiz', onFinish: draw })); } catch (e) { toast(e.message); } quiz.disabled = false; } }, 'Current Affairs Quiz');
-  return h('div', { class: 'stack' }, h('div', { class: 'row between' }, h('h1', {}, 'Current Affairs'), S.config.ai_enabled ? quiz : null), list);
+  const quiz = h('button', {
+    class: 'btn primary',
+    onclick: async () => {
+      quiz.disabled = true;
+      try {
+        const r = await post('/api/ai/ca-quiz');
+        list.replaceChildren(runSession(r.questions, { title: 'Current Affairs Quiz', onFinish: draw }));
+      } catch (e) {
+        toast(e.message);
+      } finally {
+        quiz.disabled = false;
+      }
+    }
+  }, 'Current Affairs Quiz');
+
+  return h('div', { class: 'stack' },
+    h('div', { class: 'row between' }, h('h1', {}, 'Current Affairs'), S.config.ai_enabled ? quiz : null),
+    list
+  );
 }
 
 // ---------- study plan ----------
