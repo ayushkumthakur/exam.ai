@@ -109,11 +109,11 @@ async function pgCA() {
       list.replaceChildren(h('div', { class: 'chips' }, h('button', { class: 'chip' + (!cat ? ' on' : ''), onclick: () => { cat = ''; draw(); } }, 'All'), r.categories.map(c => h('button', { class: 'chip' + (cat === c ? ' on' : ''), onclick: () => { cat = c; draw(); } }, c))),
         r.items.length ? r.items.map(it => { const slot = h('div'); return h('div', { class: 'card stack' }, h('div', { class: 'row' }, h('span', { class: 'badge' }, it.category), it.event_date ? h('span', { class: 'muted small' }, it.event_date) : null), h('h3', {}, it.title), h('p', {}, it.summary), it.source ? h('p', { class: 'small muted' }, 'Source: ' + it.source) : null,
           h('div', { class: 'row' }, bookmarkBtn('ca', it.id, it.title, it.summary), S.config.ai_enabled ? h('button', { class: 'btn', onclick: async (e) => { e.target.disabled = true; slot.replaceChildren(h('span', { class: 'spin' })); try { const x = await post('/api/ai/ca-explain', { id: it.id }); slot.replaceChildren(h('div', { class: 'sol' }, md(x.reply))); } catch (er) { slot.replaceChildren(errBox(er)); } e.target.disabled = false; } }, 'Explain & connect to my exam') : null), slot); })
-          : h('div', { class: 'card empty' }, 'No current-affairs items have been added for your exam yet. Admins add verified items in the Admin panel. Nothing is auto-generated, so you never see invented news.'));
+          : h('div', { class: 'card empty' }, S.config.ai_enabled ? 'The AI is fetching and verifying the latest exam-relevant current affairs. Refresh this section in a moment.' : 'No current-affairs items are available yet. Automatic updates need Gemini configured on the server.'));
     } catch (e) { list.replaceChildren(errBox(e, draw)); } }
   draw();
   const quiz = h('button', { class: 'btn primary', onclick: async () => { quiz.disabled = true; try { const r = await post('/api/ai/ca-quiz'); list.replaceChildren(runSession(r.questions, { title: 'Current Affairs Quiz', onFinish: draw })); } catch (e) { toast(e.message); } quiz.disabled = false; } }, 'Current Affairs Quiz');
-  return h('div', { class: 'stack' }, h('div', { class: 'row between' }, h('h1', {}, 'Current Affairs'), S.config.ai_enabled ? quiz : null), list);
+  return h('div', { class: 'stack' }, h('div', { class: 'row between' }, h('div', {}, h('h1', {}, 'Current Affairs'), h('p', { class: 'muted small' }, S.config.ai_enabled ? 'Automatically refreshed with grounded web sources.' : 'Automatic updates are unavailable until AI is configured.')), S.config.ai_enabled ? quiz : null), list);
 }
 
 // ---------- study plan ----------
