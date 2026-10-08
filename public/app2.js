@@ -10,7 +10,7 @@ async function pgTutor(parts, params) {
   const ex = (await get('/api/exams/' + S.user.exam_id)).exam; let tab = 'chat';
   const root = h('div', { class: 'stack' }), view = h('div', { class: 'stack' });
   const tabs = () => h('div', { class: 'chips' }, [['chat', 'Ask AI'], ['paper', 'Solve Paper'], ['gen', 'Generate Questions'], ['notes', 'Study Material']].map(([k, l]) => h('button', { class: 'chip' + (tab === k ? ' on' : ''), onclick: () => { tab = k; draw(); } }, l)));
-  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'The AI is not configured on this server yet. The rest of the app works normally. An admin needs to set ANTHROPIC_API_KEY.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
+  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'AI is not configured on this server yet. An admin needs to add GEMINI_API_KEY in Railway.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
 
   function tChat() {
     const log = h('div', { class: 'chat', 'aria-live': 'polite' }), ta = h('textarea', { rows: 2, placeholder: `Ask a ${ex.name} doubt, paste a question, or attach a photo…`, 'aria-label': 'Your question' });
