@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { EXAMS } = require('./data/catalog');
 const SEED = require('./data/seed_questions');
+const CA_SEED = require('./data/current_affairs');
 
 const dir = process.env.DATA_DIR || path.join(__dirname, 'storage');
 fs.mkdirSync(dir, { recursive: true });
@@ -84,6 +85,14 @@ CREATE TABLE IF NOT EXISTS plan_done (
 
 // ---- Seed ----
 const now = () => Date.now();
+
+for (const x of CA_SEED) {
+  const exists = db.prepare('SELECT id FROM current_affairs WHERE title=? AND event_date=?').get(x.title, x.event_date);
+  if (!exists) {
+    db.prepare('INSERT INTO current_affairs (title,summary,category,exams,event_date,source,created_at) VALUES (?,?,?,?,?,?,?)')
+      .run(x.title, x.summary, x.category, x.exams || 'ALL', x.event_date || null, x.source || null, now());
+  }
+}
 const examCount = db.prepare('SELECT COUNT(*) c FROM exams').get().c;
 if (examCount === 0) {
   const ins = db.prepare('INSERT INTO exams (id,name,category,pattern,verified) VALUES (?,?,?,?,?)');
