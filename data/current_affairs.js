@@ -54,13 +54,7 @@ module.exports = [
     summary: 'The 7th Global Fintech Fest 2026 was scheduled in Mumbai from 8 to 11 September 2026 and highlighted India’s digital public infrastructure, Aadhaar and UPI-led fintech ecosystem.',
     category: 'Economy', event_date: '2026-09-08', exams: 'SBI_PO,SBI_CLERK,IBPS_PO,IBPS_CLERK,IBPS_RRB_PO,IBPS_RRB_CLERK,RBI_B,RBI_ASST,NABARD_A,UPSC_CSE,SSC_CGL,SSC_CHSL',
     source: 'PIB, 7th Global Fintech Fest 2026 (08 Sep 2026) — https://www.pib.gov.in/PressReleasePage.aspx?PRID=2307925&lang=2&reg=48'
-  },
-  {
-    title: 'GSLV-F17 launched EOS-05 on 4 September 2026',
-    summary: 'ISRO records EOS-05 as a spacecraft mission launched on 4 September 2026 aboard GSLV-F17. The mission is listed in ISRO’s spacecraft mission and GSLV launch records.',
-    category: 'Science & Technology', event_date: '2026-09-04', exams: 'ALL',
-    source: 'ISRO, GSLV launch records / mission timeline — https://www.isro.gov.in/ISRO_HINDI/GSLV_Launchers.html'
-  },
+  }
   {
     title: 'India crosses 299 GW of total renewable energy capacity',
     summary: 'MNRE reported cumulative renewable-energy capacity of 299,246.53 MW as of 30 September 2026, including 171.05 GW of solar capacity.',
