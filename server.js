@@ -359,7 +359,7 @@ const routes = [];
 const route = (method, pat, opts, fn) => routes.push({ method, re: new RegExp('^' + pat.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), opts, fn });
 const A = { auth: true }, ADM = { auth: true, admin: true }, ONB = { auth: true, onboarded: true };
 
-route('GET', '/api/config', {}, () => ({ ai_enabled: ai.aiEnabled(), prod: PROD }));
+route('GET', '/api/config', {}, () => ({ ai_enabled: ai.aiEnabled(), ai_provider: ai.aiProvider(), ai_model: ai.aiModel(), prod: PROD }));
 route('GET', '/api/exams', {}, () => ({ exams: listExams().map(e => ({ id: e.id, name: e.name, category: e.category, verified: e.verified, subjects: e.subjects, minutes: e.pattern.minutes, questions: e.pattern.sections.reduce((a, s) => a + s.questions, 0) })) }));
 route('GET', '/api/exams/:id', {}, (c) => { const e = loadExam(c.params.id); if (!e) throw new HttpError(404, 'Exam not found'); return { exam: e }; });
 
