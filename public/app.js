@@ -103,49 +103,143 @@ const q = (o) => '?' + new URLSearchParams(Object.entries(o).filter(([, v]) => v
 
 // ---------- auth ----------
 function renderAuth() {
-  const app = $('#app'); let email = '', timer = null, resendAt = 0, expAt = 0;
-  const card = h('div', { class: 'card stack' }); app.replaceChildren(h('div', { class: 'auth' }, card));
+  const app = $('#app'); let email = '', timer = null, resendAt = 0, expAt = 0, otpPurpose = 'signup';
+  const card = h('div', { class: 'card stack' });
+  app.replaceChildren(h('div', { class: 'auth' }, card));
   onLeave(() => clearInterval(timer));
-  function stepEmail(msg) {
+
+  function stepLogin(msg) {
+    clearInterval(timer);
+    const emailInp = h('input', { type: 'email', inputmode: 'email', autocomplete: 'email', placeholder: 'you@example.com', value: email, required: true, 'aria-label': 'Email address' });
+    const passInp = h('input', { type: 'password', autocomplete: 'current-password', placeholder: 'Password', required: true, 'aria-label': 'Password' });
+    const err = h('div');
+    const login = h('button', { class: 'btn primary', style: 'width:100%', type: 'submit' }, 'Log in');
+    const otpLink = h('button', { class: 'btn ghost sm', type: 'button' }, 'Create account with email verification');
+    const forgot = h('button', { class: 'btn ghost sm', type: 'button' }, 'Forgot password?');
+
+    otpLink.onclick = () => { email = emailInp.value.trim(); stepEmail('signup', 'First-time setup: verify your email, then create your password.'); };
+    forgot.onclick = () => { email = emailInp.value.trim(); stepEmail('reset', 'Verify your email to reset your password.'); };
+
+    card.replaceChildren(
+      h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'),
+      h('div', {}, h('h1', {}, 'Welcome back'), h('p', { class: 'muted' }, 'Log in with your email and password.')),
+      msg ? h('div', { class: 'info' }, msg) : null,
+      h('form', { onsubmit: async (ev) => {
+        ev.preventDefault(); email = emailInp.value.trim(); err.replaceChildren();
+        login.disabled = true; login.replaceChildren(h('span', { class: 'spin' }));
+        try {
+          const r = await post('/api/auth/login', { email, password: passInp.value });
+          S.user = r.user; location.hash = '#/'; route();
+        } catch (e) {
+          err.replaceChildren(errBox(e));
+          login.disabled = false; login.replaceChildren('Log in');
+          if (e.data?.code === 'PASSWORD_SETUP_REQUIRED') {
+            err.append(h('button', { class: 'btn ghost sm', style: 'margin-top:.5rem', onclick: () => stepEmail('signup', 'Verify your email once to set your password.') }, 'Verify email & set password'));
+          }
+        }
+      } }, emailInp, passInp, err, h('div', { style: 'margin-top:1rem' }, login)),
+      h('div', { class: 'row between', style: 'margin-top:.5rem' }, forgot, otpLink)
+    );
+    emailInp.focus();
+  }
+
+  function stepEmail(mode, msg) {
+    otpPurpose = mode === 'reset' ? 'reset' : 'signup';
     clearInterval(timer);
     const inp = h('input', { type: 'email', inputmode: 'email', autocomplete: 'email', placeholder: 'you@example.com', value: email, required: true, 'aria-label': 'Email address' });
-    const err = h('div'); const btn = h('button', { class: 'btn primary', style: 'width:100%', type: 'submit' }, 'Send OTP');
-    card.replaceChildren(h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'), h('div', {}, h('h1', {}, 'Log in or sign up'), h('p', { class: 'muted' }, 'Enter your email. We’ll send a 6-digit code. No password needed.')),
-      msg ? h('div', { class: 'info' }, msg) : null,
-      h('form', { onsubmit: async (ev) => { ev.preventDefault(); email = inp.value.trim(); btn.disabled = true; btn.replaceChildren(h('span', { class: 'spin' })); err.replaceChildren();
-        try { const r = await post('/api/auth/send-otp', { email }); resendAt = Date.now() + r.resend_in * 1000; expAt = Date.now() + r.expires_in * 1000; stepCode(r.dev_otp); }
-        catch (e) { err.replaceChildren(errBox(e)); btn.disabled = false; btn.replaceChildren('Send OTP'); } } }, inp, err, h('div', { style: 'margin-top:1rem' }, btn)));
+    const err = h('div');
+    const btn = h('button', { class: 'btn primary', style: 'width:100%', type: 'submit' }, 'Send OTP');
+    card.replaceChildren(
+      h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'),
+      h('div', {}, h('h1', {}, mode === 'reset' ? 'Reset your password' : 'Create your account'), h('p', { class: 'muted' }, msg || (mode === 'reset' ? 'We’ll verify your email before you choose a new password.' : 'Verify your email once, then set a password for future logins.'))),
+      h('form', { onsubmit: async (ev) => {
+        ev.preventDefault(); email = inp.value.trim(); btn.disabled = true; btn.replaceChildren(h('span', { class: 'spin' })); err.replaceChildren();
+        try {
+          const r = await post('/api/auth/send-otp', { email, purpose: otpPurpose });
+          resendAt = Date.now() + r.resend_in * 1000; expAt = Date.now() + r.expires_in * 1000; stepCode(r.dev_otp);
+        } catch (e) { err.replaceChildren(errBox(e)); btn.disabled = false; btn.replaceChildren('Send OTP'); }
+      } }, inp, err, h('div', { style: 'margin-top:1rem' }, btn)),
+      h('button', { class: 'btn ghost sm', onclick: () => stepLogin() }, 'Back to password login')
+    );
     inp.focus();
   }
+
   function stepCode(devOtp) {
     const boxes = Array.from({ length: 6 }, (_, i) => h('input', { inputmode: 'numeric', maxlength: 1, autocomplete: i === 0 ? 'one-time-code' : 'off', 'aria-label': 'Digit ' + (i + 1) }));
-    const err = h('div'), info = h('div', { class: 'small muted center' }), verify = h('button', { class: 'btn primary', style: 'width:100%' }, 'Verify & Continue');
+    const err = h('div'), info = h('div', { class: 'small muted center' });
+    const verify = h('button', { class: 'btn primary', style: 'width:100%' }, otpPurpose === 'reset' ? 'Verify & Reset' : 'Verify & Continue');
     const resend = h('button', { class: 'btn ghost sm', type: 'button' }, 'Resend OTP');
     const code = () => boxes.map(b => b.value).join('');
     async function submit() {
-      if (code().length !== 6) return; verify.disabled = true; verify.replaceChildren(h('span', { class: 'spin' })); err.replaceChildren();
-      try { const r = await post('/api/auth/verify-otp', { email, code: code() }); S.user = r.user; location.hash = '#/'; route(); }
-      catch (e) { err.replaceChildren(errBox(e)); verify.disabled = false; verify.replaceChildren('Verify & Continue'); if (e.data?.expired) { expAt = 0; } boxes.forEach(b => b.value = ''); boxes[0].focus(); }
+      if (code().length !== 6) return;
+      verify.disabled = true; verify.replaceChildren(h('span', { class: 'spin' })); err.replaceChildren();
+      try {
+        const r = await post('/api/auth/verify-otp', { email, code: code(), purpose: otpPurpose });
+        S.user = r.user;
+        if (r.needs_password) return stepSetPassword(otpPurpose);
+        location.hash = '#/'; route();
+      } catch (e) {
+        err.replaceChildren(errBox(e)); verify.disabled = false; verify.replaceChildren(otpPurpose === 'reset' ? 'Verify & Reset' : 'Verify & Continue');
+        if (e.data?.expired) expAt = 0;
+        boxes.forEach(b => b.value = ''); boxes[0].focus();
+      }
     }
     boxes.forEach((b, i) => {
       b.addEventListener('input', () => { b.value = b.value.replace(/\D/g, '').slice(-1); if (b.value && boxes[i + 1]) boxes[i + 1].focus(); if (code().length === 6) submit(); });
       b.addEventListener('keydown', (e) => { if (e.key === 'Backspace' && !b.value && boxes[i - 1]) boxes[i - 1].focus(); });
       b.addEventListener('paste', (e) => { const t = (e.clipboardData.getData('text') || '').replace(/\D/g, '').slice(0, 6); if (t.length > 1) { e.preventDefault(); t.split('').forEach((c, j) => boxes[j].value = c); boxes[Math.min(t.length, 5)].focus(); if (t.length === 6) submit(); } });
     });
-    resend.onclick = async () => { resend.disabled = true; err.replaceChildren(); try { const r = await post('/api/auth/send-otp', { email }); resendAt = Date.now() + r.resend_in * 1000; expAt = Date.now() + r.expires_in * 1000; toast('A new code was sent'); if (r.dev_otp) $('#dev').textContent = 'Dev mode: your code is ' + r.dev_otp; } catch (e) { err.replaceChildren(errBox(e)); } };
+    resend.onclick = async () => {
+      resend.disabled = true; err.replaceChildren();
+      try {
+        const r = await post('/api/auth/send-otp', { email, purpose: otpPurpose });
+        resendAt = Date.now() + r.resend_in * 1000; expAt = Date.now() + r.expires_in * 1000; toast('A new code was sent');
+        if (r.dev_otp) $('#dev').textContent = 'Dev mode: your code is ' + r.dev_otp;
+      } catch (e) { err.replaceChildren(errBox(e)); }
+    };
     verify.onclick = submit;
-    card.replaceChildren(h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'), h('div', {}, h('h1', {}, 'Enter your code'), h('p', { class: 'muted' }, 'We sent a 6-digit code to ', h('b', {}, email), '.')),
+    card.replaceChildren(
+      h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'),
+      h('div', {}, h('h1', {}, 'Enter your code'), h('p', { class: 'muted' }, 'We sent a 6-digit code to ', h('b', {}, email), '.')),
       devOtp ? h('div', { class: 'note', id: 'dev' }, 'Dev mode (no email provider configured): your code is ' + devOtp) : h('div', { id: 'dev' }),
-      h('div', { class: 'otp', role: 'group', 'aria-label': 'One-time code' }, boxes), err, verify, info, h('div', { class: 'row between' }, resend, h('button', { class: 'btn ghost sm', onclick: () => stepEmail() }, 'Change email')));
+      h('div', { class: 'otp', role: 'group', 'aria-label': 'One-time code' }, boxes), err, verify, info,
+      h('div', { class: 'row between' }, resend, h('button', { class: 'btn ghost sm', onclick: () => stepEmail(otpPurpose, 'Please verify your email to continue.') }, 'Change email'))
+    );
     boxes[0].focus();
-    const tick = () => { const rs = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000)), ex = Math.max(0, Math.ceil((expAt - Date.now()) / 1000));
-      resend.disabled = rs > 0; resend.textContent = rs > 0 ? `Resend OTP in ${rs}s` : 'Resend OTP';
-      info.textContent = ex > 0 ? `Code expires in ${Math.floor(ex / 60)}:${String(ex % 60).padStart(2, '0')}` : 'This code has expired. Please resend a new one.'; verify.disabled = ex === 0 && !verify.querySelector('.spin'); };
+    const tick = () => {
+      const rs = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000));
+      const ex = Math.max(0, Math.ceil((expAt - Date.now()) / 1000));
+      resend.disabled = rs > 0;
+      resend.textContent = rs > 0 ? `Resend OTP in ${rs}s` : 'Resend OTP';
+      info.textContent = ex > 0 ? `Code expires in ${Math.floor(ex / 60)}:${String(ex % 60).padStart(2, '0')}` : 'This code has expired. Please resend a new one.';
+      verify.disabled = ex === 0 && !verify.querySelector('.spin');
+    };
     tick(); clearInterval(timer); timer = setInterval(tick, 500);
   }
-  stepEmail();
-}
 
+  function stepSetPassword(mode) {
+    clearInterval(timer);
+    const p1 = h('input', { type: 'password', autocomplete: 'new-password', placeholder: 'New password', minlength: 8, required: true, 'aria-label': 'New password' });
+    const p2 = h('input', { type: 'password', autocomplete: 'new-password', placeholder: 'Confirm password', minlength: 8, required: true, 'aria-label': 'Confirm password' });
+    const err = h('div');
+    const save = h('button', { class: 'btn primary', style: 'width:100%', type: 'submit' }, mode === 'reset' ? 'Set new password' : 'Create password');
+    card.replaceChildren(
+      h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'),
+      h('div', {}, h('h1', {}, mode === 'reset' ? 'Choose a new password' : 'Set your password'), h('p', { class: 'muted' }, 'Use at least 8 characters. You’ll use this password for future logins, so OTP won’t be needed each time.')),
+      h('form', { onsubmit: async (ev) => {
+        ev.preventDefault(); err.replaceChildren(); save.disabled = true; save.replaceChildren(h('span', { class: 'spin' }));
+        try {
+          const r = await post('/api/auth/set-password', { password: p1.value, confirm_password: p2.value });
+          S.user = r.user; location.hash = '#/'; route();
+        } catch (e) { err.replaceChildren(errBox(e)); save.disabled = false; save.replaceChildren(mode === 'reset' ? 'Set new password' : 'Create password'); }
+      } }, p1, p2, err, h('div', { style: 'margin-top:1rem' }, save)),
+      h('button', { class: 'btn ghost sm', onclick: () => stepLogin() }, 'Back to password login')
+    );
+    p1.focus();
+  }
+
+  stepLogin();
+}
 // ---------- onboarding ----------
 function renderOnboarding() {
   const d = { name: S.user.name || '', exam_id: S.user.exam_id || '', level: '', target_date: '', daily_minutes: 0, stage: 'Preparing' };
