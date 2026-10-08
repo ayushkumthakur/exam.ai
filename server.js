@@ -194,7 +194,7 @@ function pickQuestions(user, exam, { subject, topic, difficulty, source, ids, li
 
 async function buildTest(user, exam, b) {
   const kind = b.kind, per = marking(exam); let qs = [], title = '', minutes, notices = [];
-  const count = Math.min(Math.max(+b.count || 10, 1), 100);
+  const count = Math.min(Math.max(+b.count || 20, 20), 100);
   const diff = ['easy', 'medium', 'hard'].includes(b.difficulty) ? b.difficulty : 'any';
   const needSubject = () => { if (!exam.subjects.includes(b.subject)) throw bad('Please choose a subject from your exam.'); };
   const needTopic = () => { needSubject(); const s = exam.syllabus.find(x => x.subject === b.subject); if (!s.topics.includes(b.topic)) throw bad('Please choose a topic from your exam syllabus.'); };
@@ -203,7 +203,9 @@ async function buildTest(user, exam, b) {
   if (kind === 'full_mock' || kind === 'sectional') {
     const secs = kind === 'sectional' ? (needSubject(), exam.pattern.sections.filter(s => s.subject === b.subject)) : exam.pattern.sections;
     const patternTotal = secs.reduce((a, s) => a + s.questions, 0);
-    const requestedTotal = Math.min(100, Math.max(1, +b.count || patternTotal));
+    // A Full Mock is an exam simulation: use the configured exam question count and section ratio.
+    // Sectional practice is always at least 20 questions unless the selected exam section itself is larger.
+    const requestedTotal = kind === 'sectional' ? Math.max(20, patternTotal) : patternTotal;
     const targets = secs.map((s, i) => Math.max(1, Math.floor(requestedTotal * s.questions / patternTotal) + (i < (requestedTotal % secs.length) ? 1 : 0)));
     for (let i = 0; i < secs.length; i++) {
       const s = secs[i], target = targets[i];
@@ -237,6 +239,7 @@ async function buildTest(user, exam, b) {
     if (year) { sql += ' AND pyq_year=?'; p.push(year); } if (b.paper) { sql += ' AND pyq_paper=?'; p.push(b.paper); } if (b.shift) { sql += ' AND pyq_shift=?'; p.push(b.shift); }
     qs = db.prepare(sql + ' ORDER BY id').all(...p);
     if (!qs.length) throw bad('No verified previous-year questions have been added for your exam yet.');
+    if (qs.length < 20) throw bad('This verified PYQ selection has fewer than 20 questions. Add the complete paper before starting a PYQ test.');
     title = `${exam.name} PYQ ${b.year || ''} ${b.paper || ''}`.trim();
   } else if (kind === 'pyq_pattern') {
     qs = pickQuestions(user, exam, { source: 'PYQ_PATTERN', limit: count });
@@ -340,7 +343,7 @@ function scoreTest(t, exam, user, answers, times) {
       went_well: wentWell, went_wrong: wentWrong, weak_topics: weak.map(w => w.topic), strong_topics: strong, time_problems: timeNotes,
       accuracy_problems: accuracy !== null && accuracy < 60 ? [`Aim for 70%+ accuracy before increasing speed.`] : [],
       recommended_revision: nextTopic ? { subject: nextTopic.subject, topic: nextTopic.topic } : null,
-      recommended_test: nextTopic ? { kind: 'topic', subject: nextTopic.subject, topic: nextTopic.topic, count: 10 } : { kind: 'subject', subject: exam.subjects[0], count: 10 },
+      recommended_test: nextTopic ? { kind: 'topic', subject: nextTopic.subject, topic: nextTopic.topic, count: 20 } : { kind: 'subject', subject: exam.subjects[0], count: 20 },
     } };
 }
 
@@ -355,7 +358,7 @@ function buildPlan(user, exam) {
   const pt = q[0] || null;
   cand.push({ key: 'practice', type: 'practice', title: pt ? `Practice ${pt.topic}` : `Practice ${exam.subjects[(new Date().getDate()) % exam.subjects.length]}`, minutes: stage === 'Just Started' ? 25 : 20, subject: pt ? pt.subject : undefined, topic: pt ? pt.topic : undefined });
   cand.push({ key: 'ca', type: 'current_affairs', title: 'Read today’s current affairs', minutes: 10 });
-  if (stage !== 'Just Started' || budget >= 180) cand.push({ key: 'test', type: 'test', title: near || stage === 'Revision' ? 'Take a sectional mock' : 'Take a 10-question topic test', minutes: near || stage === 'Revision' ? 30 : 15 });
+  if (stage !== 'Just Started' || budget >= 180) cand.push({ key: 'test', type: 'test', title: near || stage === 'Revision' ? 'Take a sectional mock' : 'Take a 20-question topic test', minutes: near || stage === 'Revision' ? 30 : 15 });
   const tasks = []; let used = 0;
   for (const t of cand) { if (used + t.minutes <= budget || tasks.length < 2) { tasks.push(t); used += t.minutes; } }
   const done = new Set(db.prepare('SELECT task_key FROM plan_done WHERE user_id=? AND day=?').all(user.id, today).map(r => r.task_key));
@@ -1169,7 +1172,7 @@ function scoreTest(t, exam, user, answers, times) {
       went_well: wentWell, went_wrong: wentWrong, weak_topics: weak.map(w => w.topic), strong_topics: strong, time_problems: timeNotes,
       accuracy_problems: accuracy !== null && accuracy < 60 ? [`Aim for 70%+ accuracy before increasing speed.`] : [],
       recommended_revision: nextTopic ? { subject: nextTopic.subject, topic: nextTopic.topic } : null,
-      recommended_test: nextTopic ? { kind: 'topic', subject: nextTopic.subject, topic: nextTopic.topic, count: 10 } : { kind: 'subject', subject: exam.subjects[0], count: 10 },
+      recommended_test: nextTopic ? { kind: 'topic', subject: nextTopic.subject, topic: nextTopic.topic, count: 20 } : { kind: 'subject', subject: exam.subjects[0], count: 20 },
     } };
 }
 
@@ -1184,7 +1187,7 @@ function buildPlan(user, exam) {
   const pt = q[0] || null;
   cand.push({ key: 'practice', type: 'practice', title: pt ? `Practice ${pt.topic}` : `Practice ${exam.subjects[(new Date().getDate()) % exam.subjects.length]}`, minutes: stage === 'Just Started' ? 25 : 20, subject: pt ? pt.subject : undefined, topic: pt ? pt.topic : undefined });
   cand.push({ key: 'ca', type: 'current_affairs', title: 'Read today’s current affairs', minutes: 10 });
-  if (stage !== 'Just Started' || budget >= 180) cand.push({ key: 'test', type: 'test', title: near || stage === 'Revision' ? 'Take a sectional mock' : 'Take a 10-question topic test', minutes: near || stage === 'Revision' ? 30 : 15 });
+  if (stage !== 'Just Started' || budget >= 180) cand.push({ key: 'test', type: 'test', title: near || stage === 'Revision' ? 'Take a sectional mock' : 'Take a 20-question topic test', minutes: near || stage === 'Revision' ? 30 : 15 });
   const tasks = []; let used = 0;
   for (const t of cand) { if (used + t.minutes <= budget || tasks.length < 2) { tasks.push(t); used += t.minutes; } }
   const done = new Set(db.prepare('SELECT task_key FROM plan_done WHERE user_id=? AND day=?').all(user.id, today).map(r => r.task_key));
@@ -1959,7 +1962,7 @@ function scoreTest(t, exam, user, answers, times) {
       went_well: wentWell, went_wrong: wentWrong, weak_topics: weak.map(w => w.topic), strong_topics: strong, time_problems: timeNotes,
       accuracy_problems: accuracy !== null && accuracy < 60 ? [`Aim for 70%+ accuracy before increasing speed.`] : [],
       recommended_revision: nextTopic ? { subject: nextTopic.subject, topic: nextTopic.topic } : null,
-      recommended_test: nextTopic ? { kind: 'topic', subject: nextTopic.subject, topic: nextTopic.topic, count: 10 } : { kind: 'subject', subject: exam.subjects[0], count: 10 },
+      recommended_test: nextTopic ? { kind: 'topic', subject: nextTopic.subject, topic: nextTopic.topic, count: 20 } : { kind: 'subject', subject: exam.subjects[0], count: 20 },
     } };
 }
 
@@ -1974,7 +1977,7 @@ function buildPlan(user, exam) {
   const pt = q[0] || null;
   cand.push({ key: 'practice', type: 'practice', title: pt ? `Practice ${pt.topic}` : `Practice ${exam.subjects[(new Date().getDate()) % exam.subjects.length]}`, minutes: stage === 'Just Started' ? 25 : 20, subject: pt ? pt.subject : undefined, topic: pt ? pt.topic : undefined });
   cand.push({ key: 'ca', type: 'current_affairs', title: 'Read today’s current affairs', minutes: 10 });
-  if (stage !== 'Just Started' || budget >= 180) cand.push({ key: 'test', type: 'test', title: near || stage === 'Revision' ? 'Take a sectional mock' : 'Take a 10-question topic test', minutes: near || stage === 'Revision' ? 30 : 15 });
+  if (stage !== 'Just Started' || budget >= 180) cand.push({ key: 'test', type: 'test', title: near || stage === 'Revision' ? 'Take a sectional mock' : 'Take a 20-question topic test', minutes: near || stage === 'Revision' ? 30 : 15 });
   const tasks = []; let used = 0;
   for (const t of cand) { if (used + t.minutes <= budget || tasks.length < 2) { tasks.push(t); used += t.minutes; } }
   const done = new Set(db.prepare('SELECT task_key FROM plan_done WHERE user_id=? AND day=?').all(user.id, today).map(r => r.task_key));
@@ -2752,7 +2755,7 @@ function scoreTest(t, exam, user, answers, times) {
       went_well: wentWell, went_wrong: wentWrong, weak_topics: weak.map(w => w.topic), strong_topics: strong, time_problems: timeNotes,
       accuracy_problems: accuracy !== null && accuracy < 60 ? [`Aim for 70%+ accuracy before increasing speed.`] : [],
       recommended_revision: nextTopic ? { subject: nextTopic.subject, topic: nextTopic.topic } : null,
-      recommended_test: nextTopic ? { kind: 'topic', subject: nextTopic.subject, topic: nextTopic.topic, count: 10 } : { kind: 'subject', subject: exam.subjects[0], count: 10 },
+      recommended_test: nextTopic ? { kind: 'topic', subject: nextTopic.subject, topic: nextTopic.topic, count: 20 } : { kind: 'subject', subject: exam.subjects[0], count: 20 },
     } };
 }
 
@@ -2767,7 +2770,7 @@ function buildPlan(user, exam) {
   const pt = q[0] || null;
   cand.push({ key: 'practice', type: 'practice', title: pt ? `Practice ${pt.topic}` : `Practice ${exam.subjects[(new Date().getDate()) % exam.subjects.length]}`, minutes: stage === 'Just Started' ? 25 : 20, subject: pt ? pt.subject : undefined, topic: pt ? pt.topic : undefined });
   cand.push({ key: 'ca', type: 'current_affairs', title: 'Read today’s current affairs', minutes: 10 });
-  if (stage !== 'Just Started' || budget >= 180) cand.push({ key: 'test', type: 'test', title: near || stage === 'Revision' ? 'Take a sectional mock' : 'Take a 10-question topic test', minutes: near || stage === 'Revision' ? 30 : 15 });
+  if (stage !== 'Just Started' || budget >= 180) cand.push({ key: 'test', type: 'test', title: near || stage === 'Revision' ? 'Take a sectional mock' : 'Take a 20-question topic test', minutes: near || stage === 'Revision' ? 30 : 15 });
   const tasks = []; let used = 0;
   for (const t of cand) { if (used + t.minutes <= budget || tasks.length < 2) { tasks.push(t); used += t.minutes; } }
   const done = new Set(db.prepare('SELECT task_key FROM plan_done WHERE user_id=? AND day=?').all(user.id, today).map(r => r.task_key));
