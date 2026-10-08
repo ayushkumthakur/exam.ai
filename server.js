@@ -218,7 +218,7 @@ async function buildTest(user, exam, b) {
       if (got.length < target) notices.push(String(s.subject) + ': only ' + got.length + ' question(s) available after AI fill.');
     }
     if (!qs.length) throw bad('No questions are available yet for this selection.');
-    title = kind === 'full_mock' ? exam.name + ' Full Mock' : exam.name + ' ' + b.subject + ' Sectional';
+    title = kind === 'full_mock' ? exam.name + ' Full Exam Simulation' : exam.name + ' ' + b.subject + ' Sectional Test';
     minutes = b.minutes ? +b.minutes : Math.max(5, Math.round((exam.pattern.minutes || 60) * qs.length / Math.max(patternTotal, 1)));
   } else if (kind === 'subject') {
     needSubject(); qs = pickQuestions(user, exam, { subject: b.subject, difficulty: diff, limit: count });
@@ -243,22 +243,25 @@ async function buildTest(user, exam, b) {
     title = `${exam.name} PYQ ${b.year || ''} ${b.paper || ''}`.trim();
   } else if (kind === 'pyq_pattern') {
     qs = pickQuestions(user, exam, { source: 'PYQ_PATTERN', limit: count });
-    if (!qs.length) throw bad('No PYQ-pattern questions are available yet for your exam.');
+    if (qs.length < 20) throw bad('At least 20 PYQ-pattern questions are required for this test.');
     title = 'PYQ Pattern Mock';
   } else if (kind === 'ai_mock') {
     if (!ai.aiEnabled()) throw bad(ai.friendlyError('AI_NOT_CONFIGURED'));
-    const secs = exam.pattern.sections.slice(0, 4), n = Math.min(count, 20), each = Math.max(2, Math.ceil(n / secs.length));
+    const secs = exam.pattern.sections.slice(0, 4), n = Math.max(20, Math.min(count, 100)), each = Math.max(2, Math.ceil(n / secs.length));
     for (const s of secs) {
       const tp = exam.syllabus.find(x => x.subject === s.subject).topics; const topic = tp[crypto.randomInt(tp.length)];
       const r = await ai.generateQuestions({ examName: exam.name, subject: s.subject, topic, difficulty: diff === 'any' ? 'medium' : diff, count: each, level: user.level });
       if (r.ok) qs.push(...storeAiQuestions(user, exam, r.questions));
     }
-    qs = qs.slice(0, n); if (!qs.length) throw bad('The AI could not produce valid questions this time. Please try again.');
+    qs = qs.slice(0, n);
+    if (qs.length < 20) throw bad('The AI could not build the minimum 20-question mock this time. Please try again.');
     title = 'AI Generated Mock';
   } else if (kind === 'custom') { // e.g. quiz made from AI-generated question ids
     const ids = (b.question_ids || []).map(Number).filter(Number.isInteger).slice(0, 100);
-    if (!ids.length) throw bad('No questions selected.');
-    qs = pickQuestions(user, exam, { ids }); title = b.title ? String(b.title).slice(0, 80) : 'Quick Quiz';
+    if (ids.length < 20) throw bad('Select at least 20 questions for a test.');
+    qs = pickQuestions(user, exam, { ids });
+    if (qs.length < 20) throw bad('At least 20 valid questions are required for this test.');
+    title = b.title ? String(b.title).slice(0, 80) : 'Quick Quiz';
   } else throw bad('Unknown test type.');
 
   if (!qs.length) throw bad('No questions are available yet for this selection. Try another subject/topic, or generate questions with the AI Tutor.');
