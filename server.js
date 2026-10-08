@@ -625,11 +625,16 @@ route('GET', '/api/pyq/analysis', ONB, (c) => {
 });
 
 // Current affairs
-route('GET', '/api/ca', ONB, (c) => {
-  const limit = Math.min(+c.query.limit || 20, 50), offset = +c.query.offset || 0, cat = c.query.category;
-  let sql = "SELECT * FROM current_affairs WHERE (exams='ALL' OR (',' || exams || ',') LIKE ?)"; const p = ['%,' + c.user.exam_id + ',%'];
+route('GET', '/api/ca', ONB, async (c) => {
+  const limit = Math.min(+c.query.limit || 30, 50), offset = +c.query.offset || 0, cat = c.query.category;
+  const period = c.query.period === 'weekly' ? 'weekly' : 'daily';
+  const today = dayStr();
+  const from = period === 'weekly' ? dayStr(now() - 6 * DAY) : today;
+  let sql = "SELECT * FROM current_affairs WHERE (exams='ALL' OR (',' || exams || ',') LIKE ?) AND (event_date IS NULL OR event_date>=?)";
+  const p = ['%,' + c.user.exam_id + ',%', from];
   if (cat) { sql += ' AND category=?'; p.push(cat); }
-  return { items: db.prepare(sql + " ORDER BY COALESCE(event_date,'') DESC, id DESC LIMIT ? OFFSET ?").all(...p, limit, offset), categories: CA_CATS };
+  const items = db.prepare(sql + " ORDER BY COALESCE(event_date,'') DESC, id DESC LIMIT ? OFFSET ?").all(...p, limit, offset);
+  return { items, categories: CA_CATS, period, from, updated: dayStr() };
 });
 const CA_CATS = ['National', 'International', 'Defence', 'Economy', 'Science & Technology', 'Environment', 'Sports', 'Awards', 'Appointments', 'Government Schemes', 'Important Days', 'Reports & Indexes', 'Books & Authors', 'Important Persons', 'Defence Exercises'];
 
@@ -848,6 +853,40 @@ route('GET', '/api/admin/questions', ADM, (c) => {
 });
 route('DELETE', '/api/admin/questions/:id', ADM, (c) => { db.prepare("DELETE FROM questions WHERE id=? AND source_type!='AI_GENERATED'").run(+c.params.id); return { ok: true }; });
 
+// ---------- automatic current-affairs refresh ----------
+let caRefreshBusy = false;
+async function refreshCurrentAffairsAuto(days, maxItems) {
+  if (caRefreshBusy || !ai.aiEnabled() || ai.aiProvider() !== 'gemini' || !ai.generateCurrentAffairs) return;
+  caRefreshBusy = true;
+  try {
+    const examIds = listExams().map(e => e.id);
+    if (!examIds.length) return;
+    const r = await ai.generateCurrentAffairs({ today: dayStr(), days, examList: examIds, maxItems });
+    if (!r.ok) { console.error('[ca-refresh]', r.error); return; }
+    for (const x of r.items || []) {
+      const exists = db.prepare('SELECT id FROM current_affairs WHERE title=? AND event_date=?').get(x.title, x.event_date);
+      if (exists) continue;
+      try {
+        const exams = ',' + [...new Set(x.exams)].join(',') + ',';
+        db.prepare('INSERT INTO current_affairs (title,summary,category,exams,event_date,source,created_at) VALUES (?,?,?,?,?,?,?)')
+          .run(x.title, x.summary, x.category, exams, x.event_date, x.source_url, now());
+      } catch (e) { console.error('[ca-refresh-insert]', e.message); }
+    }
+  } finally {
+    caRefreshBusy = false;
+  }
+}
+function startCurrentAffairsAutoRefresh() {
+  // Daily: refresh the latest 24-hour window.
+  refreshCurrentAffairsAuto(2, 12).catch(e => console.error('[ca-refresh]', e.message));
+  // Weekly: refresh a wider 7-day window once every 7 days.
+  setTimeout(() => {
+    refreshCurrentAffairsAuto(7, 25).catch(e => console.error('[ca-weekly-refresh]', e.message));
+    setInterval(() => refreshCurrentAffairsAuto(7, 25).catch(e => console.error('[ca-weekly-refresh]', e.message)), 7 * 24 * 60 * 60 * 1000);
+  }, 60 * 1000);
+  setInterval(() => refreshCurrentAffairsAuto(2, 12).catch(e => console.error('[ca-refresh]', e.message)), 24 * 60 * 60 * 1000);
+}
+
 // ---------- http plumbing ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json' };
 const PUB = path.join(__dirname, 'public');
@@ -899,5 +938,5 @@ const server = http.createServer(async (req, res) => {
 });
 process.on('uncaughtException', e => console.error('[uncaught]', e));
 process.on('unhandledRejection', e => console.error('[unhandled]', e));
-server.listen(PORT, () => console.log(`Competitive Exam AI running on http://localhost:${PORT}  (AI ${ai.aiEnabled() ? 'enabled' : 'NOT configured'})`));
+server.listen(PORT, () => { console.log(`Competitive Exam AI running on http://localhost:${PORT}  (AI ${ai.aiEnabled() ? 'enabled' : 'NOT configured'})`); startCurrentAffairsAutoRefresh(); });
 module.exports = { server };
