@@ -102,11 +102,23 @@ async function pgTutor(parts, params) {
 
 // ---------- current affairs ----------
 async function pgCA() {
-  let cat = '';
+  let cat = '', period = 'daily';
   const list = h('div', { class: 'stack' });
 
   function renderItems(items) {
     list.replaceChildren();
+
+    const controls = h('div', { class: 'row between', style: 'flex-wrap:wrap;gap:.6rem' });
+    const periodChips = h('div', { class: 'chips' });
+    for (const [key, label] of [['daily', 'Daily'], ['weekly', 'Weekly']]) {
+      periodChips.append(h('button', {
+        class: 'chip' + (period === key ? ' on' : ''),
+        onclick: () => { period = key; draw(); }
+      }, label));
+    }
+    controls.append(periodChips, h('span', { class: 'small muted' }, 'AI updates automatically every day • Weekly shows the last 7 days'));
+    list.append(controls);
+
     const chips = h('div', { class: 'chips' });
     chips.append(h('button', {
       class: 'chip' + (!cat ? ' on' : ''),
@@ -122,7 +134,9 @@ async function pgCA() {
 
     if (!items.items || !items.items.length) {
       list.append(h('div', { class: 'card empty' },
-        'No current-affairs items have been added for your exam yet.'));
+        period === 'daily'
+          ? 'No current-affairs items were added today yet. The AI refreshes automatically.'
+          : 'No current-affairs items were found in the last 7 days.'));
       return;
     }
 
@@ -131,7 +145,7 @@ async function pgCA() {
       const actions = h('div', { class: 'row' });
       actions.append(bookmarkBtn('ca', it.id, it.title, it.summary));
       if (S.config.ai_enabled) {
-        const explain = h('button', {
+        actions.append(h('button', {
           class: 'btn',
           onclick: async (e) => {
             e.target.disabled = true;
@@ -145,30 +159,26 @@ async function pgCA() {
               e.target.disabled = false;
             }
           }
-        }, 'Explain & connect to my exam');
-        actions.append(explain);
+        }, 'Explain & connect to my exam'));
       }
-
-      const meta = h('div', { class: 'row' },
-        h('span', { class: 'badge' }, it.category || 'General'),
-        it.event_date ? h('span', { class: 'muted small' }, it.event_date) : null
-      );
-      const card = h('div', { class: 'card stack' },
-        meta,
+      list.append(h('div', { class: 'card stack' },
+        h('div', { class: 'row' },
+          h('span', { class: 'badge' }, it.category || 'General'),
+          it.event_date ? h('span', { class: 'muted small' }, it.event_date) : null
+        ),
         h('h3', {}, it.title || 'Current affair'),
         h('p', {}, it.summary || ''),
         it.source ? h('p', { class: 'small muted' }, 'Source: ' + it.source) : null,
         actions,
         slot
-      );
-      list.append(card);
+      ));
     }
   }
 
   async function draw() {
     list.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Loading…'));
     try {
-      const r = await get('/api/ca' + q({ category: cat }));
+      const r = await get('/api/ca' + q({ category: cat, period }));
       renderItems(r);
     } catch (e) {
       list.replaceChildren(errBox(e, draw));
