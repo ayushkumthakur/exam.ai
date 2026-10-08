@@ -3,6 +3,23 @@
 // an admin must confirm them against the official notification.
 
 const TOPICS = {
+  Hindi: ['अपठित बोध','व्याकरण','लेखन','गद्य','पद्य'],
+  'Social Science': ['History','Geography','Political Science','Economics'],
+  'Political Science': ['Constitution at Work','Political Theory','Indian Constitution','Executive & Legislature','Judiciary','Federalism'],
+  'Applied Mathematics': ['Numbers','Algebra','Calculus','Financial Mathematics','Statistics','Probability'],
+  'Accountancy': ['Introduction to Accounting','Theory Base of Accounting','Recording of Transactions','Bank Reconciliation','Depreciation','Financial Statements','Accounting for Partnership','Company Accounts','Analysis of Financial Statements'],
+  'Business Studies': ['Nature & Purpose of Business','Forms of Business Organisation','Private Public & Global Enterprises','Business Services','Emerging Modes of Business','Social Responsibility','Sources of Business Finance','Small Business','Internal Trade','International Business','Principles of Management','Business Environment','Planning','Organising','Staffing','Directing','Controlling','Financial Management','Marketing Management','Consumer Protection'],
+  'Political Science': ['Constitution at Work','Political Theory','Indian Constitution','Executive & Legislature','Judiciary','Federalism'],
+  'Psychology': ['Introduction to Psychology','Methods of Enquiry','Human Development','Sensory Attention and Perception','Learning','Human Memory','Thinking','Motivation and Emotion','Variations in Psychological Attributes','Self and Personality','Meeting Life Challenges'],
+  'Sociology': ['Introducing Sociology','Terms Concepts and their Use in Sociology','Understanding Social Institutions','Culture and Socialisation','Social Change and Social Order','Indian Society','Social Change and Development in India'],
+  'Computer Science': ['Computer Systems','Python Programming','Data Structures','Database Concepts','SQL','Computer Networks','Boolean Logic','Computing and Society'],
+  'Informatics Practices': ['Data Handling','Python','Database Management','SQL','Data Visualisation','Computer Networks','Societal Impacts'],
+  'Physical Education': ['Human Body and Sports','Sports Psychology','Training in Sports','Physical Fitness','Yoga','Biomechanics','Kinesiology','Health & Safety'],
+  'Fine Arts': ['Elements of Art','Art Appreciation','Indian Art Heritage','Drawing and Painting','Practical Art'],
+  'Entrepreneurship': ['Entrepreneurial Journey','Entrepreneurial Opportunities','Enterprise Marketing','Business Arithmetic','Resource Mobilization'],
+  'Computer Applications': ['Networking','HTML','Cyber Safety','Introduction to Programming','Digital Documentation'],
+  'Individuals in Society': ['Self and Identity','Family and Community','Society and Relationships','Citizenship and Responsibility'],
+  'CT & AI': ['Computational Thinking','Data and Algorithms','Artificial Intelligence Basics','Ethics and Responsible AI','AI Applications'],
   Mathematics: ['Algebra','Sets','Relations & Functions','Complex Numbers','Quadratic Equations','Sequences & Series','Permutation & Combination','Binomial Theorem','Trigonometry','Matrices & Determinants','Coordinate Geometry','Differential Calculus','Integral Calculus','Vector Algebra','Statistics','Probability','Logarithms'],
   'Quantitative Aptitude': ['Number System','Percentage','Ratio & Proportion','Profit & Loss','Time & Work','Time Speed Distance','Simple & Compound Interest','Averages','Algebra','Geometry','Trigonometry','Mensuration','Data Interpretation'],
   Reasoning: ['Analogy','Series','Coding-Decoding','Blood Relations','Direction Sense','Syllogism','Puzzles','Seating Arrangement','Venn Diagrams'],
@@ -28,6 +45,39 @@ const S = (subject, q, m, n) => ({ subject, questions: q, marks: m, negative: n 
 const P = (minutes, sections, note) => ({ minutes, sections, note: note || null });
 
 const EXAMS = [
+  // School education — CBSE Classes IX-XII (2026-27 structures; individual school subject combinations may vary).
+  ['CBSE_IX','CBSE Class IX','School · CBSE',P(180,[
+    S('English',80,1,0),S('Hindi',80,1,0),S('Mathematics',80,1,0),S('Science',80,1,0),
+    S('Social Science',80,1,0),S('CT & AI',40,1,0),S('Individuals in Society',40,1,0)
+  ])],
+  ['CBSE_X','CBSE Class X','School · CBSE',P(180,[
+    S('English',80,1,0),S('Hindi',80,1,0),S('Mathematics',80,1,0),S('Science',80,1,0),
+    S('Social Science',80,1,0),S('Computer Applications',50,1,0)
+  ])],
+  ['CBSE_XI_SCIENCE','CBSE Class XI — Science','School · CBSE · Science',P(180,[
+    S('English',80,1,0),S('Physics',70,1,0),S('Chemistry',70,1,0),S('Mathematics',80,1,0),
+    S('Biology',70,1,0),S('Computer Science',70,1,0),S('Informatics Practices',70,1,0),S('Physical Education',50,1,0)
+  ])],
+  ['CBSE_XII_SCIENCE','CBSE Class XII — Science','School · CBSE · Science',P(180,[
+    S('English',80,1,0),S('Physics',70,1,0),S('Chemistry',70,1,0),S('Mathematics',80,1,0),
+    S('Biology',70,1,0),S('Computer Science',70,1,0),S('Informatics Practices',70,1,0),S('Physical Education',50,1,0)
+  ])],
+  ['CBSE_XI_COMMERCE','CBSE Class XI — Commerce','School · CBSE · Commerce',P(180,[
+    S('English',80,1,0),S('Accountancy',80,1,0),S('Business Studies',80,1,0),S('Economics',80,1,0),
+    S('Mathematics',80,1,0),S('Applied Mathematics',80,1,0),S('Entrepreneurship',60,1,0),S('Informatics Practices',70,1,0),S('Physical Education',50,1,0)
+  ])],
+  ['CBSE_XII_COMMERCE','CBSE Class XII — Commerce','School · CBSE · Commerce',P(180,[
+    S('English',80,1,0),S('Accountancy',80,1,0),S('Business Studies',80,1,0),S('Economics',80,1,0),
+    S('Mathematics',80,1,0),S('Applied Mathematics',80,1,0),S('Entrepreneurship',60,1,0),S('Informatics Practices',70,1,0),S('Physical Education',50,1,0)
+  ])],
+  ['CBSE_XI_HUMANITIES','CBSE Class XI — Humanities / Arts','School · CBSE · Humanities',P(180,[
+    S('English',80,1,0),S('History',80,1,0),S('Political Science',80,1,0),S('Geography',80,1,0),
+    S('Economics',80,1,0),S('Sociology',80,1,0),S('Psychology',80,1,0),S('Fine Arts',60,1,0),S('Physical Education',50,1,0)
+  ])],
+  ['CBSE_XII_HUMANITIES','CBSE Class XII — Humanities / Arts','School · CBSE · Humanities',P(180,[
+    S('English',80,1,0),S('History',80,1,0),S('Political Science',80,1,0),S('Geography',80,1,0),
+    S('Economics',80,1,0),S('Sociology',80,1,0),S('Psychology',80,1,0),S('Fine Arts',60,1,0),S('Physical Education',50,1,0)
+  ])],
   // Defence
   ['NDA','NDA (National Defence Academy)','Defence',P(300,[S('Mathematics',120,2.5,0.833),S('English',50,4,1.333),S('General Awareness',100,4,1.333)])],
   ['CDS','CDS','Defence',P(360,[S('English',120,1,0.333),S('General Awareness',120,1,0.333),S('Mathematics',100,1,0.333)])],
