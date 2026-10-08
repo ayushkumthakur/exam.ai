@@ -83,4 +83,6 @@ s = s.replace("const count = Math.min(Math.max(+b.count || 10, 1), 100);", "cons
 s = s.replace("const requestedTotal = Math.min(100, Math.max(1, +b.count || patternTotal));", "const requestedTotal = kind === 'sectional' ? Math.max(20, patternTotal) : patternTotal;");
 
 fs.writeFileSync(p, s);
-require('./server.js');
+const runtimePath = path.join(__dirname, 'server.runtime.js');
+fs.writeFileSync(runtimePath, s);
+require(runtimePath);
