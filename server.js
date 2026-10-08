@@ -192,19 +192,30 @@ async function buildTest(user, exam, b) {
 
   if (kind === 'full_mock' || kind === 'sectional') {
     const secs = kind === 'sectional' ? (needSubject(), exam.pattern.sections.filter(s => s.subject === b.subject)) : exam.pattern.sections;
-    let want = 0;
-    for (const s of secs) {
-      const got = pickQuestions(user, exam, { subject: s.subject, difficulty: diff, excludeSources: ['VERIFIED_PYQ'], limit: s.questions });
-      want += s.questions; qs.push(...got);
-      if (got.length < s.questions) notices.push(`${s.subject}: ${got.length} of ${s.questions} pattern questions available in the question bank.`);
+    const patternTotal = secs.reduce((a, s) => a + s.questions, 0);
+    const requestedTotal = Math.min(100, Math.max(1, +b.count || patternTotal));
+    const targets = secs.map((s, i) => Math.max(1, Math.floor(requestedTotal * s.questions / patternTotal) + (i < (requestedTotal % secs.length) ? 1 : 0)));
+    for (let i = 0; i < secs.length; i++) {
+      const s = secs[i], target = targets[i];
+      let got = pickQuestions(user, exam, { subject: s.subject, difficulty: diff, excludeSources: ['VERIFIED_PYQ'], limit: target });
+      if (got.length < target) {
+        const extra = await aiFillQuestions(user, exam, s.subject, null, diff, target - got.length);
+        got = got.concat(extra);
+      }
+      qs.push(...got.slice(0, target));
+      if (got.length < target) notices.push(String(s.subject) + ': only ' + got.length + ' question(s) available after AI fill.');
     }
     if (!qs.length) throw bad('No questions are available yet for this selection.');
-    title = kind === 'full_mock' ? `${exam.name} Full Mock` : `${exam.name} ${b.subject} Sectional`;
-    minutes = b.minutes ? +b.minutes : Math.max(5, Math.round(secs.reduce((a, s) => a + s.questions, 0) && exam.pattern.minutes * (kind === 'sectional' ? secs[0].questions / exam.pattern.sections.reduce((a, s) => a + s.questions, 0) : 1) * qs.length / want));
+    title = kind === 'full_mock' ? exam.name + ' Full Mock' : exam.name + ' ' + b.subject + ' Sectional';
+    minutes = b.minutes ? +b.minutes : Math.max(5, Math.round((exam.pattern.minutes || 60) * qs.length / Math.max(patternTotal, 1)));
   } else if (kind === 'subject') {
-    needSubject(); qs = pickQuestions(user, exam, { subject: b.subject, difficulty: diff, limit: count }); title = `${b.subject} Test`;
+    needSubject(); qs = pickQuestions(user, exam, { subject: b.subject, difficulty: diff, limit: count });
+    if (qs.length < count) qs = qs.concat(await aiFillQuestions(user, exam, b.subject, null, diff, count - qs.length)).slice(0, count);
+    title = b.subject + ' Test';
   } else if (kind === 'topic') {
-    needTopic(); qs = pickQuestions(user, exam, { subject: b.subject, topic: b.topic, difficulty: diff, limit: count }); title = `${b.topic} Topic Test`;
+    needTopic(); qs = pickQuestions(user, exam, { subject: b.subject, topic: b.topic, difficulty: diff, limit: count });
+    if (qs.length < count) qs = qs.concat(await aiFillQuestions(user, exam, b.subject, b.topic, diff, count - qs.length)).slice(0, count);
+    title = b.topic + ' Topic Test';
   } else if (kind === 'weak_topic') {
     const w = weakTopics(user, exam, 3);
     if (!w.length) throw bad('No weak topics detected yet. Practise a few topics first (at least 3 answers per topic).');
@@ -244,6 +255,21 @@ async function buildTest(user, exam, b) {
     .run(user.id, exam.id, kind, title, JSON.stringify(qs.map(q => q.id)), minutes, JSON.stringify(per), minutes * 60, t, t).lastInsertRowid;
   return { id: Number(id), notices };
 }
+async function aiFillQuestions(user, exam, subject, topic, difficulty, count) {
+  if (count <= 0 || !ai.aiEnabled()) return [];
+  const info = exam.syllabus.find(x => x.subject === subject);
+  if (!info) return [];
+  const topics = topic ? [topic] : info.topics;
+  const out = [];
+  const max = Math.min(10, count);
+  for (let i = 0; i < max; i += 6) {
+    const n = Math.min(6, max - i), tp = topics[Math.floor(i / 6) % topics.length];
+    const rr = await ai.generateQuestions({ examName: exam.name, subject, topic: tp, difficulty: difficulty === 'any' ? 'medium' : difficulty, count: n, level: user.level });
+    if (rr.ok) out.push(...storeAiQuestions(user, exam, rr.questions));
+  }
+  return out;
+}
+
 function storeAiQuestions(user, exam, list) {
   const ins = db.prepare(`INSERT INTO questions (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,owner_user_id,created_at)
     VALUES (?,?,?,?,?,?,?,?,?,?, 'AI_GENERATED', ?, ?)`);
