@@ -297,10 +297,54 @@ async function pgPractice(parts, params) {
 
 // ---------- PYQs ----------
 async function pgPyqs() {
-  const [p, an] = await Promise.all([get('/api/pyq/papers'), get('/api/pyq/analysis')]); const box = h('div', { class: 'stack' });
-  return h('div', { class: 'stack' }, h('h1', {}, 'Previous Year Questions'), h('div', { class: 'info' }, 'Only questions an admin has verified against an official source appear here, labelled “Verified PYQ”. AI-written questions are never shown as PYQs.'),
-    h('div', { class: 'card' }, h('h3', {}, 'Verified papers'), p.papers.length ? h('div', { class: 'list' }, p.papers.map(x => h('div', { class: 'row between' }, h('span', {}, h('b', {}, `${x.year} · ${x.paper}`), x.shift ? ` · ${x.shift}` : '', h('span', { class: 'muted small' }, ` · ${x.questions} questions`)), h('button', { class: 'btn sm primary', onclick: () => startTest({ kind: 'pyq', year: x.year, paper: x.paper, shift: x.shift }) }, 'Take as test')))) : h('div', { class: 'empty' }, 'No verified PYQ papers have been added for your exam yet. Admins can add them from the Admin panel.')),
-    h('div', { class: 'card' }, h('h3', {}, 'PYQ analysis'), an.sufficient ? h('div', { class: 'stack' }, h('p', { class: 'small muted' }, `Based on ${an.total} verified questions.`), h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, 'Top topics'), h('th', {}, 'Questions'))), h('tbody', {}, an.top_topics.map(t => h('tr', {}, h('td', {}, `${t.subject} → ${t.topic}`), h('td', {}, t.n)))))) : h('p', { class: 'muted' }, an.message)));
+  const [p, an] = await Promise.all([get('/api/pyq/papers'), get('/api/pyq/analysis')]);
+  const box = h('div', { class: 'stack' });
+
+  const official = [];
+  if (S.user.exam_id === 'SSC_CHSL') {
+    official.push(
+      ['SSC CHSL 2025 Tier-I', 'Official SSC final answer key / response-sheet access (candidate login)', 'https://sscexams.cbexams.com/chsl2025finalkeylandingpagedh/LoginNew.aspx'],
+      ['SSC CHSL 2024 Tier-I', 'SSC notice confirming final answer keys were uploaded with question papers', 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Final%20Answer%20Key%20and%20marks%20CHSLE%202024%20Tier-I161024.pdf']
+    );
+  }
+  official.push(['SSC official examination portal', 'Use the official SSC portal for current notices, answer keys and paper access', 'https://ssc.gov.in/']);
+
+  const sourceCard = h('div', { class: 'card stack' },
+    h('h3', {}, 'Official PYQ sources'),
+    h('p', { class: 'small muted' }, 'Official papers may require candidate login. Competitive Exam AI does not reproduce copyrighted papers as its own content.'),
+    ...official.map(([title, desc, url]) => h('div', { class: 'row between', style: 'align-items:flex-start;gap:1rem' },
+      h('div', {}, h('b', {}, title), h('p', { class: 'small muted', style: 'margin:.2rem 0 0' }, desc)),
+      h('a', { class: 'btn sm', href: url, target: '_blank', rel: 'noopener' }, 'Open official source')
+    )),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn sm primary', onclick: () => startTest({ kind: 'pyq_pattern', count: 20 }) }, '20-question PYQ Pattern Mock'),
+      h('span', { class: 'small muted' }, 'Clearly labelled as PYQ Pattern — not an official PYQ.')
+    )
+  );
+
+  const verifiedCard = h('div', { class: 'card' },
+    h('h3', {}, 'Verified papers'),
+    p.papers.length
+      ? h('div', { class: 'list' }, p.papers.map(x => h('div', { class: 'row between' },
+          h('span', {}, h('b', {}, `${x.year} · ${x.paper}`), x.shift ? ` · ${x.shift}` : '', h('span', { class: 'muted small' }, ` · ${x.questions} questions`)),
+          h('button', { class: 'btn sm primary', onclick: () => startTest({ kind: 'pyq', year: x.year, paper: x.paper, shift: x.shift }) }, 'Take as test')
+        )))
+      : h('div', { class: 'empty' }, 'No verified PYQ papers have been imported for this exam yet. Official-source links are provided above.'));
+
+  const analysis = h('div', { class: 'card' },
+    h('h3', {}, 'PYQ analysis'),
+    an.sufficient
+      ? h('div', { class: 'stack' }, h('p', { class: 'small muted' }, `Based on ${an.total} verified questions.`),
+          h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, 'Top topics'), h('th', {}, 'Questions'))),
+            h('tbody', {}, an.top_topics.map(t => h('tr', {}, h('td', {}, `${t.subject} → ${t.topic}`), h('td', {}, t.n))))))
+      : h('p', { class: 'muted' }, an.message)
+  );
+
+  return h('div', { class: 'stack' },
+    h('div', { class: 'row between' }, h('h1', {}, 'Previous Year Questions')),
+    h('div', { class: 'info' }, 'Only questions an admin has verified against an official source appear here as “Verified PYQ”. AI-written questions are never presented as PYQs.'),
+    sourceCard, verifiedCard, analysis
+  );
 }
 
 // ---------- revision ----------
