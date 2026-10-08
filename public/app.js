@@ -302,7 +302,7 @@ async function doAction(a) {
   if (a.type === 'test') return go('#/test/' + a.id);
   if (a.type === 'revision') return go('#/revision' + q({ subject: a.subject, topic: a.topic }));
   if (a.type === 'practice') return go('#/practice' + q({ subject: a.subject, topic: a.topic, start: 1 }));
-  if (a.type === 'topic_test') return startTest({ kind: 'topic', subject: a.subject, topic: a.topic, count: 10 });
+  if (a.type === 'topic_test') return startTest({ kind: 'topic', subject: a.subject, topic: a.topic, count: 20 });
   if (a.type === 'mistakes') return go('#/revision?mistakes=1');
   if (a.type === 'current_affairs') return go('#/ca');
   if (a.type === 'tutor') return go('#/tutor');
@@ -439,7 +439,7 @@ async function revTopic(subject, topic) {
   if (c.mistakes.length) box.append(h('div', { class: 'card' }, h('h3', {}, 'Your previous mistakes here'), h('div', { class: 'list' }, c.mistakes.map(m => h('div', {}, h('div', {}, m.text), h('p', { class: 'small muted' }, m.concept || m.explanation))))));
   if (c.pyq_concepts.length) box.append(h('div', { class: 'card' }, h('h3', {}, 'Important PYQ concepts'), h('ul', {}, c.pyq_concepts.map(p => h('li', {}, p.concept || p.text)))));
   if (c.ai_available) box.append(h('div', { class: 'card' }, h('h3', {}, 'Generate study material'), h('div', { class: 'row' }, aiBtn('short', 'Short notes'), aiBtn('formula', 'Formula sheet'), aiBtn('onepage', 'One-page sheet'), aiBtn('flashcards', 'Flashcards')), aiBox));
-  const done = h('button', { class: 'btn primary', onclick: async () => { done.disabled = true; try { await post('/api/revision/complete', { subject, topic }); toast('Revision complete 🎯'); startTest({ kind: 'topic', subject, topic, count: 10 }); } catch (e) { toast(e.message); done.disabled = false; } } }, 'I’ve revised → Start Test');
+  const done = h('button', { class: 'btn primary', onclick: async () => { done.disabled = true; try { await post('/api/revision/complete', { subject, topic }); toast('Revision complete 🎯'); startTest({ kind: 'topic', subject, topic, count: 20 }); } catch (e) { toast(e.message); done.disabled = false; } } }, 'I’ve revised → Start Test');
   box.append(h('div', { class: 'row' }, done, h('button', { class: 'btn', onclick: () => go('#/practice' + q({ subject, topic, start: 1 })) }, 'Practice first')));
   return box;
 }
@@ -452,19 +452,20 @@ async function revMistakes() {
 // ---------- tests ----------
 async function pgTests() {
   const [list, ex] = await Promise.all([get('/api/tests'), get('/api/exams/' + S.user.exam_id)]); const exam = ex.exam;
-  const o = { kind: 'full_mock', subject: exam.subjects[0], topic: '', count: 10, difficulty: 'any', minutes: '' }; const form = h('div', { class: 'card stack' });
+  const o = { kind: 'full_mock', subject: exam.subjects[0], topic: '', count: 20, difficulty: 'any', minutes: '' }; const form = h('div', { class: 'card stack' });
   const KINDS = [['full_mock', 'Full Mock'], ['sectional', 'Sectional Mock'], ['subject', 'Subject Test'], ['topic', 'Topic Test'], ['pyq', 'PYQ Test'], ['pyq_pattern', 'PYQ Pattern Mock'], ['ai_mock', 'AI Generated Mock'], ['weak_topic', 'Weak Topic Test']];
   function draw() {
     const needS = ['sectional', 'subject', 'topic'].includes(o.kind), needT = o.kind === 'topic', needN = ['full_mock', 'sectional', 'subject', 'topic', 'weak_topic', 'pyq_pattern', 'ai_mock'].includes(o.kind), needD = ['subject', 'topic', 'full_mock', 'sectional', 'ai_mock'].includes(o.kind);
     const topics = exam.syllabus.find(s => s.subject === o.subject)?.topics || []; if (needT && !topics.includes(o.topic)) o.topic = topics[0];
     const f = (l, el) => h('div', {}, h('label', {}, l), el);
     form.replaceChildren(h('h2', {}, 'Create My Test'), h('div', { class: 'chips' }, KINDS.map(([k, l]) => h('button', { class: 'chip' + (o.kind === k ? ' on' : ''), onclick: () => { o.kind = k; draw(); } }, l))),
-      o.kind === 'full_mock' ? h('div', { class: 'info' }, `${exam.name} pattern: ${exam.pattern.sections.map(s => `${s.subject} ${s.questions}`).join(' · ')} · ${exam.pattern.minutes} min · negative marking per section.` + (exam.verified ? '' : ' (Pattern is an approximate default. Confirm with the official notification.)')) : null,
+      o.kind === 'full_mock' ? h('div', { class: 'info' }, `Exam Simulation · ${exam.name} pattern: ${exam.pattern.sections.map(s => `${s.subject} ${s.questions}`).join(' · ')} · ${exam.pattern.minutes} min · negative marking per section.` + (exam.verified ? '' : ' (Pattern is an approximate default. Confirm with the official notification.)')) : null,
       h('div', { class: 'grid g3' }, needS ? f('Subject', h('select', { onchange: (e) => { o.subject = e.target.value; draw(); } }, exam.syllabus.map(s => h('option', { value: s.subject, selected: s.subject === o.subject }, s.subject)))) : null,
         needT ? f('Topic', h('select', { onchange: (e) => o.topic = e.target.value }, topics.map(t => h('option', { value: t, selected: t === o.topic }, t)))) : null,
-        needN ? f('Number of questions', h('input', { type: 'number', min: 1, max: 100, value: o.count, oninput: (e) => o.count = +e.target.value })) : null,
+        needN ? (o.kind === 'full_mock' ? f('Questions', h('input', { type: 'number', value: exam.pattern.sections.reduce((a, s) => a + s.questions, 0), disabled: true, 'aria-label': 'Exam pattern question count' })) : f('Number of questions', h('input', { type: 'number', min: 20, max: 100, value: Math.max(20, o.count), oninput: (e) => o.count = Math.max(20, Math.min(100, +e.target.value || 20)) }))) : null,
         needD ? f('Difficulty', h('select', { onchange: (e) => o.difficulty = e.target.value }, [['any', 'Any'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === o.difficulty }, l)))) : null,
         f('Duration (minutes, optional)', h('input', { type: 'number', min: 1, max: 300, placeholder: 'Auto', value: o.minutes, oninput: (e) => o.minutes = e.target.value }))),
+      h('div', { class: 'small muted' }, o.kind === 'full_mock' ? 'Uses the configured exam pattern, section mix, duration and marking.' : o.kind === 'pyq' ? 'Verified PYQ tests use only source-verified questions.' : 'All practice tests contain at least 20 questions.'),
       h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => { e.target.disabled = true; e.target.replaceChildren(h('span', { class: 'spin' }), ' Building…'); await startTest({ ...o, minutes: o.minutes || undefined }); e.target.disabled = false; e.target.textContent = 'Start Test'; } }, 'Start Test'));
   } draw();
   return h('div', { class: 'stack' }, h('h1', {}, 'Tests'), form,
