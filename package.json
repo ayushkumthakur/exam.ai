@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "AI-powered competitive exam preparation platform",
   "main": "server.js",
-  "scripts": { "start": "node server.js", "test": "node tests/smoke.js" },
+  "scripts": { "start": "node railway-boot.js", "test": "node tests/smoke.js" },
   "engines": { "node": ">=22" },
   "license": "ISC"
 }
