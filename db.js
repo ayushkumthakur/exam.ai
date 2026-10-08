@@ -83,6 +83,11 @@ CREATE TABLE IF NOT EXISTS plan_done (
 );
 `);
 
+// Backward-compatible migration for accounts created before password login was introduced.
+const userColumns = db.prepare('PRAGMA table_info(users)').all().map(r => r.name);
+if (!userColumns.includes('password_hash')) db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
+
+
 // ---- Seed ----
 const now = () => Date.now();
 
