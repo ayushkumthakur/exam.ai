@@ -15,7 +15,18 @@ const aiEnabled = () => !!activeProvider();
 const aiProvider = () => activeProvider() || PROVIDER();
 const aiModel = () => activeProvider() === 'anthropic' ? ANTHROPIC_MODEL() : GEMINI_MODEL();
 
-async function callGemini({ system, messages, maxTokens = 1500, timeoutMs = 45000 }) {
+function groundingSources(j) {
+  const out = [];
+  for (const g of (j?.candidates || []).flatMap(c => c?.groundingMetadata?.groundingChunks || [])) {
+    const w = g.web || g.webCitation || g.web_source || null;
+    const uri = w?.uri || w?.url;
+    if (uri && !out.includes(uri)) out.push(uri);
+  }
+  return out;
+}
+
+async function callGemini({ system, messages, maxTokens = 1500, timeoutMs = 45000, grounded = false }) {
+  const opts = { grounded };
   if (!GEMINI_KEY()) return { ok: false, error: 'AI_NOT_CONFIGURED' };
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
@@ -41,17 +52,48 @@ async function callGemini({ system, messages, maxTokens = 1500, timeoutMs = 4500
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: String(system || '') }] },
         contents,
-        generationConfig: { maxOutputTokens: Math.min(12000, Math.max(256, +maxTokens || 1500)) }
+        generationConfig: { maxOutputTokens: Math.min(12000, Math.max(256, +maxTokens || 1500)), temperature: 0.15, responseMimeType: 'text/plain' },
+        ...(opts?.grounded ? { tools: [{ google_search: {} }] } : {})
       })
     });
     if (!response.ok) return { ok: false, error: 'AI_HTTP_' + response.status };
     const j = await response.json();
     const text = (j.candidates || []).flatMap(x => x.content?.parts || []).map(x => x.text || '').join('\n').trim();
     if (!text) return { ok: false, error: 'AI_EMPTY' };
-    return { ok: true, text, provider: 'gemini', model: GEMINI_MODEL() };
+    return { ok: true, text, provider: 'gemini', model: GEMINI_MODEL(), sources: groundingSources(j) };
   } catch (e) {
     return { ok: false, error: e.name === 'AbortError' ? 'AI_TIMEOUT' : 'AI_NETWORK' };
   } finally { clearTimeout(t); }
+}
+
+async function generateCurrentAffairs({ today, days = 7, examList, maxItems = 12 }) {
+  const system = `You are a strict current-affairs researcher for an Indian competitive-exam preparation platform.
+Use Google Search grounding. Search the live web for important events from the last ${days} days up to ${today}.
+Prefer authoritative primary sources: PIB/Government of India ministries, RBI, SEBI, IRDAI, NABARD, ISRO, MEA, Ministry of Defence, Election Commission, Supreme Court, official international organisations, and official sports bodies.
+Return ONLY a JSON array with at most ${maxItems} items. Each item must contain:
+{"title":string,"summary":string,"category":"National|International|Defence|Economy|Science & Technology|Environment|Sports|Awards|Appointments|Government Schemes|Important Days|Reports & Indexes|Books & Authors|Important Persons|Defence Exercises","event_date":"YYYY-MM-DD","exams":["exam_id", "..."],"source_url":"https://..."}
+Only include items whose source_url is an actually retrieved web source. Choose exams from this exact list and assign only the exams for which the fact is genuinely relevant: ${examList.join(', ')}.
+Do not invent facts, dates, awards, numbers or URLs. Do not include rumours or unsourced social posts. If there are fewer than ${maxItems} well-supported items, return fewer.`;
+  const r = await callGemini({ grounded: true, system, maxTokens: 5000, timeoutMs: 60000, messages: [{
+    role: 'user',
+    content: `Today is ${today}. Find exam-relevant current affairs published or announced in the last ${days} days. Verify each item from the retrieved source before including it.`
+  }]});
+  if (!r.ok) return r;
+  const arr = extractJson(r.text);
+  if (!Array.isArray(arr)) return { ok: false, error: 'AI_INVALID' };
+  const sourceSet = new Set(r.sources || []);
+  const allowedCats = ['National','International','Defence','Economy','Science & Technology','Environment','Sports','Awards','Appointments','Government Schemes','Important Days','Reports & Indexes','Books & Authors','Important Persons','Defence Exercises'];
+  const allowed = new Set(examList);
+  const good = arr.map(x => {
+    if (!x || typeof x !== 'object') return null;
+    const title = String(x.title || '').trim(), summary = String(x.summary || '').trim(), date = String(x.event_date || '').trim();
+    const category = String(x.category || '').trim(), source_url = String(x.source_url || '').trim();
+    const exams = Array.isArray(x.exams) ? x.exams.map(String).filter(v => allowed.has(v)) : [];
+    if (title.length < 8 || summary.length < 30 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || !allowedCats.includes(category) || !source_url || !sourceSet.has(source_url) || !exams.length) return null;
+    try { const u = new URL(source_url); if (!['http:','https:'].includes(u.protocol)) return null; } catch { return null; }
+    return { title, summary, category, event_date: date, exams: [...new Set(exams)], source_url };
+  }).filter(Boolean);
+  return { ok: true, items: good };
 }
 
 async function callAnthropic({ system, messages, maxTokens = 1500, timeoutMs = 45000 }) {
@@ -139,7 +181,7 @@ async function generateQuestions({ examName, subject, topic, difficulty, count, 
   const system = `You write exam-quality multiple-choice questions for ${examName} (India). Output ONLY a JSON array, no prose.
 Each item: {"text":string,"options":[4 distinct strings],"answer":index 0-3,"explanation":string (step-by-step, verified),"concept":string,"tip":string,"subject":"${subject}","topic":"${topic}","difficulty":"easy|medium|hard"}.
 Rules: exactly one correct option; verify all arithmetic before writing the answer; no ambiguous or unanswerable questions; no facts that change with time unless certain; do NOT claim these are real previous-year questions. Level of student: ${level || 'intermediate'}.${weakNote ? ' Focus: ' + weakNote : ''}`;
-  const r = await callClaude({ system, maxTokens: 3500, messages: [{ role: 'user', content: `Write ${count} ${difficulty} MCQs on ${subject} → ${topic}.` }] });
+  const r = await callClaude({ system, maxTokens: 3500, messages: [{ role: 'user', content: `Write ${count} ${difficulty} MCQs on ${subject} → ${topic}. Return valid JSON only.` }] });
   if (!r.ok) return r;
   const arr = extractJson(r.text);
   if (!Array.isArray(arr)) return { ok: false, error: 'AI_INVALID' };
@@ -148,4 +190,4 @@ Rules: exactly one correct option; verify all arithmetic before writing the answ
   return { ok: true, questions: good, dropped: arr.length - good.length };
 }
 
-module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, extractJson, validateQuestion };
+module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion };
