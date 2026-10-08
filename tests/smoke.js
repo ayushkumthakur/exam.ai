@@ -47,9 +47,9 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   r = await api('PUT', '/api/me', { exam_id: 'SSC_CHSL' }); r = await api('GET', '/api/mistakes'); ok(r.data.total >= 1, 'history preserved after switching back');
   // test flow
   r = await api('POST', '/api/tests/create', { kind: 'pyq' }); ok(r.status === 400, 'PYQ test refused when no verified PYQs exist (no mislabelling)');
-  r = await api('POST', '/api/tests/create', { kind: 'topic', subject: 'Quantitative Aptitude', topic: 'Percentage', count: 5 }); ok(r.status === 200, 'create topic test');
+  r = await api('POST', '/api/tests/create', { kind: 'topic', subject: 'Quantitative Aptitude', topic: 'Percentage', count: 20 }); ok(r.status === 200 && r.data.notices !== undefined, 'create 20-question topic test');
   const tid = r.data.id;
-  r = await api('GET', '/api/tests/' + tid); ok(r.data.test.questions.length > 0 && !('answer' in r.data.test.questions[0]), 'test hides answers while active');
+  r = await api('GET', '/api/tests/' + tid); ok(r.data.test.questions.length >= 20 && !('answer' in r.data.test.questions[0]), 'tests have at least 20 questions and hide answers while active');
   const q0 = r.data.test.questions[0];
   r = await api('PUT', `/api/tests/${tid}/save`, { answers: { [q0.id]: 1 }, marked: [q0.id], current_idx: 0, times: { [q0.id]: 4000 } }); ok(r.data.ok, 'autosave');
   r = await api('GET', '/api/tests/' + tid); ok(r.data.test.answers[q0.id] === 1 && r.data.test.marked.includes(q0.id), 'resume preserves answers + marks');
