@@ -15,7 +15,7 @@ function h(tag, attrs, ...kids) {
   return el;
 }
 const svg = (d) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); s.append(p); return s; };
-const ICONS = { home: 'M3 11l9-8 9 8M5 10v10h14V10', practice: 'M4 5h16M4 12h16M4 19h10', revision: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5', pyqs: 'M6 3h9l4 4v14H6zM14 3v5h5', tests: 'M9 11l3 3 8-8M4 4h10M4 10h3M4 16h8', ca: 'M4 5h13v14H4zM17 8h3v9a2 2 0 0 1-2 2M7 9h7M7 13h7', tutor: 'M4 5h16v11H9l-5 4zM8 10h8', plan: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', progress: 'M4 20V10M10 20V4M16 20v-7M22 20H2', profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0', more: 'M5 12h.01M12 12h.01M19 12h.01', library: 'M5 4h5v16H5zM12 4h3l4 16h-3z', admin: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z' };
+const ICONS = { settings: 'M12 3v2M12 19v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M3 12h2M19 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4M15.5 8.5a5 5 0 1 0 0 7M home: 'M3 11l9-8 9 8M5 10v10h14V10', practice: 'M4 5h16M4 12h16M4 19h10', revision: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5', pyqs: 'M6 3h9l4 4v14H6zM14 3v5h5', tests: 'M9 11l3 3 8-8M4 4h10M4 10h3M4 16h8', ca: 'M4 5h13v14H4zM17 8h3v9a2 2 0 0 1-2 2M7 9h7M7 13h7', tutor: 'M4 5h16v11H9l-5 4zM8 10h8', plan: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', progress: 'M4 20V10M10 20V4M16 20v-7M22 20H2', profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0', more: 'M5 12h.01M12 12h.01M19 12h.01', library: 'M5 4h5v16H5zM12 4h3l4 16h-3z', admin: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z' };
 const logo = () => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 32 32'); s.innerHTML = '<rect width="32" height="32" rx="8" fill="#1d2b64"/><path d="M7 22V10l9 3 9-3v12l-9-3z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><circle cx="24" cy="7" r="2.4" fill="#f2a43a"/>'; return s; };
 const toast = (m) => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600); };
 const pct = (v) => v === null || v === undefined ? '–' : v + '%';
@@ -62,7 +62,7 @@ function runCleanups() { while (cleanups.length) { try { cleanups.pop()(); } cat
 
 // ---------- state ----------
 const S = { user: null, config: {}, exams: [], exam: null };
-const NAV = [['home', 'Home'], ['practice', 'Practice'], ['revision', 'Revision'], ['pyqs', 'PYQs'], ['tests', 'Tests'], ['ca', 'Current Affairs'], ['tutor', 'AI Tutor'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['profile', 'Profile']];
+const NAV = [['home', 'Home'], ['practice', 'Practice'], ['revision', 'Revision'], ['pyqs', 'PYQs'], ['tests', 'Tests'], ['ca', 'Current Affairs'], ['tutor', 'AI Tutor'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['profile', 'Profile'], ['settings', 'Settings']];
 const MOBILE = [['home', 'Home'], ['practice', 'Practice'], ['tests', 'Tests'], ['tutor', 'AI Tutor'], ['more', 'More']];
 
 async function boot() {
@@ -180,12 +180,12 @@ function renderShell(page, parts, params) {
     h('nav', { class: 'side', 'aria-label': 'Main' }, h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'), sideItems.map(i => navItem(i))),
     h('div', { class: 'main' }, h('div', { class: 'top' }, h('div', { class: 'brand' }, logo(), h('span', {}, 'Exam AI')), search, h('span', { class: 'badge' }, S.exam ? S.exam.name : '')), main)),
     h('nav', { class: 'bottom', 'aria-label': 'Primary' }, MOBILE.map(i => navItem(i))));
-  const pages = { home: pgHome, practice: pgPractice, revision: pgRevision, pyqs: pgPyqs, tests: pgTests, test: pgTestTake, result: pgResult, ca: pgCA, tutor: pgTutor, plan: pgPlan, progress: pgProgress, profile: pgProfile, library: pgLibrary, search: pgSearch, more: pgMore, admin: pgAdmin };
+  const pages = { home: pgHome, practice: pgPractice, revision: pgRevision, pyqs: pgPyqs, tests: pgTests, test: pgTestTake, result: pgResult, ca: pgCA, tutor: pgTutor, plan: pgPlan, progress: pgProgress, profile: pgProfile, settings: pgSettings, library: pgLibrary, search: pgSearch, more: pgMore, admin: pgAdmin };
   const fn = pages[page] || pgHome; window.scrollTo(0, 0);
   load(main, () => fn(parts, params));
 }
 function pgMore() {
-  return h('div', { class: 'stack' }, h('h1', {}, 'More'), h('div', { class: 'grid g2' }, [['revision', 'Revision'], ['pyqs', 'PYQs'], ['ca', 'Current Affairs'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['library', 'My Library'], ['profile', 'Profile'], ...(S.user.role === 'admin' ? [['admin', 'Admin']] : [])].map(([k, l]) => h('a', { class: 'card nav', href: '#/' + k }, svg(ICONS[k] || ICONS.more), l))));
+  return h('div', { class: 'stack' }, h('h1', {}, 'More'), h('div', { class: 'grid g2' }, [['revision', 'Revision'], ['pyqs', 'PYQs'], ['ca', 'Current Affairs'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['library', 'My Library'], ['profile', 'Profile'], ['settings', 'Settings'], ...(S.user.role === 'admin' ? [['admin', 'Admin']] : [])].map(([k, l]) => h('a', { class: 'card nav', href: '#/' + k }, svg(ICONS[k] || ICONS.more), l))));
 }
 
 // ---------- action router (recommendation CTAs) ----------

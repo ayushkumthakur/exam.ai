@@ -11,3 +11,6 @@ Tests: `node tests/smoke.js` (API, 34 checks) and `python3 tests/ui.py` (browser
 Content notes: exam patterns/syllabi are approximate defaults (flagged unverified) and editable in Admin.
 The ~30 seed questions are labelled "Admin Practice Question". No PYQs or current-affairs items are seeded:
 add real ones in Admin so nothing is fabricated.
+
+## AI provider
+Recommended setup: set `GEMINI_API_KEY` in Railway. Optional `GEMINI_MODEL` defaults to `gemini-2.5-flash`, and `AI_PROVIDER=gemini` selects Gemini first. `ANTHROPIC_API_KEY` remains supported as fallback. API keys are server-side only.

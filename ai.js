@@ -1,31 +1,23 @@
-// AI layer: Anthropic Messages API via fetch, hard timeouts, strict output validation, never throws to callers
-// (callers get {ok:false, error}). Without ANTHROPIC_API_KEY the app still works; AI features degrade gracefully.
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
-const KEY = () => process.env.ANTHROPIC_API_KEY;
-const aiEnabled = () => !!KEY();
+// AI layer: Gemini Developer API first (free-tier friendly), Anthropic fallback.
+// API keys stay server-side in Railway and are never exposed to the browser.
+const PROVIDER = () => (process.env.AI_PROVIDER || 'gemini').toLowerCase();
+const GEMINI_KEY = () => process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = () => process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const ANTHROPIC_KEY = () => process.env.ANTHROPIC_API_KEY;
+const ANTHROPIC_MODEL = () => process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 
-async function callClaude({ system, messages, maxTokens = 1500, timeoutMs = 45000 }) {
-  if (!KEY()) return { ok: false, error: 'AI_NOT_CONFIGURED' };
-  const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), timeoutMs);
-  try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', signal: ctl.signal,
-      headers: { 'content-type': 'application/json', 'x-api-key': KEY(), 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages }),
-    });
-    if (!r.ok) return { ok: false, error: 'AI_HTTP_' + r.status };
-    const j = await r.json();
-    const text = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
-    if (!text) return { ok: false, error: 'AI_EMPTY' };
-    return { ok: true, text };
-  } catch (e) {
-    return { ok: false, error: e.name === 'AbortError' ? 'AI_TIMEOUT' : 'AI_NETWORK' };
-  } finally { clearTimeout(t); }
+function activeProvider() {
+  const p = PROVIDER();
+  if (p === 'anthropic') return ANTHROPIC_KEY() ? 'anthropic' : (GEMINI_KEY() ? 'gemini' : null);
+  if (p === 'gemini') return GEMINI_KEY() ? 'gemini' : (ANTHROPIC_KEY() ? 'anthropic' : null);
+  return GEMINI_KEY() ? 'gemini' : (ANTHROPIC_KEY() ? 'anthropic' : null);
 }
+const aiEnabled = () => !!activeProvider();
+const aiProvider = () => activeProvider() || PROVIDER();
+const aiModel = () => activeProvider() === 'anthropic' ? ANTHROPIC_MODEL() : GEMINI_MODEL();
 
 const FRIENDLY = {
-  AI_NOT_CONFIGURED: 'The AI is not configured on this server yet (ask the admin to set ANTHROPIC_API_KEY).',
+  AI_NOT_CONFIGURED: 'AI is not configured on this server yet. Add GEMINI_API_KEY in Railway (recommended) or an Anthropic key.',
   AI_TIMEOUT: 'The AI took too long to respond. Please try again.',
 };
 const friendlyError = e => FRIENDLY[e] || 'Something went wrong while generating the answer.';
@@ -92,4 +84,4 @@ Rules: exactly one correct option; verify all arithmetic before writing the answ
   return { ok: true, questions: good, dropped: arr.length - good.length };
 }
 
-module.exports = { callClaude, aiEnabled, friendlyError, TUTOR_SYSTEM, generateQuestions, extractJson, validateQuestion };
+module.exports = { callClaude, callGemini, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, extractJson, validateQuestion };

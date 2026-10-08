@@ -10,7 +10,7 @@ async function pgTutor(parts, params) {
   const ex = (await get('/api/exams/' + S.user.exam_id)).exam; let tab = 'chat';
   const root = h('div', { class: 'stack' }), view = h('div', { class: 'stack' });
   const tabs = () => h('div', { class: 'chips' }, [['chat', 'Ask AI'], ['paper', 'Solve Paper'], ['gen', 'Generate Questions'], ['notes', 'Study Material']].map(([k, l]) => h('button', { class: 'chip' + (tab === k ? ' on' : ''), onclick: () => { tab = k; draw(); } }, l)));
-  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'The AI is not configured on this server yet. The rest of the app works normally. An admin needs to set ANTHROPIC_API_KEY.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
+  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'The AI is not configured on this server yet. The rest of the app works normally. An admin needs to add GEMINI_API_KEY in Railway.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
 
   function tChat() {
     const log = h('div', { class: 'chat', 'aria-live': 'polite' }), ta = h('textarea', { rows: 2, placeholder: `Ask a ${ex.name} doubt, paste a question, or attach a photo…`, 'aria-label': 'Your question' });
@@ -154,6 +154,51 @@ async function pgProfile() {
     h('div', { class: 'card stack' }, h('h3', {}, 'Reset preferences'), h('p', { class: 'muted small' }, 'Sends you back through setup. Your history stays unless you tick the box.'), h('label', { class: 'row', style: 'font-weight:500' }, wipe, 'Also permanently delete my history (answers, mistakes, tests, bookmarks, AI chats)'),
       h('button', { class: 'btn', style: 'align-self:flex-start', onclick: async () => { if (!confirm(wipe.checked ? 'This permanently deletes your history. Continue?' : 'Reset your preferences?')) return; try { await post('/api/me/reset', { confirm: true, wipe_history: wipe.checked }); S.user = (await get('/api/me')).user; route(); } catch (e) { toast(e.message); } } }, 'Reset preferences')),
     h('button', { class: 'btn', style: 'align-self:flex-start', onclick: async () => { await post('/api/auth/logout'); S.user = null; location.hash = '#/'; route(); } }, 'Log out'));
+}
+
+
+// ---------- settings ----------
+async function pgSettings() {
+  const r = await get('/api/config');
+  const saved = {
+    theme: localStorage.getItem('cea_theme') || 'system',
+    density: localStorage.getItem('cea_density') || 'comfortable',
+    answer: localStorage.getItem('cea_answer') || 'balanced'
+  };
+  const apply = () => {
+    document.documentElement.dataset.theme = saved.theme;
+    document.documentElement.dataset.density = saved.density;
+    document.documentElement.dataset.answer = saved.answer;
+  };
+  const field = (label, key, desc, opts) => {
+    const s = h('select', {}, opts.map(([v, l]) => h('option', { value: v, selected: v === saved[key] }, l)));
+    s.onchange = () => { saved[key] = s.value; localStorage.setItem('cea_' + key, s.value); apply(); toast('Setting saved'); };
+    return h('div', { class: 'setting-row' }, h('div', {}, h('b', {}, label), h('div', { class: 'small muted' }, desc)), s);
+  };
+  apply();
+  return h('div', { class: 'stack' },
+    h('div', { class: 'row between' }, h('div', {}, h('h1', {}, 'Settings'), h('p', { class: 'muted' }, 'Manage your app experience and AI status.')), h('a', { class: 'btn sm', href: '#/profile' }, 'Profile')),
+    h('div', { class: 'card stack' },
+      h('div', { class: 'row between' }, h('div', {}, h('h3', {}, 'AI Provider'), h('p', { class: 'small muted' }, r.ai_enabled ? 'Server-side AI is connected. API keys are never displayed.' : 'Add a server-side API key in Railway to enable AI.')), r.ai_enabled ? h('span', { class: 'badge ok' }, 'Connected') : h('span', { class: 'badge bad' }, 'Not configured')),
+      h('div', { class: 'grid g2' },
+        h('div', {}, h('div', { class: 'small muted' }, 'Provider'), h('b', {}, r.ai_provider || 'Not configured')),
+        h('div', {}, h('div', { class: 'small muted' }, 'Model'), h('b', {}, r.ai_model || '—'))
+      ),
+      h('div', { class: 'info' }, 'Gemini Developer API has an available Free Tier. Google controls quotas and rate limits, which can change.')
+    ),
+    h('div', { class: 'card stack' },
+      h('h3', {}, 'Interface'),
+      field('Appearance', 'theme', 'Choose the app theme.', [['system', 'System default'], ['light', 'Light'], ['dark', 'Dark']]),
+      field('Layout density', 'density', 'Compact or comfortable spacing.', [['comfortable', 'Comfortable'], ['compact', 'Compact']]),
+      field('AI answer style', 'answer', 'Save your preferred explanation style for future UI enhancements.', [['balanced', 'Balanced'], ['concise', 'Concise'], ['detailed', 'Detailed']])
+    ),
+    h('div', { class: 'card stack' },
+      h('h3', {}, 'Preparation settings'),
+      h('p', { class: 'muted' }, 'Exam, target date, level, daily study time and stage are managed from Profile.'),
+      h('a', { class: 'btn primary', style: 'align-self:flex-start', href: '#/profile' }, 'Open Profile')
+    ),
+    h('div', { class: 'card' }, h('h3', {}, 'Security'), h('p', { class: 'small muted' }, 'AI keys remain on the server. Never paste an API key into a public page or client-side JavaScript. Verified PYQs remain separate from AI Generated Practice.'))
+  );
 }
 
 // ---------- library ----------
