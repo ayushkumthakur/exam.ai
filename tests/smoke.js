@@ -10,12 +10,24 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
 (async () => {
   const email = `s${Date.now()}@test.com`;
   ok((await api('GET', '/api/home')).status === 401, 'unauthenticated home blocked');
-  let r = await api('POST', '/api/auth/send-otp', { email: 'bad' }); ok(r.status === 400, 'invalid email rejected');
-  r = await api('POST', '/api/auth/send-otp', { email }); ok(r.status === 200 && r.data.dev_otp, 'send otp');
+  let r = await api('POST', '/api/auth/send-otp', { email: 'bad', purpose: 'signup' }); ok(r.status === 400, 'invalid email rejected');
+  r = await api('POST', '/api/auth/send-otp', { email, purpose: 'signup' }); ok(r.status === 200 && r.data.dev_otp, 'send signup otp');
   const code = r.data.dev_otp;
-  r = await api('POST', '/api/auth/send-otp', { email }); ok(r.status === 429, 'resend throttled');
-  r = await api('POST', '/api/auth/verify-otp', { email, code: code === '000000' ? '111111' : '000000' }); ok(r.status === 400, 'wrong otp rejected');
-  r = await api('POST', '/api/auth/verify-otp', { email, code }); ok(r.status === 200 && r.data.is_new, 'verify otp -> new user');
+  r = await api('POST', '/api/auth/send-otp', { email, purpose: 'signup' }); ok(r.status === 429, 'resend throttled');
+  r = await api('POST', '/api/auth/verify-otp', { email, code: code === '000000' ? '111111' : '000000', purpose: 'signup' }); ok(r.status === 400, 'wrong otp rejected');
+  r = await api('POST', '/api/auth/verify-otp', { email, code, purpose: 'signup' }); ok(r.status === 200 && r.data.is_new && r.data.needs_password, 'verify otp -> new user + password setup');
+  r = await api('POST', '/api/auth/set-password', { password: 'TestPass123!', confirm_password: 'TestPass123!' }); ok(r.status === 200, 'set password');
+  r = await api('POST', '/api/auth/logout', {}); r = await api('GET', '/api/me'); ok(r.data.user === null, 'logout after signup');
+  r = await api('POST', '/api/auth/login', { email, password: 'wrong-pass' }); ok(r.status === 401 && r.data.code === 'INVALID_LOGIN', 'wrong password rejected');
+  r = await api('POST', '/api/auth/login', { email, password: 'TestPass123!' }); ok(r.status === 200 && r.data.user.email === email, 'password login works');
+  r = await api('POST', '/api/auth/logout', {});
+  r = await api('POST', '/api/auth/send-otp', { email, purpose: 'reset' }); ok(r.status === 200 && r.data.dev_otp, 'send reset otp');
+  const resetCode = r.data.dev_otp;
+  r = await api('POST', '/api/auth/verify-otp', { email, code: resetCode, purpose: 'reset' }); ok(r.status === 200 && r.data.needs_password, 'reset otp verified');
+  r = await api('POST', '/api/auth/set-password', { password: 'NewPass123!', confirm_password: 'NewPass123!' }); ok(r.status === 200, 'reset password');
+  r = await api('POST', '/api/auth/logout', {});
+  r = await api('POST', '/api/auth/login', { email, password: 'NewPass123!' }); ok(r.status === 200, 'new password login works');
+
   ok((await api('GET', '/api/home')).status === 409, 'home blocked until onboarding');
   ok((await api('GET', '/api/admin/stats')).status === 403, 'student cannot reach admin');
   const fut = new Date(Date.now() + 120 * 864e5).toISOString().slice(0, 10);
