@@ -1,23 +1,87 @@
-// AI layer: Gemini Developer API first (free-tier friendly), Anthropic fallback.
-// API keys stay server-side in Railway and are never exposed to the browser.
+// AI layer: Gemini Developer API first, with Anthropic fallback.
+// API keys are server-side only.
 const PROVIDER = () => (process.env.AI_PROVIDER || 'gemini').toLowerCase();
 const GEMINI_KEY = () => process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = () => process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const GEMINI_MODEL = () => process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const ANTHROPIC_KEY = () => process.env.ANTHROPIC_API_KEY;
 const ANTHROPIC_MODEL = () => process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 
 function activeProvider() {
   const p = PROVIDER();
   if (p === 'anthropic') return ANTHROPIC_KEY() ? 'anthropic' : (GEMINI_KEY() ? 'gemini' : null);
-  if (p === 'gemini') return GEMINI_KEY() ? 'gemini' : (ANTHROPIC_KEY() ? 'anthropic' : null);
   return GEMINI_KEY() ? 'gemini' : (ANTHROPIC_KEY() ? 'anthropic' : null);
 }
 const aiEnabled = () => !!activeProvider();
 const aiProvider = () => activeProvider() || PROVIDER();
 const aiModel = () => activeProvider() === 'anthropic' ? ANTHROPIC_MODEL() : GEMINI_MODEL();
 
+async function callGemini({ system, messages, maxTokens = 1500, timeoutMs = 45000 }) {
+  if (!GEMINI_KEY()) return { ok: false, error: 'AI_NOT_CONFIGURED' };
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const contents = (messages || []).map(m => {
+      const role = m.role === 'assistant' || m.role === 'model' ? 'model' : 'user';
+      const raw = Array.isArray(m.content) ? m.content : [{ type: 'text', text: String(m.content ?? '') }];
+      const parts = [];
+      for (const b of raw) {
+        if (!b) continue;
+        if (b.type === 'text') parts.push({ text: String(b.text || '') });
+        else if ((b.type === 'image' || b.type === 'document') && b.source?.type === 'base64') {
+          parts.push({ inline_data: { mime_type: b.source.media_type, data: b.source.data } });
+        }
+      }
+      return { role, parts: parts.length ? parts : [{ text: '' }] };
+    });
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+      encodeURIComponent(GEMINI_MODEL()) + ':generateContent';
+    const response = await fetch(url, {
+      method: 'POST', signal: ctl.signal,
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_KEY() },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: String(system || '') }] },
+        contents,
+        generationConfig: { maxOutputTokens: Math.min(12000, Math.max(256, +maxTokens || 1500)), temperature: 0.15, responseMimeType: 'text/plain' }
+      })
+    });
+    if (!response.ok) return { ok: false, error: 'AI_HTTP_' + response.status };
+    const j = await response.json();
+    const text = (j.candidates || []).flatMap(x => x.content?.parts || []).map(x => x.text || '').join('\n').trim();
+    if (!text) return { ok: false, error: 'AI_EMPTY' };
+    return { ok: true, text, provider: 'gemini', model: GEMINI_MODEL() };
+  } catch (e) {
+    return { ok: false, error: e.name === 'AbortError' ? 'AI_TIMEOUT' : 'AI_NETWORK' };
+  } finally { clearTimeout(t); }
+}
+
+async function callAnthropic({ system, messages, maxTokens = 1500, timeoutMs = 45000 }) {
+  if (!ANTHROPIC_KEY()) return { ok: false, error: 'AI_NOT_CONFIGURED' };
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', signal: ctl.signal,
+      headers: { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_KEY(), 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: ANTHROPIC_MODEL(), max_tokens: maxTokens, system, messages })
+    });
+    if (!r.ok) return { ok: false, error: 'AI_HTTP_' + r.status };
+    const j = await r.json();
+    const text = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    if (!text) return { ok: false, error: 'AI_EMPTY' };
+    return { ok: true, text, provider: 'anthropic', model: ANTHROPIC_MODEL() };
+  } catch (e) {
+    return { ok: false, error: e.name === 'AbortError' ? 'AI_TIMEOUT' : 'AI_NETWORK' };
+  } finally { clearTimeout(t); }
+}
+
+async function callClaude(opts) {
+  const p = activeProvider();
+  if (!p) return { ok: false, error: 'AI_NOT_CONFIGURED' };
+  return p === 'gemini' ? callGemini(opts) : callAnthropic(opts);
+}
+
 const FRIENDLY = {
-  AI_NOT_CONFIGURED: 'AI is not configured on this server yet. Add GEMINI_API_KEY in Railway (recommended) or an Anthropic key.',
+  AI_NOT_CONFIGURED: 'AI is not configured on this server yet. Add GEMINI_API_KEY in Railway (recommended).',
   AI_TIMEOUT: 'The AI took too long to respond. Please try again.',
 };
 const friendlyError = e => FRIENDLY[e] || 'Something went wrong while generating the answer.';
@@ -75,7 +139,7 @@ async function generateQuestions({ examName, subject, topic, difficulty, count, 
   const system = `You write exam-quality multiple-choice questions for ${examName} (India). Output ONLY a JSON array, no prose.
 Each item: {"text":string,"options":[4 distinct strings],"answer":index 0-3,"explanation":string (step-by-step, verified),"concept":string,"tip":string,"subject":"${subject}","topic":"${topic}","difficulty":"easy|medium|hard"}.
 Rules: exactly one correct option; verify all arithmetic before writing the answer; no ambiguous or unanswerable questions; no facts that change with time unless certain; do NOT claim these are real previous-year questions. Level of student: ${level || 'intermediate'}.${weakNote ? ' Focus: ' + weakNote : ''}`;
-  const r = await callClaude({ system, maxTokens: 3500, messages: [{ role: 'user', content: `Write ${count} ${difficulty} MCQs on ${subject} → ${topic}.` }] });
+  const r = await callClaude({ system, maxTokens: 3500, messages: [{ role: 'user', content: `Write ${count} ${difficulty} MCQs on ${subject} → ${topic}. Return valid JSON only.` }] });
   if (!r.ok) return r;
   const arr = extractJson(r.text);
   if (!Array.isArray(arr)) return { ok: false, error: 'AI_INVALID' };
@@ -84,4 +148,4 @@ Rules: exactly one correct option; verify all arithmetic before writing the answ
   return { ok: true, questions: good, dropped: arr.length - good.length };
 }
 
-module.exports = { callClaude, callGemini, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, extractJson, validateQuestion };
+module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, extractJson, validateQuestion };
