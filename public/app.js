@@ -133,39 +133,163 @@ function renderAuth() {
 
 // ---------- onboarding ----------
 function renderOnboarding() {
-  const d = { name: S.user.name || '', exam_id: S.user.exam_id || '', level: '', target_date: '', daily_minutes: 0, stage: 'Preparing' };
-  const app = $('#app'); const card = h('div', { class: 'card stack' }); app.replaceChildren(h('div', { class: 'auth' }, h('div', { style: 'width:100%;max-width:640px' }, card)));
-  const steps = (n) => h('div', { class: 'steps' }, [0, 1].map(i => h('i', { class: i <= n ? 'on' : '' })));
+  const d = { name: S.user.name || '', exam_id: S.user.exam_id || '', selected_subjects: [], level: '', target_date: '', daily_minutes: 0, stage: 'Preparing' };
+  const app = $('#app'); const card = h('div', { class: 'card stack' });
+  app.replaceChildren(h('div', { class: 'auth' }, h('div', { style: 'width:100%;max-width:760px' }, card)));
+
+  let step = 0;
+  const school = () => String(S.exams.find(e => e.id === d.exam_id)?.category || '').startsWith('School');
+  const selectedExam = () => S.exams.find(e => e.id === d.exam_id);
+  const steps = (n) => h('div', { class: 'steps' }, [0,1,2].map(i => h('i', { class: i <= n ? 'on' : '' })));
+
   function s1() {
-    let filter = '', cat = 'All'; const cats = ['All', ...new Set(S.exams.map(e => e.category))];
-    const grid = h('div', { class: 'examgrid', role: 'listbox' }), chips = h('div', { class: 'chips' }), next = h('button', { class: 'btn primary', disabled: !d.exam_id }, 'Continue');
-    const draw = () => {
-      chips.replaceChildren(...cats.map(c => h('button', { class: 'chip' + (c === cat ? ' on' : ''), onclick: () => { cat = c; draw(); } }, c)));
-      const list = S.exams.filter(e => (cat === 'All' || e.category === cat) && e.name.toLowerCase().includes(filter));
-      grid.replaceChildren(...(list.length ? list.map(e => h('button', { class: 'exam' + (e.id === d.exam_id ? ' on' : ''), role: 'option', 'aria-selected': e.id === d.exam_id, onclick: () => { d.exam_id = e.id; next.disabled = false; draw(); } }, h('b', {}, e.name), h('span', { class: 'small muted' }, e.category))) : [h('div', { class: 'empty' }, 'No exam matches your search.')]));
-    };
-    next.onclick = s2;
-    card.replaceChildren(h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'), steps(0), h('h1', {}, 'What are you preparing for?'), h('p', { class: 'muted' }, 'This shapes your syllabus, practice, tests and plan.'),
-      h('input', { type: 'search', placeholder: 'Search exams…', 'aria-label': 'Search exams', oninput: (e) => { filter = e.target.value.toLowerCase(); draw(); } }), chips, grid, h('div', { class: 'row', style: 'justify-content:flex-end' }, next)); draw();
+    let filter = '', cat = 'All';
+    const chips = h('div', { class: 'chips' });
+    const grid = h('div', { class: 'examgrid', role: 'listbox' });
+    const next = h('button', { class: 'btn primary', disabled: !d.exam_id }, 'Continue');
+
+    function categories() { return ['All', 'School · CBSE', 'Competitive Exams', ...new Set(S.exams.map(e => e.category).filter(x => !x.startsWith('School')))]; }
+    function inCat(e) {
+      if (cat === 'All') return true;
+      if (cat === 'School · CBSE') return e.category.startsWith('School');
+      if (cat === 'Competitive Exams') return !e.category.startsWith('School');
+      return e.category === cat;
+    }
+    function draw() {
+      chips.replaceChildren(...categories().map(c => h('button', {
+        class: 'chip' + (c === cat ? ' on' : ''),
+        onclick: () => { cat = c; draw(); }
+      }, c)));
+      const list = S.exams.filter(e => inCat(e) && e.name.toLowerCase().includes(filter));
+      grid.replaceChildren(...(list.length ? list.map(e => h('button', {
+        class: 'exam' + (e.id === d.exam_id ? ' on' : ''),
+        role: 'option',
+        'aria-selected': e.id === d.exam_id,
+        onclick: () => {
+          d.exam_id = e.id;
+          d.selected_subjects = [];
+          next.disabled = false;
+          draw();
+        }
+      }, h('b', {}, e.name), h('span', { class: 'small muted' }, e.category))) :
+        [h('div', { class: 'empty' }, 'No exam or class matches your search.')]));
+    }
+
+    next.onclick = () => school() ? s2Subjects() : s3Profile();
+    card.replaceChildren(
+      h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'),
+      steps(0),
+      h('h1', {}, 'Choose your exam / class first'),
+      h('p', { class: 'muted' }, 'This is your main preference. It controls the syllabus, subjects, questions, tests, PYQ hub and study plan.'),
+      h('input', { type: 'search', placeholder: 'Search NDA, SSC, CBSE Class 9, Class 11 Science, Commerce…', 'aria-label': 'Search exam or class', oninput: e => { filter = e.target.value.toLowerCase(); draw(); } }),
+      chips, grid,
+      h('div', { class: 'row', style: 'justify-content:flex-end' }, next)
+    );
+    draw();
   }
-  function s2() {
-    const err = h('div'), min = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
-    const pick = (opts, key, fmt) => h('div', { class: 'chips' }, opts.map(o => { const b = h('button', { type: 'button', class: 'chip' + (d[key] === o ? ' on' : ''), onclick: () => { d[key] = o; b.parentNode.querySelectorAll('.chip').forEach(c => c.classList.remove('on')); b.classList.add('on'); } }, fmt ? fmt(o) : o); return b; }));
-    const name = h('input', { value: d.name, placeholder: 'Your name', maxlength: 60, autocomplete: 'given-name' }), date = h('input', { type: 'date', min, value: d.target_date });
+
+  function s2Subjects() {
+    const ex = selectedExam();
+    const available = ex ? ex.subjects : [];
+    if (!d.selected_subjects.length) d.selected_subjects = available.slice();
+    const err = h('div');
+    const selected = () => d.selected_subjects;
+    const subjectGrid = h('div', { class: 'grid g2' });
+    const count = h('span', { class: 'small muted' });
+
+    function draw() {
+      subjectGrid.replaceChildren(...available.map(sub => {
+        const on = selected().includes(sub);
+        return h('button', {
+          class: 'exam' + (on ? ' on' : ''),
+          onclick: () => {
+            if (on) d.selected_subjects = d.selected_subjects.filter(x => x !== sub);
+            else d.selected_subjects = [...d.selected_subjects, sub];
+            draw();
+          }
+        }, h('b', {}, sub), h('span', { class: 'small muted' }, on ? 'Selected' : 'Tap to select'));
+      }));
+      count.textContent = d.selected_subjects.length + ' subject(s) selected';
+    }
+
+    const next = h('button', { class: 'btn primary', onclick: () => {
+      err.replaceChildren();
+      if (!d.selected_subjects.length) {
+        err.append(h('div', { class: 'err' }, 'Select at least one subject.'));
+        return;
+      }
+      s3Profile();
+    }}, 'Continue');
+
+    card.replaceChildren(
+      h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'),
+      steps(1),
+      h('h1', {}, 'Choose your subjects'),
+      h('p', { class: 'muted' }, ex ? ex.name + ' · Select every subject you actually study. You can change this later in Profile.' : ''),
+      h('div', { class: 'row between' }, h('b', {}, 'Your subjects'), count),
+      subjectGrid, err,
+      h('div', { class: 'row between' }, h('button', { class: 'btn ghost', onclick: s1 }, '← Back'), next)
+    );
+    draw();
+  }
+
+  function s3Profile() {
+    const err = h('div');
+    const min = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+    const pick = (opts, key, fmt) => h('div', { class: 'chips' }, opts.map(o => {
+      const b = h('button', { type: 'button', class: 'chip' + (d[key] === o ? ' on' : ''), onclick: () => {
+        d[key] = o;
+        b.parentNode.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+        b.classList.add('on');
+      }}, fmt ? fmt(o) : o);
+      return b;
+    }));
+    const name = h('input', { value: d.name, placeholder: 'Your name', maxlength: 60, autocomplete: 'given-name' });
+    const date = h('input', { type: 'date', min, value: d.target_date });
     const finish = h('button', { class: 'btn primary', onclick: async () => {
       d.name = name.value.trim(); d.target_date = date.value; err.replaceChildren();
-      if (!d.name || !d.level || !d.target_date || !d.daily_minutes) { err.replaceChildren(h('div', { class: 'err' }, 'Please fill in your name, level, target date and daily study time.')); return; }
-      finish.disabled = true; try { const r = await post('/api/me/onboarding', d); S.user = r.user; planReady(); } catch (e) { err.replaceChildren(errBox(e)); finish.disabled = false; } } }, 'Create my plan');
-    card.replaceChildren(h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'), steps(1), h('h1', {}, 'A few quick details'),
-      h('label', {}, 'Your name'), name, h('label', {}, 'Preparation level'), pick(['Beginner', 'Intermediate', 'Advanced'], 'level'),
-      h('label', {}, 'Target exam date'), date, h('label', {}, 'Daily study time'), pick([60, 120, 180, 240, 300], 'daily_minutes', m => m === 300 ? '5+ hours' : m / 60 + (m === 60 ? ' hour' : ' hours')),
-      h('label', {}, 'Preparation stage (optional)'), pick(['Just Started', 'Preparing', 'Revision'], 'stage'), err,
-      h('div', { class: 'row between', style: 'margin-top:1rem' }, h('button', { class: 'btn ghost', onclick: s1 }, 'Back'), finish));
+      if (!d.name || !d.level || !d.target_date || !d.daily_minutes || (school() && !d.selected_subjects.length)) {
+        err.append(h('div', { class: 'err' }, 'Please complete your name, level, target date, daily study time and school subjects.'));
+        return;
+      }
+      finish.disabled = true;
+      try {
+        const r = await post('/api/me/onboarding', d);
+        S.user = r.user;
+        planReady();
+      } catch (e) {
+        err.replaceChildren(errBox(e));
+        finish.disabled = false;
+      }
+    }}, 'Create my plan');
+
+    card.replaceChildren(
+      h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'),
+      steps(school() ? 2 : 1),
+      h('h1', {}, 'A few quick details'),
+      h('label', {}, 'Your name'), name,
+      h('label', {}, 'Preparation level'), pick(['Beginner', 'Intermediate', 'Advanced'], 'level'),
+      h('label', {}, 'Target exam date'), date,
+      h('label', {}, 'Daily study time'), pick([60,120,180,240,300], 'daily_minutes', m => m === 300 ? '5+ hours' : m / 60 + (m === 60 ? ' hour' : ' hours')),
+      h('label', {}, 'Preparation stage (optional)'), pick(['Just Started', 'Preparing', 'Revision'], 'stage'),
+      err,
+      h('div', { class: 'row between', style: 'margin-top:1rem' },
+        h('button', { class: 'btn ghost', onclick: school() ? s2Subjects : s1 }, '← Back'),
+        finish
+      )
+    );
   }
+
   function planReady() {
-    card.replaceChildren(h('div', { class: 'center stack', style: 'padding:1.5rem 0' }, h('div', { style: 'font-size:3rem' }, '🎯'), h('h1', {}, 'Your preparation plan is ready!'), h('p', { class: 'muted' }, 'Personalised for ' + S.exams.find(e => e.id === S.user.exam_id).name),
-      h('button', { class: 'btn primary', onclick: () => { location.hash = '#/home'; route(); } }, 'Go to my dashboard')));
+    const ex = selectedExam();
+    card.replaceChildren(h('div', { class: 'center stack', style: 'padding:1.5rem 0' },
+      h('div', { style: 'font-size:3rem' }, '🎯'),
+      h('h1', {}, 'Your preparation plan is ready!'),
+      h('p', { class: 'muted' }, 'Personalised for ' + (ex ? ex.name : 'your selection')),
+      h('button', { class: 'btn primary', onclick: () => { location.hash = '#/home'; route(); } }, 'Go to my dashboard')
+    ));
   }
+
   s1();
 }
 
