@@ -3,6 +3,15 @@
 // an admin must confirm them against the official notification.
 
 const TOPICS = {
+  Science: ['Matter and Its Nature','Atoms and Molecules','Cell and Tissues','Life Processes','Motion','Force and Laws of Motion','Gravitation','Work Energy and Power','Sound','Light','Electricity','Magnetic Effects','Our Environment','Natural Resources'],
+  'English Language & Literature': ['Reading','Grammar','Writing Skills','Literature'],
+  'English Core': ['Reading Comprehension','Creative Writing','Literature'],
+  'Hindi A': ['अपठित बोध','व्याकरण','लेखन','क्षितिज','कृतिका'],
+  'Hindi B': ['अपठित बोध','व्याकरण','लेखन','स्पर्श','संचयन'],
+  'Hindi Core': ['अपठित बोध','अभिव्यक्ति और माध्यम','आरोह','वितान'],
+  'Legal Studies': ['Judiciary','Constitutional Law','Legal Institutions','Contracts','Torts','Family Law','Criminal Law Basics'],
+  Sanskrit: ['शब्दरूप','धातुरूप','सन्धि','समास','अनुवाद','गद्य','पद्य'],
+  'Political Science': ['Political Theory','Constitution at Work','Rights','Election and Representation','Executive','Legislature','Judiciary','Federalism','Local Governments','International Relations'],
   Hindi: ['अपठित बोध','व्याकरण','लेखन','गद्य','पद्य'],
   'Social Science': ['History','Geography','Political Science','Economics'],
   'Political Science': ['Constitution at Work','Political Theory','Indian Constitution','Executive & Legislature','Judiciary','Federalism'],
@@ -46,37 +55,44 @@ const P = (minutes, sections, note) => ({ minutes, sections, note: note || null 
 
 const EXAMS = [
   // School education — CBSE Classes IX-XII (2026-27 structures; individual school subject combinations may vary).
-  ['CBSE_IX','CBSE Class IX','School · CBSE',P(180,[
-    S('English',80,1,0),S('Hindi',80,1,0),S('Mathematics',80,1,0),S('Science',80,1,0),
-    S('Social Science',80,1,0),S('CT & AI',40,1,0),S('Individuals in Society',40,1,0)
+  // School education — CBSE Classes IX-XII. Students choose their own subjects after selecting class/stream.
+  ['CBSE_IX','CBSE Class IX','School · CBSE · Class 9',P(180,[
+    S('English Language & Literature',80,1,0),S('Hindi A',80,1,0),S('Hindi B',80,1,0),S('Mathematics',80,1,0),
+    S('Science',80,1,0),S('Social Science',80,1,0),S('Sanskrit',80,1,0),S('Computer Applications',50,1,0),S('CT & AI',40,1,0)
   ])],
-  ['CBSE_X','CBSE Class X','School · CBSE',P(180,[
-    S('English',80,1,0),S('Hindi',80,1,0),S('Mathematics',80,1,0),S('Science',80,1,0),
-    S('Social Science',80,1,0),S('Computer Applications',50,1,0)
+  ['CBSE_X','CBSE Class X','School · CBSE · Class 10',P(180,[
+    S('English Language & Literature',80,1,0),S('Hindi A',80,1,0),S('Hindi B',80,1,0),S('Mathematics',80,1,0),
+    S('Science',80,1,0),S('Social Science',80,1,0),S('Sanskrit',80,1,0),S('Computer Applications',50,1,0)
   ])],
-  ['CBSE_XI_SCIENCE','CBSE Class XI — Science','School · CBSE · Science',P(180,[
-    S('English',80,1,0),S('Physics',70,1,0),S('Chemistry',70,1,0),S('Mathematics',80,1,0),
-    S('Biology',70,1,0),S('Computer Science',70,1,0),S('Informatics Practices',70,1,0),S('Physical Education',50,1,0)
+  ['CBSE_XI_SCIENCE','CBSE Class XI — Science','School · CBSE · Class 11 · Science',P(180,[
+    S('English Core',80,1,0),S('Physics',70,1,0),S('Chemistry',70,1,0),S('Mathematics',80,1,0),
+    S('Applied Mathematics',80,1,0),S('Biology',70,1,0),S('Computer Science',70,1,0),S('Informatics Practices',70,1,0),
+    S('Physical Education',50,1,0),S('Hindi Core',80,1,0)
   ])],
-  ['CBSE_XII_SCIENCE','CBSE Class XII — Science','School · CBSE · Science',P(180,[
-    S('English',80,1,0),S('Physics',70,1,0),S('Chemistry',70,1,0),S('Mathematics',80,1,0),
-    S('Biology',70,1,0),S('Computer Science',70,1,0),S('Informatics Practices',70,1,0),S('Physical Education',50,1,0)
+  ['CBSE_XII_SCIENCE','CBSE Class XII — Science','School · CBSE · Class 12 · Science',P(180,[
+    S('English Core',80,1,0),S('Physics',70,1,0),S('Chemistry',70,1,0),S('Mathematics',80,1,0),
+    S('Applied Mathematics',80,1,0),S('Biology',70,1,0),S('Computer Science',70,1,0),S('Informatics Practices',70,1,0),
+    S('Physical Education',50,1,0),S('Hindi Core',80,1,0)
   ])],
-  ['CBSE_XI_COMMERCE','CBSE Class XI — Commerce','School · CBSE · Commerce',P(180,[
-    S('English',80,1,0),S('Accountancy',80,1,0),S('Business Studies',80,1,0),S('Economics',80,1,0),
-    S('Mathematics',80,1,0),S('Applied Mathematics',80,1,0),S('Entrepreneurship',60,1,0),S('Informatics Practices',70,1,0),S('Physical Education',50,1,0)
+  ['CBSE_XI_COMMERCE','CBSE Class XI — Commerce','School · CBSE · Class 11 · Commerce',P(180,[
+    S('English Core',80,1,0),S('Accountancy',80,1,0),S('Business Studies',80,1,0),S('Economics',80,1,0),
+    S('Mathematics',80,1,0),S('Applied Mathematics',80,1,0),S('Entrepreneurship',60,1,0),S('Informatics Practices',70,1,0),
+    S('Computer Science',70,1,0),S('Physical Education',50,1,0),S('Hindi Core',80,1,0)
   ])],
-  ['CBSE_XII_COMMERCE','CBSE Class XII — Commerce','School · CBSE · Commerce',P(180,[
-    S('English',80,1,0),S('Accountancy',80,1,0),S('Business Studies',80,1,0),S('Economics',80,1,0),
-    S('Mathematics',80,1,0),S('Applied Mathematics',80,1,0),S('Entrepreneurship',60,1,0),S('Informatics Practices',70,1,0),S('Physical Education',50,1,0)
+  ['CBSE_XII_COMMERCE','CBSE Class XII — Commerce','School · CBSE · Class 12 · Commerce',P(180,[
+    S('English Core',80,1,0),S('Accountancy',80,1,0),S('Business Studies',80,1,0),S('Economics',80,1,0),
+    S('Mathematics',80,1,0),S('Applied Mathematics',80,1,0),S('Entrepreneurship',60,1,0),S('Informatics Practices',70,1,0),
+    S('Computer Science',70,1,0),S('Physical Education',50,1,0),S('Hindi Core',80,1,0)
   ])],
-  ['CBSE_XI_HUMANITIES','CBSE Class XI — Humanities / Arts','School · CBSE · Humanities',P(180,[
-    S('English',80,1,0),S('History',80,1,0),S('Political Science',80,1,0),S('Geography',80,1,0),
-    S('Economics',80,1,0),S('Sociology',80,1,0),S('Psychology',80,1,0),S('Fine Arts',60,1,0),S('Physical Education',50,1,0)
+  ['CBSE_XI_HUMANITIES','CBSE Class XI — Humanities / Arts','School · CBSE · Class 11 · Humanities',P(180,[
+    S('English Core',80,1,0),S('History',80,1,0),S('Political Science',80,1,0),S('Geography',80,1,0),
+    S('Economics',80,1,0),S('Sociology',80,1,0),S('Psychology',80,1,0),S('Legal Studies',80,1,0),
+    S('Fine Arts',60,1,0),S('Physical Education',50,1,0),S('Hindi Core',80,1,0)
   ])],
-  ['CBSE_XII_HUMANITIES','CBSE Class XII — Humanities / Arts','School · CBSE · Humanities',P(180,[
-    S('English',80,1,0),S('History',80,1,0),S('Political Science',80,1,0),S('Geography',80,1,0),
-    S('Economics',80,1,0),S('Sociology',80,1,0),S('Psychology',80,1,0),S('Fine Arts',60,1,0),S('Physical Education',50,1,0)
+  ['CBSE_XII_HUMANITIES','CBSE Class XII — Humanities / Arts','School · CBSE · Class 12 · Humanities',P(180,[
+    S('English Core',80,1,0),S('History',80,1,0),S('Political Science',80,1,0),S('Geography',80,1,0),
+    S('Economics',80,1,0),S('Sociology',80,1,0),S('Psychology',80,1,0),S('Legal Studies',80,1,0),
+    S('Fine Arts',60,1,0),S('Physical Education',50,1,0),S('Hindi Core',80,1,0)
   ])],
   // Defence
   ['NDA','NDA (National Defence Academy)','Defence',P(300,[S('Mathematics',120,2.5,0.833),S('English',50,4,1.333),S('General Awareness',100,4,1.333)])],
