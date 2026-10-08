@@ -1,13 +1,19 @@
 const fs = require('fs');
-const vm = require('vm');
+const path = require('path');
 
-const sourcePath = require.resolve('./server.js');
-let s = fs.readFileSync(sourcePath, 'utf8');
+const p = path.join(__dirname, 'server.js');
+let s = fs.readFileSync(p, 'utf8');
 
-// Repair the malformed hashPassword helper introduced by the broken commit.
+function replaceOrThrow(find, repl, label) {
+  const next = s.replace(find, repl);
+  if (next === s) throw new Error('Boot repair failed: ' + label);
+  s = next;
+}
+
+// Repair the malformed hashPassword block.
 const hs = s.indexOf('function hashPassword(password) {');
 const he = s.indexOf('function getUser(req) {', hs);
-if (hs < 0 || he < 0) throw new Error('Cannot locate auth helper block');
+if (hs < 0 || he < 0) throw new Error('Boot repair failed: auth helper block not found');
 s = s.slice(0, hs) + `function hashPassword(password) {
   const salt = crypto.randomBytes(16);
   const derived = crypto.scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1 });
@@ -25,20 +31,10 @@ function verifyPassword(stored, password) {
 }
 ` + s.slice(he);
 
-// Make OTP verification tell the frontend when a password must be created/reset.
-s = s.replace(
-  'const email = String(c.body.email || \'\').trim().toLowerCase(), code = String(c.body.code || \'\').trim();',
-  'const email = String(c.body.email || \'\').trim().toLowerCase(), code = String(c.body.code || \'\').trim(), purpose = String(c.body.purpose || \'signup\');'
-);
-s = s.replace(
-  'return { user: meJson(u), is_new: isNew };',
-  'return { user: meJson(u), is_new: isNew, needs_password: purpose === \'reset\' || !u.password_hash };'
-);
-
-// Add password login and password setup routes before logout.
-const logoutMarker = `route('POST', '/api/auth/logout'`;
-if (!s.includes('/api/auth/login')) {
-  const authRoutes = `
+// Password login/setup routes are missing from the damaged server; restore them.
+const logoutMarker = "route('POST', '/api/auth/logout'";
+if (!s.includes("/api/auth/login")) {
+  const auth = `
 route('POST', '/api/auth/login', {}, (c) => {
   const email = String(c.body.email || '').trim().toLowerCase();
   const password = String(c.body.password || '');
@@ -59,26 +55,37 @@ route('POST', '/api/auth/set-password', A, (c) => {
 });
 `;
   const pos = s.indexOf(logoutMarker);
-  if (pos < 0) throw new Error('Cannot locate logout route');
-  s = s.slice(0, pos) + authRoutes + s.slice(pos);
+  if (pos < 0) throw new Error('Boot repair failed: logout route not found');
+  s = s.slice(0, pos) + auth + s.slice(pos);
 }
 
-// Enforce the 20-question minimum for normal tests.
-s = s.replace(
-  'const count = Math.min(Math.max(+b.count || 10, 1), 100);',
-  'const count = Math.min(Math.max(+b.count || 20, 20), 100);'
+// Make OTP verification communicate that password creation/reset is required.
+replaceOrThrow(
+  "const email = String(c.body.email || '').trim().toLowerCase(), code = String(c.body.code || '').trim();",
+  "const email = String(c.body.email || '').trim().toLowerCase(), code = String(c.body.code || '').trim(), purpose = String(c.body.purpose || 'signup');",
+  'OTP purpose'
 );
-s = s.replace(
-  'const requestedTotal = Math.min(100, Math.max(1, +b.count || patternTotal));',
-  'const requestedTotal = kind === \'sectional\' ? Math.max(20, patternTotal) : patternTotal;'
-);
-
-// Verified PYQ tests must have at least 20 verified questions; never fabricate missing PYQs.
-s = s.replace(
-  `if (!qs.length) throw bad('No verified previous-year questions have been added for your exam yet.');`,
-  `if (!qs.length) throw bad('No verified previous-year questions have been added for your exam yet.');
-    if (qs.length < 20) throw bad('This verified PYQ selection has fewer than 20 questions. Add the complete paper before starting a PYQ test.');`
+replaceOrThrow(
+  "return { user: meJson(u), is_new: isNew };",
+  "return { user: meJson(u), is_new: isNew, needs_password: purpose === 'reset' || !u.password_hash };",
+  'OTP password flag'
 );
 
-// Run the repaired source from memory without modifying the repository copy.
-vm.runInThisContext(s, { filename: sourcePath });
+// Enforce 20 questions for ordinary generated tests; full mocks stay tied to the exam pattern.
+s = s.replace(
+  "const count = Math.min(Math.max(+b.count || 10, 1), 100);",
+  "const count = Math.min(Math.max(+b.count || 20, 20), 100);"
+);
+s = s.replace(
+  "const requestedTotal = Math.min(100, Math.max(1, +b.count || patternTotal));",
+  "const requestedTotal = kind === 'sectional' ? Math.max(20, patternTotal) : patternTotal;"
+);
+
+// Verified PYQ tests must never be fabricated and must contain at least 20 verified questions.
+const pyqNeedle = "if (!qs.length) throw bad('No verified previous-year questions have been added for your exam yet.');";
+if (s.includes(pyqNeedle) && !s.includes("This verified PYQ selection has fewer than 20 questions")) {
+  s = s.replace(pyqNeedle, pyqNeedle + "\n    if (qs.length < 20) throw bad('This verified PYQ selection has fewer than 20 questions. Add the complete paper before starting a PYQ test.');");
+}
+
+fs.writeFileSync(p, s);
+require('./server.js');
