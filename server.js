@@ -64,7 +64,8 @@ function rateLimit(key, max, windowMs) {
   arr.push(t); mem.sendLog.set(key, arr);
 }
 async function sendEmail(to, code) {
-  const key = process.env.RESEND_API_KEY, from = process.env.MAIL_FROM;
+  // Support the exact Railway variable name plus a lowercase alias that may have been entered by mistake.
+  const key = process.env.RESEND_API_KEY || process.env.resend_api_key, from = process.env.MAIL_FROM;
   if (!key || !from) { console.log(`[DEV] OTP for ${to}: ${code}`); return { dev: true }; }
   try {
     const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json' },
