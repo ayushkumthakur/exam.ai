@@ -86,6 +86,12 @@ CREATE TABLE IF NOT EXISTS plan_done (
 // ---- Seed ----
 const now = () => Date.now();
 
+// Remove any earlier entries that did not pass the latest source-verification pass.
+db.prepare("DELETE FROM current_affairs WHERE title IN (?,?)").run(
+  'GSLV-F17 launched EOS-05 on 4 September 2026',
+  'India crosses 299 GW of total renewable energy capacity'
+);
+
 // Seed verified current affairs without requiring a destructive DB reset.
 for (const x of CA_SEED) {
   const exists = db.prepare('SELECT id FROM current_affairs WHERE title=? AND event_date=?').get(x.title, x.event_date);
