@@ -1,31 +1,87 @@
-// AI layer: Anthropic Messages API via fetch, hard timeouts, strict output validation, never throws to callers
-// (callers get {ok:false, error}). Without ANTHROPIC_API_KEY the app still works; AI features degrade gracefully.
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
-const KEY = () => process.env.ANTHROPIC_API_KEY;
-const aiEnabled = () => !!KEY();
+// AI layer: Gemini Developer API first, with Anthropic fallback.
+// API keys are server-side only.
+const PROVIDER = () => (process.env.AI_PROVIDER || 'gemini').toLowerCase();
+const GEMINI_KEY = () => process.env.GEMINI_API_KEY;
+const GEMINI_MODEL = () => process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+const ANTHROPIC_KEY = () => process.env.ANTHROPIC_API_KEY;
+const ANTHROPIC_MODEL = () => process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 
-async function callClaude({ system, messages, maxTokens = 1500, timeoutMs = 45000 }) {
-  if (!KEY()) return { ok: false, error: 'AI_NOT_CONFIGURED' };
+function activeProvider() {
+  const p = PROVIDER();
+  if (p === 'anthropic') return ANTHROPIC_KEY() ? 'anthropic' : (GEMINI_KEY() ? 'gemini' : null);
+  return GEMINI_KEY() ? 'gemini' : (ANTHROPIC_KEY() ? 'anthropic' : null);
+}
+const aiEnabled = () => !!activeProvider();
+const aiProvider = () => activeProvider() || PROVIDER();
+const aiModel = () => activeProvider() === 'anthropic' ? ANTHROPIC_MODEL() : GEMINI_MODEL();
+
+async function callGemini({ system, messages, maxTokens = 1500, timeoutMs = 45000 }) {
+  if (!GEMINI_KEY()) return { ok: false, error: 'AI_NOT_CONFIGURED' };
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', signal: ctl.signal,
-      headers: { 'content-type': 'application/json', 'x-api-key': KEY(), 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, system, messages }),
+    const contents = (messages || []).map(m => {
+      const role = m.role === 'assistant' || m.role === 'model' ? 'model' : 'user';
+      const raw = Array.isArray(m.content) ? m.content : [{ type: 'text', text: String(m.content ?? '') }];
+      const parts = [];
+      for (const b of raw) {
+        if (!b) continue;
+        if (b.type === 'text') parts.push({ text: String(b.text || '') });
+        else if ((b.type === 'image' || b.type === 'document') && b.source?.type === 'base64') {
+          parts.push({ inline_data: { mime_type: b.source.media_type, data: b.source.data } });
+        }
+      }
+      return { role, parts: parts.length ? parts : [{ text: '' }] };
     });
-    if (!r.ok) return { ok: false, error: 'AI_HTTP_' + r.status };
-    const j = await r.json();
-    const text = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+      encodeURIComponent(GEMINI_MODEL()) + ':generateContent';
+    const response = await fetch(url, {
+      method: 'POST', signal: ctl.signal,
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_KEY() },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: String(system || '') }] },
+        contents,
+        generationConfig: { maxOutputTokens: Math.min(12000, Math.max(256, +maxTokens || 1500)) }
+      })
+    });
+    if (!response.ok) return { ok: false, error: 'AI_HTTP_' + response.status };
+    const j = await response.json();
+    const text = (j.candidates || []).flatMap(x => x.content?.parts || []).map(x => x.text || '').join('\n').trim();
     if (!text) return { ok: false, error: 'AI_EMPTY' };
-    return { ok: true, text };
+    return { ok: true, text, provider: 'gemini', model: GEMINI_MODEL() };
   } catch (e) {
     return { ok: false, error: e.name === 'AbortError' ? 'AI_TIMEOUT' : 'AI_NETWORK' };
   } finally { clearTimeout(t); }
 }
 
+async function callAnthropic({ system, messages, maxTokens = 1500, timeoutMs = 45000 }) {
+  if (!ANTHROPIC_KEY()) return { ok: false, error: 'AI_NOT_CONFIGURED' };
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', signal: ctl.signal,
+      headers: { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_KEY(), 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: ANTHROPIC_MODEL(), max_tokens: maxTokens, system, messages })
+    });
+    if (!r.ok) return { ok: false, error: 'AI_HTTP_' + r.status };
+    const j = await r.json();
+    const text = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    if (!text) return { ok: false, error: 'AI_EMPTY' };
+    return { ok: true, text, provider: 'anthropic', model: ANTHROPIC_MODEL() };
+  } catch (e) {
+    return { ok: false, error: e.name === 'AbortError' ? 'AI_TIMEOUT' : 'AI_NETWORK' };
+  } finally { clearTimeout(t); }
+}
+
+async function callClaude(opts) {
+  const p = activeProvider();
+  if (!p) return { ok: false, error: 'AI_NOT_CONFIGURED' };
+  return p === 'gemini' ? callGemini(opts) : callAnthropic(opts);
+}
+
 const FRIENDLY = {
-  AI_NOT_CONFIGURED: 'The AI is not configured on this server yet (ask the admin to set ANTHROPIC_API_KEY).',
+  AI_NOT_CONFIGURED: 'AI is not configured on this server yet. Add GEMINI_API_KEY in Railway (recommended).',
   AI_TIMEOUT: 'The AI took too long to respond. Please try again.',
 };
 const friendlyError = e => FRIENDLY[e] || 'Something went wrong while generating the answer.';
@@ -92,4 +148,4 @@ Rules: exactly one correct option; verify all arithmetic before writing the answ
   return { ok: true, questions: good, dropped: arr.length - good.length };
 }
 
-module.exports = { callClaude, aiEnabled, friendlyError, TUTOR_SYSTEM, generateQuestions, extractJson, validateQuestion };
+module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, extractJson, validateQuestion };
