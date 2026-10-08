@@ -396,6 +396,56 @@ function mediaBlocks(files) {
   return blocks;
 }
 
+// ---------- automatic current-affairs refresh ----------
+let caRefreshPromise = null;
+const CA_AUTO_REFRESH_MS = 12 * 60 * 60 * 1000;
+
+function caLastRefresh() {
+  const r = db.prepare("SELECT value FROM app_meta WHERE key='ca_last_auto_refresh'").get();
+  return r ? +r.value || 0 : 0;
+}
+function setCaLastRefresh(t = now()) {
+  db.prepare("INSERT INTO app_meta (key,value) VALUES ('ca_last_auto_refresh',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(String(t));
+}
+function hasCurrentAffairs(examId) {
+  return !!db.prepare("SELECT 1 FROM current_affairs WHERE (exams='ALL' OR (',' || exams || ',') LIKE ?) LIMIT 1").get('%,' + examId + ',%');
+}
+async function autoRefreshCurrentAffairs(force = false) {
+  if (!ai.aiEnabled() || ai.aiProvider() !== 'gemini') return { ok: false, skipped: true, reason: 'grounded_gemini_required' };
+  const last = caLastRefresh();
+  if (!force && last && now() - last < CA_AUTO_REFRESH_MS) return { ok: true, skipped: true, last_refresh: last };
+  if (caRefreshPromise) return caRefreshPromise;
+  caRefreshPromise = (async () => {
+    try {
+      const examIds = listExams().map(e => e.id);
+      const r = await ai.generateCurrentAffairs({ today: dayStr(), days: 14, examList: examIds, maxItems: 15 });
+      if (!r.ok) return { ok: false, error: r.error };
+      const inserted = [], skipped = [];
+      for (const x of r.items || []) {
+        try {
+          const exists = db.prepare('SELECT id FROM current_affairs WHERE title=? AND event_date=?').get(x.title, x.event_date);
+          if (exists) { skipped.push(x.title); continue; }
+          const exams = ',' + [...new Set(x.exams)].join(',') + ',';
+          const id = db.prepare('INSERT INTO current_affairs (title,summary,category,exams,event_date,source,created_at) VALUES (?,?,?,?,?,?,?)')
+            .run(x.title, x.summary, x.category, exams, x.event_date, x.source_url, now()).lastInsertRowid;
+          inserted.push(Number(id));
+        } catch { skipped.push(x.title); }
+      }
+      setCaLastRefresh();
+      return { ok: true, inserted: inserted.length, skipped: skipped.length, last_refresh: caLastRefresh() };
+    } catch (e) {
+      return { ok: false, error: e.message || 'refresh_failed' };
+    } finally {
+      caRefreshPromise = null;
+    }
+  })();
+  return caRefreshPromise;
+}
+function startCurrentAffairsAutoRefresh() {
+  setTimeout(() => autoRefreshCurrentAffairs().catch(() => {}), 5000);
+  setInterval(() => autoRefreshCurrentAffairs().catch(() => {}), CA_AUTO_REFRESH_MS);
+}
+
 // ---------- routes ----------
 const routes = [];
 const route = (method, pat, opts, fn) => routes.push({ method, re: new RegExp('^' + pat.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), opts, fn });
@@ -644,11 +694,19 @@ route('GET', '/api/pyq/analysis', ONB, (c) => {
 });
 
 // Current affairs
-route('GET', '/api/ca', ONB, (c) => {
+route('GET', '/api/ca', ONB, async (c) => {
+  if (!hasCurrentAffairs(c.user.exam_id) || now() - caLastRefresh() >= CA_AUTO_REFRESH_MS) {
+    await autoRefreshCurrentAffairs().catch(() => {});
+  }
   const limit = Math.min(+c.query.limit || 20, 50), offset = +c.query.offset || 0, cat = c.query.category;
   let sql = "SELECT * FROM current_affairs WHERE (exams='ALL' OR (',' || exams || ',') LIKE ?)"; const p = ['%,' + c.user.exam_id + ',%'];
   if (cat) { sql += ' AND category=?'; p.push(cat); }
-  return { items: db.prepare(sql + " ORDER BY COALESCE(event_date,'') DESC, id DESC LIMIT ? OFFSET ?").all(...p, limit, offset), categories: CA_CATS };
+  return {
+    items: db.prepare(sql + " ORDER BY COALESCE(event_date,'') DESC, id DESC LIMIT ? OFFSET ?").all(...p, limit, offset),
+    categories: CA_CATS,
+    auto_updated_at: caLastRefresh() || null,
+    auto_update_enabled: ai.aiEnabled() && ai.aiProvider() === 'gemini'
+  };
 });
 const CA_CATS = ['National', 'International', 'Defence', 'Economy', 'Science & Technology', 'Environment', 'Sports', 'Awards', 'Appointments', 'Government Schemes', 'Important Days', 'Reports & Indexes', 'Books & Authors', 'Important Persons', 'Defence Exercises'];
 
@@ -918,7 +976,7 @@ const server = http.createServer(async (req, res) => {
 });
 process.on('uncaughtException', e => console.error('[uncaught]', e));
 process.on('unhandledRejection', e => console.error('[unhandled]', e));
-server.listen(PORT, () => console.log(`Competitive Exam AI running on http://localhost:${PORT}  (AI ${ai.aiEnabled() ? 'enabled' : 'NOT configured'})`));
+server.listen(PORT, () => { console.log(`Competitive Exam AI running on http://localhost:${PORT}  (AI ${ai.aiEnabled() ? 'enabled' : 'NOT configured'})`); startCurrentAffairsAutoRefresh(); });
 module.exports = { server }; + salt.toString('base64url') + '
 function newSession(res, userId) {
   const token = crypto.randomBytes(32).toString('base64url');
