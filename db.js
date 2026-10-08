@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS plan_done (
 `);
 
 // ---- Seed ----
+const now = () => Date.now();
 
 // Seed verified current affairs without requiring a destructive DB reset.
 for (const x of CA_SEED) {
@@ -92,7 +93,6 @@ for (const x of CA_SEED) {
     .run(x.title, x.summary, x.category, x.exams || 'ALL', x.event_date || null, x.source || null, now());
 }
 
-const now = () => Date.now();
 const examCount = db.prepare('SELECT COUNT(*) c FROM exams').get().c;
 if (examCount === 0) {
   const ins = db.prepare('INSERT INTO exams (id,name,category,pattern,verified) VALUES (?,?,?,?,?)');
