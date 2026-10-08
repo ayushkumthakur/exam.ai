@@ -75,6 +75,26 @@ async function sendEmail(to, code) {
   } catch (e) { throw new HttpError(502, 'We could not send the email right now. Please try again.'); }
 }
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
+function validatePassword(password, confirm) {
+  if (typeof password !== 'string' || password.length < 8) throw bad('Password must be at least 8 characters.');
+  if (password.length > 128) throw bad('Password must be 128 characters or fewer.');
+  if (password !== confirm) throw bad('Passwords do not match.');
+}
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16);
+  const derived = crypto.scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1 });
+  return 'scrypt:' + salt.toString('base64url') + ':' + derived.toString('base64url');
+}
+function verifyPassword(stored, password) {
+  try {
+    const [scheme, saltText, hashText] = String(stored || '').split(':');
+    if (scheme !== 'scrypt' || !saltText || !hashText) return false;
+    const salt = Buffer.from(saltText, 'base64url');
+    const expected = Buffer.from(hashText, 'base64url');
+    const actual = crypto.scryptSync(password, salt, expected.length, { N: 16384, r: 8, p: 1 });
+    return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+  } catch { return false; }
+}
 function newSession(res, userId) {
   const token = crypto.randomBytes(32).toString('base64url');
   db.prepare('INSERT INTO sessions (token_hash,user_id,expires_at) VALUES (?,?,?)').run(sha(token), userId, now() + 30 * DAY);
@@ -184,7 +204,7 @@ function pickQuestions(user, exam, { subject, topic, difficulty, source, ids, li
 
 async function buildTest(user, exam, b) {
   const kind = b.kind, per = marking(exam); let qs = [], title = '', minutes, notices = [];
-  const count = Math.min(Math.max(+b.count || 10, 1), 100);
+  const count = Math.min(Math.max(+b.count || 20, 20), 100);
   const diff = ['easy', 'medium', 'hard'].includes(b.difficulty) ? b.difficulty : 'any';
   const needSubject = () => { if (!exam.subjects.includes(b.subject)) throw bad('Please choose a subject from your exam.'); };
   const needTopic = () => { needSubject(); const s = exam.syllabus.find(x => x.subject === b.subject); if (!s.topics.includes(b.topic)) throw bad('Please choose a topic from your exam syllabus.'); };
@@ -192,19 +212,30 @@ async function buildTest(user, exam, b) {
 
   if (kind === 'full_mock' || kind === 'sectional') {
     const secs = kind === 'sectional' ? (needSubject(), exam.pattern.sections.filter(s => s.subject === b.subject)) : exam.pattern.sections;
-    let want = 0;
-    for (const s of secs) {
-      const got = pickQuestions(user, exam, { subject: s.subject, difficulty: diff, excludeSources: ['VERIFIED_PYQ'], limit: s.questions });
-      want += s.questions; qs.push(...got);
-      if (got.length < s.questions) notices.push(`${s.subject}: ${got.length} of ${s.questions} pattern questions available in the question bank.`);
+    const patternTotal = secs.reduce((a, s) => a + s.questions, 0);
+    const requestedTotal = kind === 'sectional' ? Math.max(20, patternTotal) : patternTotal;
+    const targets = secs.map((s, i) => Math.max(1, Math.floor(requestedTotal * s.questions / patternTotal) + (i < (requestedTotal % secs.length) ? 1 : 0)));
+    for (let i = 0; i < secs.length; i++) {
+      const s = secs[i], target = targets[i];
+      let got = pickQuestions(user, exam, { subject: s.subject, difficulty: diff, excludeSources: ['VERIFIED_PYQ'], limit: target });
+      if (got.length < target) {
+        const extra = await aiFillQuestions(user, exam, s.subject, null, diff, target - got.length);
+        got = got.concat(extra);
+      }
+      qs.push(...got.slice(0, target));
+      if (got.length < target) notices.push(String(s.subject) + ': only ' + got.length + ' question(s) available after AI fill.');
     }
     if (!qs.length) throw bad('No questions are available yet for this selection.');
-    title = kind === 'full_mock' ? `${exam.name} Full Mock` : `${exam.name} ${b.subject} Sectional`;
-    minutes = b.minutes ? +b.minutes : Math.max(5, Math.round(secs.reduce((a, s) => a + s.questions, 0) && exam.pattern.minutes * (kind === 'sectional' ? secs[0].questions / exam.pattern.sections.reduce((a, s) => a + s.questions, 0) : 1) * qs.length / want));
+    title = kind === 'full_mock' ? exam.name + ' Full Mock' : exam.name + ' ' + b.subject + ' Sectional';
+    minutes = b.minutes ? +b.minutes : Math.max(5, Math.round((exam.pattern.minutes || 60) * qs.length / Math.max(patternTotal, 1)));
   } else if (kind === 'subject') {
-    needSubject(); qs = pickQuestions(user, exam, { subject: b.subject, difficulty: diff, limit: count }); title = `${b.subject} Test`;
+    needSubject(); qs = pickQuestions(user, exam, { subject: b.subject, difficulty: diff, limit: count });
+    if (qs.length < count) qs = qs.concat(await aiFillQuestions(user, exam, b.subject, null, diff, count - qs.length)).slice(0, count);
+    title = b.subject + ' Test';
   } else if (kind === 'topic') {
-    needTopic(); qs = pickQuestions(user, exam, { subject: b.subject, topic: b.topic, difficulty: diff, limit: count }); title = `${b.topic} Topic Test`;
+    needTopic(); qs = pickQuestions(user, exam, { subject: b.subject, topic: b.topic, difficulty: diff, limit: count });
+    if (qs.length < count) qs = qs.concat(await aiFillQuestions(user, exam, b.subject, b.topic, diff, count - qs.length)).slice(0, count);
+    title = b.topic + ' Topic Test';
   } else if (kind === 'weak_topic') {
     const w = weakTopics(user, exam, 3);
     if (!w.length) throw bad('No weak topics detected yet. Practise a few topics first (at least 3 answers per topic).');
@@ -216,6 +247,7 @@ async function buildTest(user, exam, b) {
     if (year) { sql += ' AND pyq_year=?'; p.push(year); } if (b.paper) { sql += ' AND pyq_paper=?'; p.push(b.paper); } if (b.shift) { sql += ' AND pyq_shift=?'; p.push(b.shift); }
     qs = db.prepare(sql + ' ORDER BY id').all(...p);
     if (!qs.length) throw bad('No verified previous-year questions have been added for your exam yet.');
+    if (qs.length < 20) throw bad('This verified PYQ selection has fewer than 20 questions. Add the complete paper before starting a PYQ test.');
     title = `${exam.name} PYQ ${b.year || ''} ${b.paper || ''}`.trim();
   } else if (kind === 'pyq_pattern') {
     qs = pickQuestions(user, exam, { source: 'PYQ_PATTERN', limit: count });
@@ -223,7 +255,7 @@ async function buildTest(user, exam, b) {
     title = 'PYQ Pattern Mock';
   } else if (kind === 'ai_mock') {
     if (!ai.aiEnabled()) throw bad(ai.friendlyError('AI_NOT_CONFIGURED'));
-    const secs = exam.pattern.sections.slice(0, 4), n = Math.min(count, 20), each = Math.max(2, Math.ceil(n / secs.length));
+    const secs = exam.pattern.sections.slice(0, 4), n = Math.max(20, Math.min(count, 100)), each = Math.max(2, Math.ceil(n / secs.length));
     for (const s of secs) {
       const tp = exam.syllabus.find(x => x.subject === s.subject).topics; const topic = tp[crypto.randomInt(tp.length)];
       const r = await ai.generateQuestions({ examName: exam.name, subject: s.subject, topic, difficulty: diff === 'any' ? 'medium' : diff, count: each, level: user.level });
@@ -238,12 +270,28 @@ async function buildTest(user, exam, b) {
   } else throw bad('Unknown test type.');
 
   if (!qs.length) throw bad('No questions are available yet for this selection. Try another subject/topic, or generate questions with the AI Tutor.');
+  if (kind !== 'full_mock' && qs.length < 20) throw bad('Every test needs at least 20 questions. Add more questions or choose a larger set.');
   minutes = Math.max(1, Math.min(300, +b.minutes || minutes || Math.ceil(qs.length * (exam.pattern.minutes / exam.pattern.sections.reduce((a, s) => a + s.questions, 0)))));
   const t = now();
   const id = db.prepare('INSERT INTO tests (user_id,exam_id,kind,title,question_ids,minutes,marking,remaining_sec,started_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
     .run(user.id, exam.id, kind, title, JSON.stringify(qs.map(q => q.id)), minutes, JSON.stringify(per), minutes * 60, t, t).lastInsertRowid;
   return { id: Number(id), notices };
 }
+async function aiFillQuestions(user, exam, subject, topic, difficulty, count) {
+  if (count <= 0 || !ai.aiEnabled()) return [];
+  const info = exam.syllabus.find(x => x.subject === subject);
+  if (!info) return [];
+  const topics = topic ? [topic] : info.topics;
+  const out = [];
+  const max = Math.min(10, count);
+  for (let i = 0; i < max; i += 6) {
+    const n = Math.min(6, max - i), tp = topics[Math.floor(i / 6) % topics.length];
+    const rr = await ai.generateQuestions({ examName: exam.name, subject, topic: tp, difficulty: difficulty === 'any' ? 'medium' : difficulty, count: n, level: user.level });
+    if (rr.ok) out.push(...storeAiQuestions(user, exam, rr.questions));
+  }
+  return out;
+}
+
 function storeAiQuestions(user, exam, list) {
   const ins = db.prepare(`INSERT INTO questions (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,owner_user_id,created_at)
     VALUES (?,?,?,?,?,?,?,?,?,?, 'AI_GENERATED', ?, ?)`);
@@ -376,7 +424,7 @@ route('POST', '/api/auth/send-otp', {}, async (c) => {
   return { ok: true, expires_in: 300, resend_in: 30, ...(r.dev && !PROD ? { dev_otp: code } : {}) };
 });
 route('POST', '/api/auth/verify-otp', {}, (c) => {
-  const email = String(c.body.email || '').trim().toLowerCase(), code = String(c.body.code || '').trim();
+  const email = String(c.body.email || '').trim().toLowerCase(), code = String(c.body.code || '').trim(), purpose = String(c.body.purpose || 'signup');
   rateLimit('v:' + c.ip, 40, 3600000);
   if (!/^\d{6}$/.test(code)) throw bad('Enter the 6-digit code.');
   const o = db.prepare('SELECT * FROM otps WHERE email=?').get(email);
@@ -390,7 +438,25 @@ route('POST', '/api/auth/verify-otp', {}, (c) => {
   if (!u) { isNew = true; db.prepare('INSERT INTO users (email,role,created_at) VALUES (?,?,?)').run(email, ADMIN_EMAILS.includes(email) ? 'admin' : 'student', now()); u = db.prepare('SELECT * FROM users WHERE email=?').get(email); }
   else if (ADMIN_EMAILS.includes(email) && u.role !== 'admin') { db.prepare("UPDATE users SET role='admin' WHERE id=?").run(u.id); u.role = 'admin'; }
   newSession(c.res, u.id);
-  return { user: meJson(u), is_new: isNew };
+  return { user: meJson(u), is_new: isNew, needs_password: purpose === 'reset' || !u.password_hash };
+});
+route('POST', '/api/auth/login', {}, (c) => {
+  const email = String(c.body.email || '').trim().toLowerCase();
+  const password = String(c.body.password || '');
+  if (!EMAIL_RE.test(email) || !password) throw bad('Enter your email and password.');
+  rateLimit('login:' + c.ip, 20, 3600000);
+  const u = db.prepare('SELECT * FROM users WHERE email=?').get(email);
+  if (!u) throw new HttpError(401, 'Incorrect email or password.');
+  if (!u.password_hash) throw new HttpError(409, 'This account needs one-time email verification before password login.', { code: 'PASSWORD_SETUP_REQUIRED' });
+  if (!verifyPassword(u.password_hash, password)) throw new HttpError(401, 'Incorrect email or password.');
+  newSession(c.res, u.id);
+  return { user: meJson(u) };
+});
+route('POST', '/api/auth/set-password', A, (c) => {
+  validatePassword(String(c.body.password || ''), String(c.body.confirm_password || ''));
+  db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hashPassword(String(c.body.password)), c.user.id);
+  const u = db.prepare('SELECT * FROM users WHERE id=?').get(c.user.id);
+  return { user: meJson(u) };
 });
 route('POST', '/api/auth/logout', {}, (c) => {
   const m = /(?:^|;\s*)sid=([^;]+)/.exec(c.req.headers.cookie || ''); if (m) db.prepare('DELETE FROM sessions WHERE token_hash=?').run(sha(m[1]));
@@ -752,6 +818,25 @@ route('POST', '/api/admin/ca', ADM, (c) => {
   return { id: Number(id) };
 });
 route('DELETE', '/api/admin/ca/:id', ADM, (c) => { db.prepare('DELETE FROM current_affairs WHERE id=?').run(+c.params.id); return { ok: true }; });
+route('POST', '/api/admin/ca/refresh', ADM, async (c) => {
+  if (!ai.aiEnabled() || ai.aiProvider() !== 'gemini') throw bad('Grounded current-affairs refresh needs the Gemini provider.');
+  const examIds = listExams().map(e => e.id);
+  const r = await ai.generateCurrentAffairs({ today: dayStr(), days: Math.min(14, Math.max(1, +c.body.days || 7)), examList: examIds, maxItems: Math.min(15, Math.max(5, +c.body.maxItems || 12)) });
+  if (!r.ok) throw bad(ai.friendlyError(r.error));
+  const inserted = [], skipped = [];
+  for (const x of r.items || []) {
+    try {
+      const exists = db.prepare('SELECT id FROM current_affairs WHERE title=? AND event_date=?').get(x.title, x.event_date);
+      if (exists) { skipped.push(x.title); continue; }
+      const exams = ',' + [...new Set(x.exams)].join(',') + ',';
+      const id = db.prepare('INSERT INTO current_affairs (title,summary,category,exams,event_date,source,created_at) VALUES (?,?,?,?,?,?,?)')
+        .run(x.title, x.summary, x.category, exams, x.event_date, x.source_url, now()).lastInsertRowid;
+      inserted.push(Number(id));
+    } catch { skipped.push(x.title); }
+  }
+  return { ok: true, searched_days: c.body.days || 7, inserted: inserted.length, skipped: skipped.length, ids: inserted };
+});
+
 route('GET', '/api/admin/reports', ADM, () => ({ reports: db.prepare(`SELECT f.id,f.kind,f.note,f.status,f.created_at,u.email, c.content answer,
   (SELECT content FROM ai_conversations p WHERE p.user_id=c.user_id AND p.id<c.id AND p.role='user' ORDER BY p.id DESC LIMIT 1) question
   FROM ai_feedback f JOIN users u ON u.id=f.user_id LEFT JOIN ai_conversations c ON c.id=f.conversation_id WHERE f.kind='report' ORDER BY f.status='open' DESC, f.id DESC LIMIT 100`).all() }));
@@ -814,5 +899,5 @@ const server = http.createServer(async (req, res) => {
 });
 process.on('uncaughtException', e => console.error('[uncaught]', e));
 process.on('unhandledRejection', e => console.error('[unhandled]', e));
-server.listen(PORT, () => console.log(`Competitive Exam AI running on http://localhost:${PORT}  (AI ${ai.aiEnabled() ? 'enabled' : 'NOT configured: set ANTHROPIC_API_KEY'})`));
+server.listen(PORT, () => console.log(`Competitive Exam AI running on http://localhost:${PORT}  (AI ${ai.aiEnabled() ? 'enabled' : 'NOT configured'})`));
 module.exports = { server };
