@@ -484,7 +484,15 @@ async function pgRevision(parts, params) {
 }
 function topicPicker(onPick) {
   const ex = S.examDetail; const wrap = h('div'); get('/api/exams/' + S.user.exam_id).then(({ exam }) => {
-    let subj = exam.syllabus[0].subject; const draw = () => wrap.replaceChildren(h('div', { class: 'chips' }, exam.syllabus.map(s => h('button', { class: 'chip' + (s.subject === subj ? ' on' : ''), onclick: () => { subj = s.subject; draw(); } }, s.subject))), h('div', { class: 'chips', style: 'margin-top:.6rem' }, exam.syllabus.find(s => s.subject === subj).topics.map(t => h('button', { class: 'chip', onclick: () => onPick(subj, t) }, t)))); draw();
+    const chosen = Array.isArray(S.user.selected_subjects) && S.user.selected_subjects.length ? S.user.selected_subjects : exam.subjects;
+    const syllabus = exam.syllabus.filter(s => chosen.includes(s.subject));
+    let subj = syllabus[0]?.subject; const draw = () => {
+      const current = syllabus.find(s => s.subject === subj) || syllabus[0];
+      wrap.replaceChildren(
+        h('div', { class: 'chips' }, syllabus.map(s => h('button', { class: 'chip' + (s.subject === subj ? ' on' : ''), onclick: () => { subj = s.subject; draw(); } }, s.subject))),
+        current ? h('div', { class: 'chips', style: 'margin-top:.6rem' }, current.topics.map(t => h('button', { class: 'chip', onclick: () => onPick(subj, t) }, t))) : h('p', { class: 'muted' }, 'No selected subjects yet.')
+      );
+    }; draw();
   }).catch(e => wrap.replaceChildren(errBox(e))); return wrap;
 }
 async function revTopic(subject, topic) {
@@ -511,7 +519,8 @@ async function revMistakes() {
 // ---------- tests ----------
 async function pgTests() {
   const [list, ex] = await Promise.all([get('/api/tests'), get('/api/exams/' + S.user.exam_id)]); const exam = ex.exam;
-  const o = { kind: 'full_mock', subject: exam.subjects[0], topic: '', count: 10, difficulty: 'any', minutes: '' }; const form = h('div', { class: 'card stack' });
+  const availableSubjects = Array.isArray(S.user.selected_subjects) && S.user.selected_subjects.length ? S.user.selected_subjects : exam.subjects;
+  const o = { kind: 'full_mock', subject: availableSubjects[0], topic: '', count: 20, difficulty: 'any', minutes: '' }; const form = h('div', { class: 'card stack' });
   const KINDS = [['full_mock', 'Full Mock'], ['sectional', 'Sectional Mock'], ['subject', 'Subject Test'], ['topic', 'Topic Test'], ['pyq', 'PYQ Test'], ['pyq_pattern', 'PYQ Pattern Mock'], ['ai_mock', 'AI Generated Mock'], ['weak_topic', 'Weak Topic Test']];
   function draw() {
     const needS = ['sectional', 'subject', 'topic'].includes(o.kind), needT = o.kind === 'topic', needN = ['subject', 'topic', 'weak_topic', 'pyq_pattern', 'ai_mock'].includes(o.kind), needD = ['subject', 'topic', 'full_mock', 'sectional', 'ai_mock'].includes(o.kind);
@@ -519,7 +528,7 @@ async function pgTests() {
     const f = (l, el) => h('div', {}, h('label', {}, l), el);
     form.replaceChildren(h('h2', {}, 'Create My Test'), h('div', { class: 'chips' }, KINDS.map(([k, l]) => h('button', { class: 'chip' + (o.kind === k ? ' on' : ''), onclick: () => { o.kind = k; draw(); } }, l))),
       o.kind === 'full_mock' ? h('div', { class: 'info' }, `${exam.name} pattern: ${exam.pattern.sections.map(s => `${s.subject} ${s.questions}`).join(' · ')} · ${exam.pattern.minutes} min · negative marking per section.` + (exam.verified ? '' : ' (Pattern is an approximate default. Confirm with the official notification.)')) : null,
-      h('div', { class: 'grid g3' }, needS ? f('Subject', h('select', { onchange: (e) => { o.subject = e.target.value; draw(); } }, exam.syllabus.map(s => h('option', { value: s.subject, selected: s.subject === o.subject }, s.subject)))) : null,
+      h('div', { class: 'grid g3' }, needS ? f('Subject', h('select', { onchange: (e) => { o.subject = e.target.value; draw(); } }, exam.syllabus.filter(s => availableSubjects.includes(s.subject)).map(s => h('option', { value: s.subject, selected: s.subject === o.subject }, s.subject)))) : null,
         needT ? f('Topic', h('select', { onchange: (e) => o.topic = e.target.value }, topics.map(t => h('option', { value: t, selected: t === o.topic }, t)))) : null,
         needN ? f('Number of questions', h('input', { type: 'number', min: 1, max: 100, value: o.count, oninput: (e) => o.count = +e.target.value })) : null,
         needD ? f('Difficulty', h('select', { onchange: (e) => o.difficulty = e.target.value }, [['any', 'Any'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === o.difficulty }, l)))) : null,
