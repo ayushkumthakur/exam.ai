@@ -1,21 +1,21 @@
-// Verified current affairs curated from official government/regulatory/ISRO sources.
-// Keep these concise and exam-oriented. Source URLs are stored with each item.
+// Curated current affairs verified against official primary sources.
+// These seed items are stored with source URLs and exam relevance. Auto-refresh is available to admins.
 module.exports = [
   {
     title: 'National SC-ST Hub strengthens inclusive entrepreneurship',
-    summary: 'The National SC-ST Hub is supporting SC/ST-owned enterprises through finance, technology, training, mentoring and market linkages, with a strong focus on public procurement access.',
+    summary: 'The National SC-ST Hub supports SC/ST-owned enterprises through finance, technology, training, mentoring and market linkages, with a strong focus on public procurement access.',
     category: 'Government Schemes', event_date: '2026-10-08', exams: 'ALL',
     source: 'PIB, National SC-ST Hub factsheet (08 Oct 2026) — https://www.pib.gov.in/FactsheetDetails.aspx?Id=151099&lang=1&reg=3'
   },
   {
-    title: 'India advances Additive Manufacturing / 3D printing ecosystem',
-    summary: 'PIB reported that India is moving into National Strategy for Additive Manufacturing (NSAM) 2.0; the programme had trained more than 1,54,000 people and supported 56 additive-manufacturing start-ups.',
+    title: 'India advances Additive Manufacturing ecosystem',
+    summary: 'PIB reported progress toward National Strategy for Additive Manufacturing (NSAM) 2.0; more than 1,54,000 people had been trained and 56 additive-manufacturing startups supported.',
     category: 'Science & Technology', event_date: '2026-10-07', exams: 'ALL',
     source: 'PIB, Additive Manufacturing in India (07 Oct 2026) — https://www.pib.gov.in/PressNoteDetails.aspx?ModuleId=3&NoteId=160346&lang=1&reg=3'
   },
   {
     title: 'Integrated Transport & Logistics Authority approved',
-    summary: 'The Union Cabinet approved setting up the Integrated Transport & Logistics Authority (ITLA) as a specialised institutional mechanism for integrated transport and logistics planning, project appraisal, monitoring and impact assessment.',
+    summary: 'The Union Cabinet approved an Integrated Transport & Logistics Authority (ITLA) as a specialised institutional mechanism for integrated transport and logistics planning, project appraisal, monitoring and impact assessment.',
     category: 'National', event_date: '2026-10-06', exams: 'ALL',
     source: 'PIB, Cabinet decision (06 Oct 2026) — https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2319529&lang=2&reg=48'
   },
@@ -32,8 +32,20 @@ module.exports = [
     source: 'PIB, Asian Games 2026 factsheet (06 Oct 2026) — https://www.pib.gov.in/FactsheetDetails.aspx?Id=151088&lang=2&reg=48'
   },
   {
+    title: 'India’s Rising Supercomputing Ecosystem',
+    summary: 'As of September 2026, India had deployed 40 supercomputers with a combined capacity of 68 PF under the National Supercomputing Mission.',
+    category: 'Science & Technology', event_date: '2026-10-04', exams: 'ALL',
+    source: 'PIB, India’s Rising Supercomputing Ecosystem (04 Oct 2026) — https://www.pib.gov.in/PressReleaseIframePage.aspx?PRID=2318908&lang=2&reg=48'
+  },
+  {
+    title: 'PM-SETU focuses on modernising government ITIs',
+    summary: 'PM-SETU is focused on upgrading 1,000 government ITIs through a hub-and-spoke model and industry-aligned training, with five NSTIs strengthened as National Centres of Excellence.',
+    category: 'Government Schemes', event_date: '2026-10-03', exams: 'ALL',
+    source: 'PIB, PM-SETU backgrounder (03 Oct 2026) — https://www.pib.gov.in/PressReleasePage.aspx?PRID=2318946&lang=2&reg=48'
+  },
+  {
     title: 'PM E-DRIVE scheme extended to March 2028',
-    summary: 'The PM E-DRIVE Scheme, launched in September 2024 to accelerate electric-mobility adoption and charging infrastructure, has an outlay of ₹11,900 crore and implementation extended until March 2028.',
+    summary: 'The PM E-DRIVE Scheme, launched in 2024 to accelerate electric-mobility adoption and charging infrastructure, has an outlay of ₹11,900 crore and implementation extended until March 2028.',
     category: 'Government Schemes', event_date: '2026-10-01', exams: 'ALL',
     source: 'PIB, PM E-DRIVE Scheme factsheet (01 Oct 2026) — https://www.pib.gov.in/FactsheetDetails.aspx?Id=151062&lang=2&reg=48'
   },
@@ -44,22 +56,10 @@ module.exports = [
     source: 'PIB, Bankers Books Evidence Act, 2026 (30 Sep 2026) — https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2317151&lang=1&reg=3'
   },
   {
-    title: 'PM-SETU focuses on modernising government ITIs',
-    summary: 'PM-SETU is focused on upgrading 1,000 government ITIs through a hub-and-spoke model and industry-aligned training, with five NSTIs strengthened as National Centres of Excellence.',
-    category: 'Government Schemes', event_date: '2026-10-03', exams: 'ALL',
-    source: 'PIB, PM-SETU backgrounder (03 Oct 2026) — https://www.pib.gov.in/PressReleasePage.aspx?PRID=2318946&lang=2&reg=48'
-  },
-  {
-    title: '7th Global Fintech Fest 2026 held in Mumbai',
-    summary: 'The 7th Global Fintech Fest 2026 was scheduled in Mumbai from 8 to 11 September 2026 and highlighted India’s digital public infrastructure, Aadhaar and UPI-led fintech ecosystem.',
+    title: '7th Global Fintech Fest 2026',
+    summary: 'The 7th Global Fintech Fest 2026 was held in Mumbai in September 2026, highlighting India’s digital public infrastructure and fintech ecosystem.',
     category: 'Economy', event_date: '2026-09-08', exams: 'SBI_PO,SBI_CLERK,IBPS_PO,IBPS_CLERK,IBPS_RRB_PO,IBPS_RRB_CLERK,RBI_B,RBI_ASST,NABARD_A,UPSC_CSE,SSC_CGL,SSC_CHSL',
     source: 'PIB, 7th Global Fintech Fest 2026 (08 Sep 2026) — https://www.pib.gov.in/PressReleasePage.aspx?PRID=2307925&lang=2&reg=48'
-  }
-  {
-    title: 'India crosses 299 GW of total renewable energy capacity',
-    summary: 'MNRE reported cumulative renewable-energy capacity of 299,246.53 MW as of 30 September 2026, including 171.05 GW of solar capacity.',
-    category: 'Environment', event_date: '2026-09-30', exams: 'ALL',
-    source: 'Ministry of New and Renewable Energy, Physical Achievements (30 Sep 2026) — https://mnre.gov.in/en/physical-progress/'
   },
   {
     title: 'Demat 2.0 pilot launched for tokenised corporate bonds',
@@ -69,8 +69,8 @@ module.exports = [
   },
   {
     title: '72nd National Film Awards recognise 2024 cinema',
-    summary: 'The 72nd National Film Awards honour achievements in Indian cinema for 2024. The awards were instituted in 1954 and cover feature films, non-feature films and writing on cinema.',
+    summary: 'The 72nd National Film Awards honour achievements in Indian cinema for 2024 across feature films, non-feature films and writing on cinema.',
     category: 'Awards', event_date: '2026-09-20', exams: 'ALL',
-    source: 'PIB, National Film Awards factsheet (20 Sep 2026) — https://www.pib.gov.in/FactsheetDetails.aspx?ModuleId=16&NoteId=151027&id=151027&lang=2&reg=48'
+    source: 'PIB, National Film Awards factsheet — https://www.pib.gov.in/FactsheetDetails.aspx?ModuleId=16&NoteId=151027&id=151027&lang=2&reg=48'
   }
 ];
