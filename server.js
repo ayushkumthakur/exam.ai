@@ -44,7 +44,9 @@ const listExams = () => db.prepare('SELECT id FROM exams WHERE active=1 ORDER BY
 // questions visible to a user: only their exam's subjects/topics, never other users' private AI questions
 function visible(user, exam, alias = 'q') {
   const parts = [], params = [];
-  for (const s of exam.syllabus) {
+  const chosen = J(user.selected_subjects);
+  const allowedSyllabus = Array.isArray(chosen) && chosen.length ? exam.syllabus.filter(s => chosen.includes(s.subject)) : exam.syllabus;
+  for (const s of allowedSyllabus) {
     parts.push(`(${alias}.subject=? AND ${alias}.topic IN (${s.topics.map(() => '?').join(',')}))`);
     params.push(s.subject, ...s.topics);
   }
@@ -108,7 +110,7 @@ function getUser(req) {
   return db.prepare('SELECT * FROM users WHERE id=?').get(s.user_id);
 }
 const meJson = u => ({ id: u.id, email: u.email, name: u.name, role: u.role, exam_id: u.exam_id, level: u.level, target_date: u.target_date,
-  daily_minutes: u.daily_minutes, stage: u.stage, onboarded: !!u.onboarded });
+  daily_minutes: u.daily_minutes, stage: u.stage, onboarded: !!u.onboarded, selected_subjects: J(u.selected_subjects) || [] });
 
 // ---------- learning data loop ----------
 function recordAnswer(user, exam, q, choice, timeMs, mode) {
@@ -473,6 +475,13 @@ function applyProfile(u, b, partial) {
   if (b.target_date !== undefined) { if (!/^\d{4}-\d{2}-\d{2}$/.test(b.target_date) || isNaN(Date.parse(b.target_date))) throw bad('Enter a valid target exam date.'); if (b.target_date < dayStr()) throw bad('Target date must be in the future.'); f.target_date = b.target_date; }
   if (b.daily_minutes !== undefined) { if (!MINS.includes(+b.daily_minutes)) throw bad('Invalid daily study time.'); f.daily_minutes = +b.daily_minutes; }
   if (b.stage !== undefined && b.stage !== '') { if (!STAGES.includes(b.stage)) throw bad('Invalid preparation stage.'); f.stage = b.stage; }
+  if (b.selected_subjects !== undefined) {
+    const ex = loadExam(b.exam_id || u.exam_id);
+    const arr = Array.isArray(b.selected_subjects) ? [...new Set(b.selected_subjects.map(String))] : [];
+    if (ex && ex.category.startsWith('School') && !arr.length) throw bad('Select at least one school subject.');
+    if (ex) { const ok = new Set(ex.subjects); if (arr.some(x => !ok.has(x))) throw bad('Invalid subject selection.'); }
+    f.selected_subjects = JSON.stringify(arr);
+  }
   return f;
 }
 route('POST', '/api/me/onboarding', A, (c) => {
