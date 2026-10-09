@@ -59,48 +59,11 @@ const pubQ = r => ({ id: r.id, subject: r.subject, topic: r.topic, difficulty: r
 const fullQ = r => ({ ...pubQ(r), answer: r.answer, explanation: r.explanation, concept: r.concept, tip: r.tip, source_ref: r.source_ref });
 
 // ---------- auth ----------
-const mem = { sendLog: new Map(), inflight: new Set() };
+const mem = { sendLog: new Map() };
 function rateLimit(key, max, windowMs) {
   const t = now(); const arr = (mem.sendLog.get(key) || []).filter(x => t - x < windowMs);
   if (arr.length >= max) throw new HttpError(429, 'Too many attempts. Please try again later.');
   arr.push(t); mem.sendLog.set(key, arr);
-}
-async function sendEmail(to, code) {
-  const key = process.env.RESEND_API_KEY || process.env.resend_api_key;
-  const from = process.env.MAIL_FROM || process.env.RESEND_FROM;
-  if (!key || !from) {
-    console.log(`[DEV] OTP for ${to}: ${code}`);
-    return { dev: true };
-  }
-  try {
-    const r = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        from,
-        to,
-        subject: 'Your Competitive Exam AI login code',
-        text: `Your login code is ${code}. It expires in 5 minutes. If you did not request it, ignore this email.`
-      })
-    });
-    let detail = '';
-    try {
-      const data = await r.json();
-      detail = String(data?.message || data?.error || data?.name || '').trim();
-    } catch {}
-    if (!r.ok) {
-      console.error('[email] Resend rejected OTP email', { status: r.status, to, from, detail });
-      if (r.status === 401) throw new HttpError(502, 'Email service authentication failed. Please check the Resend API key in Railway.');
-      if (r.status === 403 || r.status === 422) throw new HttpError(502, 'Email service rejected this recipient/sender. Verify your sending domain in Resend and use that domain in MAIL_FROM.');
-      if (r.status === 429) throw new HttpError(502, 'Email service rate limit reached. Please try again shortly.');
-      throw new HttpError(502, detail || 'Email service could not send the OTP. Please try again.');
-    }
-    return { dev: false };
-  } catch (e) {
-    if (e instanceof HttpError) throw e;
-    console.error('[email] OTP send failed', e);
-    throw new HttpError(502, 'We could not send the email right now. Please try again.');
-  }
 }
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 function validatePassword(password, confirm) {
@@ -131,9 +94,9 @@ function newSession(res, userId) {
 function getUser(req) {
   const m = /(?:^|;\s*)sid=([^;]+)/.exec(req.headers.cookie || '');
   if (!m) return null;
-  const s = db.prepare('SELECT user_id,expires_at FROM sessions WHERE token_hash=?').get(sha(m[1]));
-  if (!s || s.expires_at < now()) return null;
-  return db.prepare('SELECT * FROM users WHERE id=?').get(s.user_id);
+  const session = db.prepare('SELECT user_id,expires_at FROM sessions WHERE token_hash=?').get(sha(m[1]));
+  if (!session || session.expires_at < now()) return null;
+  return db.prepare('SELECT * FROM users WHERE id=?').get(session.user_id);
 }
 const meJson = u => ({ id: u.id, email: u.email, name: u.name, role: u.role, exam_id: u.exam_id, level: u.level, target_date: u.target_date,
   daily_minutes: u.daily_minutes, stage: u.stage, onboarded: !!u.onboarded, selected_subjects: J(u.selected_subjects) || [] });
@@ -439,34 +402,23 @@ route('GET', '/api/config', {}, () => ({ ai_enabled: ai.aiEnabled(), ai_provider
 route('GET', '/api/exams', {}, () => ({ exams: listExams().map(e => ({ id: e.id, name: e.name, category: e.category, verified: e.verified, subjects: e.subjects, minutes: e.pattern.minutes, questions: e.pattern.sections.reduce((a, s) => a + s.questions, 0) })) }));
 route('GET', '/api/exams/:id', {}, (c) => { const e = loadExam(c.params.id); if (!e) throw new HttpError(404, 'Exam not found'); return { exam: e }; });
 
-route('POST', '/api/auth/send-otp', {}, async (c) => {
+route('POST', '/api/auth/signup', {}, (c) => {
   const email = String(c.body.email || '').trim().toLowerCase();
+  const password = String(c.body.password || '');
+  const confirm_password = String(c.body.confirm_password || '');
   if (!EMAIL_RE.test(email)) throw bad('Enter a valid email address.');
-  rateLimit('ip:' + c.ip, 20, 3600000); rateLimit('em:' + email, 5, 3600000);
-  const prev = db.prepare('SELECT sent_at FROM otps WHERE email=?').get(email);
-  if (prev && now() - prev.sent_at < 30000) throw new HttpError(429, `Please wait ${Math.ceil((30000 - (now() - prev.sent_at)) / 1000)}s before requesting another code.`, { retry_after: Math.ceil((30000 - (now() - prev.sent_at)) / 1000) });
-  const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
-  const r = await sendEmail(email, code);
-  db.prepare('INSERT INTO otps (email,code_hash,expires_at,attempts,sent_at) VALUES (?,?,?,0,?) ON CONFLICT(email) DO UPDATE SET code_hash=?,expires_at=?,attempts=0,sent_at=?')
-    .run(email, sha(email + code + SECRET), now() + 300000, now(), sha(email + code + SECRET), now() + 300000, now());
-  return { ok: true, expires_in: 300, resend_in: 30, ...(r.dev && !PROD ? { dev_otp: code } : {}) };
-});
-route('POST', '/api/auth/verify-otp', {}, (c) => {
-  const email = String(c.body.email || '').trim().toLowerCase(), code = String(c.body.code || '').trim(), purpose = String(c.body.purpose || 'signup');
-  rateLimit('v:' + c.ip, 40, 3600000);
-  if (!/^\d{6}$/.test(code)) throw bad('Enter the 6-digit code.');
-  const o = db.prepare('SELECT * FROM otps WHERE email=?').get(email);
-  if (!o) throw bad('No code was requested for this email. Please request a new one.');
-  if (o.expires_at < now()) { db.prepare('DELETE FROM otps WHERE email=?').run(email); throw bad('This code has expired. Please request a new one.', { expired: true }); }
-  if (o.attempts >= 5) { db.prepare('DELETE FROM otps WHERE email=?').run(email); throw bad('Too many wrong attempts. Please request a new code.', { expired: true }); }
-  const good = crypto.timingSafeEqual(Buffer.from(sha(email + code + SECRET)), Buffer.from(o.code_hash));
-  if (!good) { db.prepare('UPDATE otps SET attempts=attempts+1 WHERE email=?').run(email); throw bad(`Incorrect code. ${4 - o.attempts} attempt(s) left.`); }
-  db.prepare('DELETE FROM otps WHERE email=?').run(email);
-  let u = db.prepare('SELECT * FROM users WHERE email=?').get(email), isNew = false;
-  if (!u) { isNew = true; db.prepare('INSERT INTO users (email,role,created_at) VALUES (?,?,?)').run(email, ADMIN_EMAILS.includes(email) ? 'admin' : 'student', now()); u = db.prepare('SELECT * FROM users WHERE email=?').get(email); }
-  else if (ADMIN_EMAILS.includes(email) && u.role !== 'admin') { db.prepare("UPDATE users SET role='admin' WHERE id=?").run(u.id); u.role = 'admin'; }
+  validatePassword(password, confirm_password);
+  rateLimit('signup:' + c.ip, 10, 3600000);
+  const existing = db.prepare('SELECT * FROM users WHERE email=?').get(email);
+  if (existing) {
+    if (existing.password_hash) throw new HttpError(409, 'An account with this email already exists. Please log in.');
+    throw new HttpError(409, 'This email belongs to an older OTP account. Please use a different email to create a password account.');
+  }
+  const role = ADMIN_EMAILS.includes(email) ? 'admin' : 'student';
+  db.prepare('INSERT INTO users (email,password_hash,role,created_at) VALUES (?,?,?,?)').run(email, hashPassword(password), role, now());
+  const u = db.prepare('SELECT * FROM users WHERE email=?').get(email);
   newSession(c.res, u.id);
-  return { user: meJson(u), is_new: isNew, needs_password: purpose === 'reset' || !u.password_hash };
+  return { user: meJson(u) };
 });
 route('POST', '/api/auth/login', {}, (c) => {
   const email = String(c.body.email || '').trim().toLowerCase();
@@ -499,11 +451,13 @@ function applyProfile(u, b, partial) {
   if (b.exam_id !== undefined) { if (!loadExam(b.exam_id)) throw bad('Please select a valid exam.'); f.exam_id = b.exam_id; }
   if (b.level !== undefined) { if (!LEVELS.includes(b.level)) throw bad('Invalid preparation level.'); f.level = b.level; }
   if (b.target_date !== undefined) { if (!/^\d{4}-\d{2}-\d{2}$/.test(b.target_date) || isNaN(Date.parse(b.target_date))) throw bad('Enter a valid target exam date.'); if (b.target_date < dayStr()) throw bad('Target date must be in the future.'); f.target_date = b.target_date; }
-  if (b.daily_minutes !== undefined) { if (!MINS.includes(+b.daily_minutes)) throw bad('Invalid daily study time.'); f.daily_minutes = +b.daily_minutes; }
-  if (b.stage !== undefined && b.stage !== '') { if (!STAGES.includes(b.stage)) throw bad('Invalid preparation stage.'); f.stage = b.stage; }
-  if (b.selected_subjects !== undefined) {
-    const ex = loadExam(b.exam_id || u.exam_id);
-    const arr = Array.isArray(b.selected_subjects) ? [...new Set(b.selected_subjects.map(String))] : [];
+  if (b.daily_minutes !== undefined) { if (!MINS.includes(+b.daily_minutes)) throw bad('Invalid daily study time.'); f.dailroute('POST', '/api/auth/change-password', A, (c) => {
+  validatePassword(String(c.body.password || ''), String(c.body.confirm_password || ''));
+  db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hashPassword(String(c.body.password)), c.user.id);
+  const u = db.prepare('SELECT * FROM users WHERE id=?').get(c.user.id);
+  return { user: meJson(u) };
+});
+ : [];
     if (ex && ex.category.startsWith('School') && !arr.length) throw bad('Select at least one school subject.');
     if (ex) { const ok = new Set(ex.subjects); if (arr.some(x => !ok.has(x))) throw bad('Invalid subject selection.'); }
     f.selected_subjects = JSON.stringify(arr);
