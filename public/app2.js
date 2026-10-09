@@ -116,7 +116,7 @@ async function pgCA() {
         onclick: () => { period = key; draw(); }
       }, label));
     }
-    controls.append(periodChips, h('span', { class: 'small muted' }, 'AI updates automatically every day • Weekly shows the last 7 days'));
+    controls.append(periodChips, h('span', { class: 'small muted' }, 'Official-feed updates • Weekly shows the last 7 days'));
     list.append(controls);
 
     const chips = h('div', { class: 'chips' });
@@ -135,8 +135,8 @@ async function pgCA() {
     if (!items.items || !items.items.length) {
       list.append(h('div', { class: 'card empty' },
         period === 'daily'
-          ? 'No current-affairs items were added today yet. The AI refreshes automatically.'
-          : 'No current-affairs items were found in the last 7 days.'));
+          ? 'No recent feed items are available yet. Try again later or check the source feeds.'
+          : 'No items were found in the last 7 days.'));
       return;
     }
 
@@ -168,7 +168,7 @@ async function pgCA() {
         ),
         h('h3', {}, it.title || 'Current affair'),
         h('p', {}, it.summary || ''),
-        it.source ? h('p', { class: 'small muted' }, 'Source: ' + it.source) : null,
+        it.source ? h('p', { class: 'small muted' }, 'Source: ', /^https?:\\/\\//i.test(it.source) ? h('a', { href: it.source, target: '_blank', rel: 'noopener noreferrer' }, 'Open original source') : it.source) : null,
         actions,
         slot
       ));
