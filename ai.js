@@ -2,7 +2,7 @@
 // API keys are server-side only.
 const PROVIDER = () => (process.env.AI_PROVIDER || 'gemini').toLowerCase();
 const GEMINI_KEY = () => process.env.GEMINI_API_KEY;
-const GEMINI_MODEL = () => process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
+const GEMINI_MODEL = () => process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const ANTHROPIC_KEY = () => process.env.ANTHROPIC_API_KEY;
 const ANTHROPIC_MODEL = () => process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 
@@ -125,6 +125,14 @@ async function callClaude(opts) {
 const FRIENDLY = {
   AI_NOT_CONFIGURED: 'AI is not configured on this server yet. Add GEMINI_API_KEY in Railway (recommended).',
   AI_TIMEOUT: 'The AI took too long to respond. Please try again.',
+  AI_NETWORK: 'Could not reach the AI service. Check the server connection and try again.',
+  AI_EMPTY: 'The AI returned an empty answer. Please try again.',
+  AI_INVALID: 'The AI returned an answer in an unexpected format. Please try again.',
+  AI_HTTP_400: 'The AI request was rejected. Check the model name and request settings in Railway.',
+  AI_HTTP_401: 'The AI API key was rejected. Replace GEMINI_API_KEY in Railway with a valid key.',
+  AI_HTTP_403: 'The AI API key lacks permission or the API is disabled. Check the key and enable the Gemini API in Google AI Studio/Cloud.',
+  AI_HTTP_404: 'The configured AI model was not found. Remove GEMINI_MODEL in Railway or set it to gemini-2.5-flash.',
+  AI_HTTP_429: 'The AI provider rate limit or free quota was reached. Wait and try again, or check your Gemini quota.',
 };
 const friendlyError = e => FRIENDLY[e] || 'Something went wrong while generating the answer.';
 
