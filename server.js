@@ -858,15 +858,15 @@ const CA_FEEDS = [
   { name: 'Reserve Bank of India', url: 'https://www.rbi.org.in/Scripts/RSS.aspx?Id=6' }
 ];
 function xmlText(value) {
-  return String(value || '').replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, '$1')
+  return String(value || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
     .replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ')
     .replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'")
     .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
-    .replace(/&#(\\d+);/g, (_, n) => String.fromCodePoint(Math.min(0x10ffff, +n)))
-    .replace(/\\s+/g, ' ').trim();
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Math.min(0x10ffff, +n)))
+    .replace(/\s+/g, ' ').trim();
 }
 function xmlField(block, tag) {
-  const m = block.match(new RegExp('<' + tag + '(?:\\s[^>]*)?>([\\s\\S]*?)<\\/' + tag + '>', 'i'));
+  const m = block.match(new RegExp('<' + tag + '(?:\s[^>]*)?>([\s\S]*?)<\/' + tag + '>', 'i'));
   return m ? xmlText(m[1]) : '';
 }
 function caCategory(title, summary, feed) {
@@ -890,13 +890,13 @@ async function refreshCurrentAffairsFeeds() {
       const response = await fetch(feed.url, { headers: { 'user-agent': 'CompetitiveExamAI/1.0 (official public RSS reader)', accept: 'application/rss+xml, application/xml, text/xml' }, signal: AbortSignal.timeout(9000) });
       if (!response.ok) throw new Error('HTTP ' + response.status);
       const xml = await response.text();
-      const entries = [...xml.matchAll(/<(item|entry)\\b[^>]*>([\\s\\S]*?)<\\/(?:item|entry)>/gi)].slice(0, 40);
+      const entries = [...xml.matchAll(/<(item|entry)\b[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi)].slice(0, 40);
       let feedAdded = 0;
       for (const [, , block] of entries) {
         const title = xmlField(block, 'title').slice(0, 300);
         if (!title) continue;
         const summary = (xmlField(block, 'description') || xmlField(block, 'summary') || xmlField(block, 'content')).slice(0, 4000) || title;
-        const link = xmlField(block, 'link') || ((block.match(/<link\\b[^>]*href=["']([^"']+)/i) || [])[1] || '');
+        const link = xmlField(block, 'link') || ((block.match(/<link\b[^>]*href=["']([^"']+)/i) || [])[1] || '');
         const pub = xmlField(block, 'pubDate') || xmlField(block, 'published') || xmlField(block, 'updated');
         const parsedDate = pub ? Date.parse(pub) : NaN;
         const eventDate = Number.isFinite(parsedDate) ? dayStr(parsedDate) : dayStr();
@@ -905,7 +905,7 @@ async function refreshCurrentAffairsFeeds() {
         const category = caCategory(title, summary, feed.name);
         try {
           db.prepare('INSERT INTO current_affairs (title,summary,category,exams,event_date,source,created_at) VALUES (?,?,?,?,?,?,?)')
-            .run(title, summary, category, 'ALL', eventDate, (link && /^https?:\\/\\//i.test(link)) ? link : feed.name, now());
+            .run(title, summary, category, 'ALL', eventDate, (link && /^https?:\/\//i.test(link)) ? link : feed.name, now());
           added++; feedAdded++;
         } catch (e) { if (!/unique|constraint/i.test(e.message)) console.error('[ca-feed-insert]', e.message); skipped++; }
       }
