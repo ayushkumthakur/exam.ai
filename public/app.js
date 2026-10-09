@@ -62,7 +62,7 @@ function runCleanups() { while (cleanups.length) { try { cleanups.pop()(); } cat
 
 // ---------- state ----------
 const S = { user: null, config: {}, exams: [], exam: null };
-const NAV = [['home', 'Home'], ['practice', 'Practice'], ['revision', 'Revision'], ['pyqs', 'PYQs'], ['tests', 'Tests'], ['ca', 'Current Affairs'], ['tutor', 'AI Tutor'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['profile', 'Profile']];
+const NAV = [['home', 'Home'], ['practice', 'Practice'], ['revision', 'Revision'], ['pyqs', 'PYQs'], ['tests', 'Tests'], ['tutor', 'AI Tutor'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['profile', 'Profile']];
 const MOBILE = [['home', 'Home'], ['practice', 'Practice'], ['tests', 'Tests'], ['tutor', 'AI Tutor'], ['more', 'More']];
 
 function getTheme() {
@@ -363,12 +363,12 @@ function renderShell(page, parts, params) {
         profile),
       main)),
     h('nav', { class: 'bottom', 'aria-label': 'Primary' }, MOBILE.map(i => navItem(i))));
-  const pages = { home: pgHome, practice: pgPractice, revision: pgRevision, pyqs: pgPyqs, tests: pgTests, test: pgTestTake, result: pgResult, ca: pgCA, tutor: pgTutor, plan: pgPlan, progress: pgProgress, profile: pgProfile, library: pgLibrary, search: pgSearch, more: pgMore, admin: pgAdmin };
+  const pages = { home: pgHome, practice: pgPractice, revision: pgRevision, pyqs: pgPyqs, tests: pgTests, test: pgTestTake, result: pgResult, tutor: pgTutor, plan: pgPlan, progress: pgProgress, profile: pgProfile, library: pgLibrary, search: pgSearch, more: pgMore, admin: pgAdmin };
   const fn = pages[page] || pgHome; window.scrollTo(0, 0);
   load(main, () => fn(parts, params));
 }
 function pgMore() {
-  return h('div', { class: 'stack' }, h('h1', {}, 'More'), h('div', { class: 'grid g2' }, [['revision', 'Revision'], ['pyqs', 'PYQs'], ['ca', 'Current Affairs'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['library', 'My Library'], ['profile', 'Profile'], ...(S.user.role === 'admin' ? [['admin', 'Admin']] : [])].map(([k, l]) => h('a', { class: 'card nav', href: '#/' + k }, svg(ICONS[k] || ICONS.more), l))));
+  return h('div', { class: 'stack' }, h('h1', {}, 'More'), h('div', { class: 'grid g2' }, [['revision', 'Revision'], ['pyqs', 'PYQs'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['library', 'My Library'], ['profile', 'Profile'], ...(S.user.role === 'admin' ? [['admin', 'Admin']] : [])].map(([k, l]) => h('a', { class: 'card nav', href: '#/' + k }, svg(ICONS[k] || ICONS.more), l))));
 }
 
 // ---------- action router (recommendation CTAs) ----------
@@ -378,7 +378,6 @@ async function doAction(a) {
   if (a.type === 'practice') return go('#/practice' + q({ subject: a.subject, topic: a.topic, start: 1 }));
   if (a.type === 'topic_test') return startTest({ kind: 'topic', subject: a.subject, topic: a.topic, count: 10 });
   if (a.type === 'mistakes') return go('#/revision?mistakes=1');
-  if (a.type === 'current_affairs') return go('#/ca');
   if (a.type === 'tutor') return go('#/tutor');
 }
 async function startTest(body) {
@@ -408,7 +407,7 @@ async function pgHome() {
       h('div', { class: 'card' }, h('h3', {}, 'Weak Topics'), d.weak_topics.length ? h('div', { class: 'list' }, d.weak_topics.map(w => h('div', { class: 'row between' }, h('span', {}, h('b', {}, w.topic), h('span', { class: 'muted small' }, ' · ' + w.subject)), h('span', { class: 'row' }, h('span', { class: 'badge bad' }, w.accuracy + '%'), h('button', { class: 'btn sm', onclick: () => go('#/revision' + q({ subject: w.subject, topic: w.topic })) }, 'Revise'))))) : h('p', { class: 'muted' }, 'No weak topics yet. Answer at least 3 questions per topic and they will appear here.'))),
     h('div', { class: 'grid g2' },
       h('div', { class: 'card' }, h('h3', {}, 'Upcoming Test'), h('p', {}, d.upcoming_test.title), h('button', { class: 'btn sm', onclick: () => d.upcoming_test.resume ? go('#/test/' + d.upcoming_test.id) : go('#/tests') }, d.upcoming_test.resume ? 'Resume Test' : 'Take Test')),
-      h('div', { class: 'card' }, h('h3', {}, 'Current Affairs'), d.current_affairs.length ? h('div', { class: 'list' }, d.current_affairs.map(c => h('div', {}, h('span', { class: 'badge' }, c.category), ' ', c.title))) : h('p', { class: 'muted' }, 'Nothing added yet.'), h('a', { class: 'btn sm', href: '#/ca', style: 'margin-top:.5rem' }, 'Open'))),
+      h('div', { class: 'card' }, h('h3', {}, 'Study Resources'), h('p', { class: 'muted' }, 'Continue with revision, PYQs, practice, and tests.'))),
     h('div', { class: 'card' }, h('h3', {}, 'Recent Performance'), d.recent_tests.length ? h('table', {}, h('tbody', {}, d.recent_tests.map(t => h('tr', {}, h('td', {}, t.title), h('td', {}, `${t.score}/${t.max}`), h('td', {}, pct(t.accuracy)), h('td', {}, h('a', { href: '#/result/' + t.id }, 'View')))))) : h('p', { class: 'muted' }, 'No tests taken yet.')));
 }
 
