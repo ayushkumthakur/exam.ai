@@ -83,9 +83,11 @@ CREATE TABLE IF NOT EXISTS plan_done (
 );
 `);
 
-// Add password storage for older databases.
-const userColumns = db.prepare('PRAGMA table_info(users)').all();
+// Backward-compatible user schema migrations for existing Railway databases.
+let userColumns = db.prepare('PRAGMA table_info(users)').all();
 if (!userColumns.some(c => c.name === 'password_hash')) db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
+userColumns = db.prepare('PRAGMA table_info(users)').all();
+if (!userColumns.some(c => c.name === 'selected_subjects')) db.exec("ALTER TABLE users ADD COLUMN selected_subjects TEXT NOT NULL DEFAULT '[]'");
 
 // ---- Seed ----
 const now = () => Date.now();
