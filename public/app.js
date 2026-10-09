@@ -113,7 +113,6 @@ function renderAuth() {
     card.replaceChildren(
       h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'),
       h('div', {}, h('h1', {}, 'Welcome back'), h('p', { class: 'muted' }, 'Log in with your email and password.')),
-      msg ? h('div', { class: 'info' }, msg) : null,
       h('form', { onsubmit: async (ev) => {
         ev.preventDefault(); email = emailInp.value.trim(); err.replaceChildren();
         login.disabled = true; login.replaceChildren(h('span', { class: 'spin' }));
