@@ -41,7 +41,7 @@ a{color:var(--brand-2)}
 .side .brand svg{width:46px;height:46px;flex:none}
 .side .brand .brand-copy,.side .brand span{min-width:0}
 .side .brand b{font-family:inherit;font-size:1.03rem;letter-spacing:-.035em;font-weight:750;display:block;color:#151727;line-height:1.2}
-.side .brand small{display:block;color:#67708a;font:600 .67rem/1.4 inherit;letter-spacing:.16em;margin-top:.15rem}
+.side .brand small{display:block;color:#67708a;font-family:inherit;font-size:.67rem;line-height:1.4;font-weight:600;letter-spacing:.16em;margin-top:.15rem}
 .side-nav{min-height:45px;margin:0 .02rem;padding:.65rem .8rem;border-radius:14px;font-weight:500;color:#52607a;gap:.8rem}
 .side-nav svg{width:20px;height:20px;color:#66728e}
 .side-nav.on{background:#f0eff8;color:#3023a6;font-weight:650}
