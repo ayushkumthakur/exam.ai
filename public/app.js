@@ -102,9 +102,24 @@ function renderAuth() {
   const card = h('div', { class: 'card stack' });
   app.replaceChildren(h('div', { class: 'auth' }, card));
 
+  function passwordField(placeholder, autocomplete, label) {
+    const input = h('input', { type: 'password', autocomplete, placeholder, required: true, minlength: 8, 'aria-label': label });
+    const toggle = h('button', { type: 'button', class: 'password-toggle', 'aria-label': 'Show password', title: 'Show password' }, '◉');
+    const wrap = h('div', { class: 'password-wrap' }, input, toggle);
+    toggle.onclick = () => {
+      const visible = input.type === 'text';
+      input.type = visible ? 'password' : 'text';
+      toggle.textContent = visible ? '◉' : '◌';
+      toggle.setAttribute('aria-label', visible ? 'Show password' : 'Hide password');
+      toggle.title = visible ? 'Show password' : 'Hide password';
+      input.focus();
+    };
+    return { input, wrap };
+  }
+
   function stepLogin(msg) {
     const emailInp = h('input', { type: 'email', inputmode: 'email', autocomplete: 'email', placeholder: 'you@example.com', value: email, required: true, 'aria-label': 'Email address' });
-    const passInp = h('input', { type: 'password', autocomplete: 'current-password', placeholder: 'Password', required: true, minlength: 8, 'aria-label': 'Password' });
+    const pass = passwordField('Password', 'current-password', 'Password');
     const err = h('div');
     const login = h('button', { class: 'btn primary', style: 'width:100%', type: 'submit' }, 'Log in');
     const signup = h('button', { class: 'btn ghost sm', type: 'button' }, 'Create account');
@@ -117,13 +132,13 @@ function renderAuth() {
         ev.preventDefault(); email = emailInp.value.trim(); err.replaceChildren();
         login.disabled = true; login.replaceChildren(h('span', { class: 'spin' }));
         try {
-          const r = await post('/api/auth/login', { email, password: passInp.value });
+          const r = await post('/api/auth/login', { email, password: pass.input.value });
           S.user = r.user; location.hash = '#/'; route();
         } catch (e) {
           err.replaceChildren(errBox(e));
           login.disabled = false; login.replaceChildren('Log in');
         }
-      } }, emailInp, passInp, err, h('div', { style: 'margin-top:1rem' }, login)),
+      } }, emailInp, pass.wrap, err, h('div', { style: 'margin-top:1rem' }, login)),
       h('div', { class: 'row between', style: 'margin-top:.5rem' }, h('span', { class:'small muted' }, 'New here?'), signup)
     );
     emailInp.focus();
@@ -131,8 +146,8 @@ function renderAuth() {
 
   function stepSignup() {
     const emailInp = h('input', { type: 'email', inputmode: 'email', autocomplete: 'email', placeholder: 'you@example.com', value: email, required: true, 'aria-label': 'Email address' });
-    const p1 = h('input', { type: 'password', autocomplete: 'new-password', placeholder: 'Password', minlength: 8, required: true, 'aria-label': 'Password' });
-    const p2 = h('input', { type: 'password', autocomplete: 'new-password', placeholder: 'Confirm password', minlength: 8, required: true, 'aria-label': 'Confirm password' });
+    const p1 = passwordField('Password', 'new-password', 'Password');
+    const p2 = passwordField('Confirm password', 'new-password', 'Confirm password');
     const err = h('div');
     const create = h('button', { class: 'btn primary', style: 'width:100%', type: 'submit' }, 'Create account');
 
@@ -143,13 +158,13 @@ function renderAuth() {
         ev.preventDefault(); email = emailInp.value.trim(); err.replaceChildren();
         create.disabled = true; create.replaceChildren(h('span', { class: 'spin' }));
         try {
-          const r = await post('/api/auth/signup', { email, password: p1.value, confirm_password: p2.value });
+          const r = await post('/api/auth/signup', { email, password: p1.input.value, confirm_password: p2.input.value });
           S.user = r.user; location.hash = '#/'; route();
         } catch (e) {
           err.replaceChildren(errBox(e));
           create.disabled = false; create.replaceChildren('Create account');
         }
-      } }, emailInp, p1, p2, err, h('div', { style: 'margin-top:1rem' }, create)),
+      } }, emailInp, p1.wrap, p2.wrap, err, h('div', { style: 'margin-top:1rem' }, create)),
       h('button', { class: 'btn ghost sm', onclick: () => stepLogin() }, 'Back to login')
     );
     emailInp.focus();
