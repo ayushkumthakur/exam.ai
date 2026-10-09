@@ -23,7 +23,8 @@ async function pgTutor(parts, params) {
       if (role === 'assistant') { if (id) m.append(actions(id, text)); } return m;
     }
     function actions(id, text) {
-      const labels = { simple: 'Explain simply', detail: 'Explain in detail', another: 'Show another method', again: 'Explain again' };\n      const send = (mode, msg) => ask(msg || `Use only the answer below as context for this request; do not rely on any other conversation history.\n\nPrevious answer:\n${text}`, mode, msg || labels[mode]);
+      const labels = { simple: 'Explain simply', detail: 'Explain in detail', another: 'Show another method', again: 'Explain again' };
+      const send = (mode, msg) => ask(msg || `Use only the answer below as context for this request; do not rely on any other conversation history.\n\nPrevious answer:\n${text}`, mode, msg || labels[mode]);
       const B = (l, f) => h('button', { class: 'btn sm', onclick: f }, l);
       return h('div', { class: 'row', style: 'margin-top:.7rem' }, B('Explain Simply', () => send('simple')), B('Explain in Detail', () => send('detail')), B('Show Another Method', () => send('another')), B('Explain Again', () => send('again')),
         B('Give Similar Question', () => ask(`Based only on the answer below, give me one similar practice question testing the same concept. Do not reveal the answer until I ask.\n\nPrevious answer:\n${text}`, undefined, 'Give me a similar practice question on the same concept.')), B('Generate 5 Questions', () => { tab = 'gen'; draw(); }), B('Generate Quiz', () => { tab = 'gen'; draw(); }),
