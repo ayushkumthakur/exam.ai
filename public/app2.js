@@ -10,7 +10,7 @@ async function pgTutor(parts, params) {
   const ex = (await get('/api/exams/' + S.user.exam_id)).exam; let tab = 'chat';
   const root = h('div', { class: 'stack' }), view = h('div', { class: 'stack' });
   const tabs = () => h('div', { class: 'chips' }, [['chat', 'Ask AI'], ['paper', 'Solve Paper'], ['gen', 'Generate Questions'], ['notes', 'Study Material']].map(([k, l]) => h('button', { class: 'chip' + (tab === k ? ' on' : ''), onclick: () => { tab = k; draw(); } }, l)));
-  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'AI is not configured on this server yet. An admin needs to add GEMINI_API_KEY in Railway.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
+  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'AI is not configured on this server yet. An admin needs to add GEMINI_API_KEY or ANTHROPIC_API_KEY in Railway.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
 
   function tChat() {
     const log = h('div', { class: 'chat', 'aria-live': 'polite' }), ta = h('textarea', { rows: 2, placeholder: `Ask a ${ex.name} doubt, paste a question, or attach a photo…`, 'aria-label': 'Your question' });
@@ -62,7 +62,8 @@ async function pgTutor(parts, params) {
       go_.disabled = true; out.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Generating and validating questions…'));
       try { const r = await post('/api/ai/generate', { subject: st.subject, topic: st.topic, difficulty: dif.value, count: +cnt.value });
         out.replaceChildren(h('div', { class: 'info' }, `${r.questions.length} valid question(s) ready` + (r.dropped_invalid ? ` (${r.dropped_invalid} broken one(s) discarded)` : '') + '. Labelled “AI Generated Practice”.'),
-          h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => out.replaceChildren(runSession(r.questions, { title: 'AI Generated Practice', onFinish: () => tGen2() })) }, 'Practice these'), h('button', { class: 'btn', onclick: () => startTest({ kind: 'custom', question_ids: r.questions.map(x => x.id), title: `AI Quiz · ${st.topic}` }) }, 'Take as timed quiz'))); }
+          h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => out.replaceChildren(runSession(r.questions, { title: 'AI Generated Practice', onFinish: () => tGen2() })) }, 'Practice these')),
+          h('p', { class: 'small muted' }, 'This short set is for untimed practice. Full timed tests need at least 20 questions.')); }
       catch (e) { out.replaceChildren(errBox(e, () => go_.click())); } go_.disabled = false; } }, 'Generate');
     const tGen2 = () => { view.replaceChildren(); tGen(); };
     view.append(h('div', { class: 'card stack' }, h('p', { class: 'muted' }, 'Questions are generated for your exam and checked for a valid answer and explanation before you see them. Leave it to us: weak topics are used to focus them when you practise a topic you often get wrong.'), pick, h('div', { class: 'grid g2' }, h('div', {}, h('label', {}, 'Difficulty'), dif), h('div', {}, h('label', {}, 'How many'), cnt)), go_), out);
