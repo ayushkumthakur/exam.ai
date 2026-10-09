@@ -716,7 +716,7 @@ route('POST', '/api/ai/ask', ONB, (c) => guarded(c.user, 'ask', async () => {
   const messages = [{ role: 'user', content: files.length ? [...files, { type: 'text', text }] : text }];
   const r = await ai.callClaude({ system: ai.TUTOR_SYSTEM(tutorCtx(c.user, exam)), messages, maxTokens: 2000 });
   if (!r.ok) throw new HttpError(502, ai.friendlyError(r.error), { retry: true, code: r.error });
-  const saveUser = msg || (files.length ? '[uploaded file]' : MODE_HINT[mode]);
+  const saveUser = String(c.body.display_message || msg || (files.length ? '[uploaded file]' : MODE_HINT[mode])).trim().slice(0, 4000);
   db.prepare('INSERT INTO ai_conversations (user_id,exam_id,role,content,created_at) VALUES (?,?,?,?,?)').run(c.user.id, exam.id, 'user', saveUser, now());
   const id = Number(db.prepare('INSERT INTO ai_conversations (user_id,exam_id,role,content,created_at) VALUES (?,?,?,?,?)').run(c.user.id, exam.id, 'assistant', r.text, now()).lastInsertRowid);
   return { id, reply: r.text };
