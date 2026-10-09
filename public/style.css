@@ -252,3 +252,17 @@ button,a,input,select,textarea{ -webkit-tap-highlight-color:transparent; }
   .otp input{min-width:0}
 }
 @media (prefers-reduced-motion:reduce){html:focus-within{scroll-behavior:auto}}
+
+/* Explicit theme preference: the in-app theme toggle takes priority over OS preference. */
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f4f7fc;--surface:#ffffff;--ink:#172b4d;--muted:#64748b;--line:#dbe4f0;--brand:#1d4ed8;--brand-2:#2563eb;--accent:#f5a524;--accent-soft:#fff4dc;
+  --ok:#15803d;--ok-soft:#e3f5ea;--bad:#b42318;--bad-soft:#fdeceb;--warn:#8a5a00;--warn-soft:#fff4d6;--info-soft:#eaf2ff;--shadow:0 1px 2px rgba(29,78,216,.06),0 4px 16px rgba(29,78,216,.07);
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0b1220;--surface:#111d33;--ink:#e8efff;--muted:#a8b8d0;--line:#263751;--brand:#93c5fd;--brand-2:#bfdbfe;--accent:#f7b84b;--accent-soft:#33270f;
+  --ok:#5fd39a;--ok-soft:#0f2e22;--bad:#ff8a80;--bad-soft:#3a1715;--warn:#f2c35c;--warn-soft:#352a0b;--info-soft:#172b4d;--shadow:0 1px 2px rgba(0,0,0,.4);
+}
+:root[data-theme="light"] .btn.primary,:root[data-theme="light"] .chip.on,:root[data-theme="light"] .msg.user{color:#fff}
+:root[data-theme="dark"] .btn.primary,:root[data-theme="dark"] .chip.on,:root[data-theme="dark"] .msg.user{color:#10234a}
