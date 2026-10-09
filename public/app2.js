@@ -23,10 +23,10 @@ async function pgTutor(parts, params) {
       if (role === 'assistant') { if (id) m.append(actions(id, text)); } return m;
     }
     function actions(id, text) {
-      const send = (mode, msg) => ask(msg || `Use only the answer below as context for this request; do not rely on any other conversation history.\\n\\nPrevious answer:\\n${text}`, mode);
+      const send = (mode, msg) => ask(msg || `Use only the answer below as context for this request; do not rely on any other conversation history.\n\nPrevious answer:\n${text}`, mode);
       const B = (l, f) => h('button', { class: 'btn sm', onclick: f }, l);
       return h('div', { class: 'row', style: 'margin-top:.7rem' }, B('Explain Simply', () => send('simple')), B('Explain in Detail', () => send('detail')), B('Show Another Method', () => send('another')), B('Explain Again', () => send('again')),
-        B('Give Similar Question', () => ask(`Based only on the answer below, give me one similar practice question testing the same concept. Do not reveal the answer until I ask.\\n\\nPrevious answer:\\n${text}`)), B('Generate 5 Questions', () => { tab = 'gen'; draw(); }), B('Generate Quiz', () => { tab = 'gen'; draw(); }),
+        B('Give Similar Question', () => ask(`Based only on the answer below, give me one similar practice question testing the same concept. Do not reveal the answer until I ask.\n\nPrevious answer:\n${text}`)), B('Generate 5 Questions', () => { tab = 'gen'; draw(); }), B('Generate Quiz', () => { tab = 'gen'; draw(); }),
         B('Add to Revision', () => post('/api/bookmarks', { kind: 'revision', ref_id: 'ai' + id, title: 'AI explanation', body: text }).then(() => toast('Added to revision items')).catch(e => toast(e.message))),
         B('🔖 Bookmark', () => post('/api/bookmarks', { kind: 'ai', ref_id: 'ai' + id, title: 'AI explanation', body: text }).then(r => toast(r.saved ? 'Bookmarked' : 'Removed')).catch(e => toast(e.message))),
         B('Ask Follow-up', () => ta.focus()), h('span', { class: 'grow' }),
