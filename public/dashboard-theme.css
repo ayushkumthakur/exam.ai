@@ -38,7 +38,7 @@ a{color:var(--brand-2)}
 .side{width:273px;min-width:273px;padding:.15rem .18rem .8rem;background:var(--surface);border-right:1px solid #e4e5eb;gap:.4rem}
 .shell{grid-template-columns:273px minmax(0,1fr);background:var(--bg)}
 .side .brand{padding:.15rem .05rem 2.75rem;gap:.7rem;color:#171b2c}
-.side .brand svg{width:46px;height:46px;flex:none}
+.side .brand svg{width:36px;height:36px;flex:none}
 .side .brand .brand-copy,.side .brand span{min-width:0}
 .side .brand b{font-family:inherit;font-size:1.03rem;letter-spacing:-.035em;font-weight:750;display:block;color:#151727;line-height:1.2}
 .side .brand small{display:block;color:#67708a;font-family:inherit;font-size:.67rem;line-height:1.4;font-weight:600;letter-spacing:.16em;margin-top:.15rem}
@@ -295,7 +295,7 @@ a{color:var(--brand-2)}
     transition:transform .24s cubic-bezier(.2,.75,.25,1),visibility .24s;
   }
   .side#mobileSideNav.mobile-open{transform:translateX(0);visibility:visible;pointer-events:auto}
-  .side#mobileSideNav .brand{padding:.35rem .35rem 1.05rem}
+  .side#mobileSideNav .brand{padding:.35rem .35rem 1.05rem;gap:.62rem}
   .side#mobileSideNav .side-nav{min-height:45px;flex:none}
   .side#mobileSideNav .side-foot{margin-top:auto;flex:none}
   .bottom{z-index:55}
