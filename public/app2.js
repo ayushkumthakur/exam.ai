@@ -168,7 +168,7 @@ async function pgCA() {
         ),
         h('h3', {}, it.title || 'Current affair'),
         h('p', {}, it.summary || ''),
-        it.source ? h('p', { class: 'small muted' }, 'Source: ', /^https?:\\/\\//i.test(it.source) ? h('a', { href: it.source, target: '_blank', rel: 'noopener noreferrer' }, 'Open original source') : it.source) : null,
+        it.source ? h('p', { class: 'small muted' }, 'Source: ', /^https?:\/\//i.test(it.source) ? h('a', { href: it.source, target: '_blank', rel: 'noopener noreferrer' }, 'Open original source') : it.source) : null,
         actions,
         slot
       ));
