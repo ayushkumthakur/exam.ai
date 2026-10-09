@@ -381,13 +381,16 @@ const MODE_HINT = {
   another: 'Solve the previous question using a different valid method. If no genuinely different valid method exists, say so honestly.',
   again: 'Explain the previous answer again, from a different angle.',
 };
-const MEDIA = { 'image/png': 'image', 'image/jpeg': 'image', 'image/webp': 'image', 'image/gif': 'image', 'application/pdf': 'document' };
+const MEDIA = { 'image/png': 'image', 'image/jpeg': 'image', 'image/webp': 'image', 'application/pdf': 'document' };
 function mediaBlocks(files) {
   const blocks = [];
-  for (const f of (files || []).slice(0, 5)) {
+  if (!Array.isArray(files)) return blocks;
+  if (files.length > 5) throw bad('You can upload at most 5 files at once.');
+  for (const f of files) {
     const type = MEDIA[f.media_type];
     if (!type || typeof f.data !== 'string' || !/^[A-Za-z0-9+/=]+$/.test(f.data)) throw bad('Unsupported file. Upload a PNG, JPG, WEBP image or a PDF.');
     if (f.data.length > 14e6) throw bad('That file is too large. Please upload a smaller file, or split a large paper into sections.');
+    if (!validFileSignature(f.media_type, f.data)) throw bad('The uploaded file type does not match its contents.');
     blocks.push({ type, source: { type: 'base64', media_type: f.media_type, data: f.data } });
   }
   return blocks;
@@ -408,7 +411,8 @@ route('POST', '/api/auth/signup', {}, (c) => {
   const confirm_password = String(c.body.confirm_password || '');
   if (!EMAIL_RE.test(email)) throw bad('Enter a valid email address.');
   validatePassword(password, confirm_password);
-  rateLimit('signup:' + c.ip, 10, 3600000);
+  rateLimit('signup:' + c.ip, 6, 3600000);
+  rateLimit('signup-email:' + email, 3, 3600000);
   const existing = db.prepare('SELECT * FROM users WHERE email=?').get(email);
   if (existing) {
     if (existing.password_hash) throw new HttpError(409, 'An account with this email already exists. Please log in.');
@@ -425,6 +429,7 @@ route('POST', '/api/auth/login', {}, (c) => {
   const password = String(c.body.password || '');
   if (!EMAIL_RE.test(email) || !password) throw bad('Enter your email and password.');
   rateLimit('login:' + c.ip, 20, 3600000);
+  rateLimit('login-email:' + email, 10, 900000);
   const u = db.prepare('SELECT * FROM users WHERE email=?').get(email);
   if (!u) throw new HttpError(401, 'Incorrect email or password.');
   if (!u.password_hash) throw new HttpError(409, 'This account needs one-time email verification before password login.', { code: 'PASSWORD_SETUP_REQUIRED' });
@@ -874,13 +879,57 @@ function startCurrentAffairsAutoRefresh() {
   setInterval(() => refreshCurrentAffairsAuto(2, 12).catch(e => console.error('[ca-refresh]', e.message)), 24 * 60 * 60 * 1000);
 }
 
+// ---------- request hardening ----------
+const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+function requestOrigin(req) {
+  const proto = String(req.headers['x-forwarded-proto'] || (req.socket.encrypted ? 'https' : 'http')).split(',')[0].trim();
+  const host = String(req.headers.host || '').trim().toLowerCase();
+  return host ? proto + '://' + host : null;
+}
+function enforceSameOrigin(req, userPresent) {
+  if (!userPresent || !MUTATING.has(req.method)) return;
+  if (String(req.headers['sec-fetch-site'] || '').toLowerCase() === 'cross-site') throw new HttpError(403, 'Cross-site request blocked.');
+  const target = requestOrigin(req);
+  const origin = String(req.headers.origin || '').trim();
+  if (origin) {
+    if (origin !== target) throw new HttpError(403, 'Cross-origin request blocked.');
+    return;
+  }
+  const referer = String(req.headers.referer || '').trim();
+  if (referer) {
+    try { if (new URL(referer).origin !== target) throw new HttpError(403, 'Cross-origin request blocked.'); }
+    catch (e) { if (e instanceof HttpError) throw e; throw new HttpError(403, 'Request origin could not be verified.'); }
+    return;
+  }
+  throw new HttpError(403, 'Request origin could not be verified.');
+}
+function validFileSignature(mediaType, data) {
+  try {
+    const b = Buffer.from(data, 'base64');
+    if (mediaType === 'image/png') return b.subarray(0, 8).toString('hex') === '89504e470d0a1a0a';
+    if (mediaType === 'image/jpeg') return b.subarray(0, 3).toString('hex') === 'ffd8ff';
+    if (mediaType === 'image/webp') return b.subarray(0, 4).toString('ascii') === 'RIFF' && b.subarray(8, 12).toString('ascii') === 'WEBP';
+    if (mediaType === 'application/pdf') return b.subarray(0, 5).toString('ascii') === '%PDF-';
+  } catch {}
+  return false;
+}
 // ---------- http plumbing ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json' };
 const PUB = path.join(__dirname, 'public');
-const SEC = { 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'same-origin',
-  'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'" };
+const SEC = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'Content-Security-Policy': "default-src 'self'; base-uri 'none'; object-src 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self'"
+};
+function responseHeaders(extra = {}) {
+  return { ...SEC, ...(PROD ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' } : {}), ...extra };
+}
 
-function readBody(req, limit = 16e6) {
+function readBody(req, limit = 2e6) {
   return new Promise((resolve, reject) => {
     let size = 0; const chunks = [];
     req.on('data', d => { size += d.length; if (size > limit) { reject(new HttpError(413, 'That upload is too large.')); req.destroy(); } else chunks.push(d); });
@@ -888,7 +937,7 @@ function readBody(req, limit = 16e6) {
     req.on('error', reject);
   });
 }
-function send(res, status, obj) { const s = JSON.stringify(obj); res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...SEC }); res.end(s); }
+function send(res, status, obj) { const body = JSON.stringify(obj); res.writeHead(status, { ...responseHeaders(), 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(body); }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x'); const ip = req.socket.remoteAddress;
@@ -898,13 +947,15 @@ const server = http.createServer(async (req, res) => {
       for (const r of routes) { if (r.method !== method) continue; const m = r.re.exec(url.pathname); if (m) { matched = r; params = m.groups || {}; break; } }
       if (!matched) return send(res, 404, { error: 'Not found' });
       const user = getUser(req);
+      enforceSameOrigin(req, !!user);
       if (matched.opts.auth && !user) return send(res, 401, { error: 'Please log in.' });
       if (matched.opts.admin && user.role !== 'admin') return send(res, 403, { error: 'Admins only.' });
       if (matched.opts.onboarded && !user.onboarded) return send(res, 409, { error: 'Please finish setting up your profile.', code: 'ONBOARDING' });
       let body = {};
       if (method !== 'GET' && method !== 'DELETE') {
         if (!/application\/json/.test(req.headers['content-type'] || '')) throw bad('Expected JSON.');
-        const raw = await readBody(req); try { body = raw ? JSON.parse(raw) : {}; } catch { throw bad('Invalid JSON.'); }
+        const bodyLimit = ['/api/ai/paper-parse', '/api/ai/solve-question', '/api/ai/notes'].includes(url.pathname) ? 16e6 : 2e6;
+        const raw = await readBody(req, bodyLimit); try { body = raw ? JSON.parse(raw) : {}; } catch { throw bad('Invalid JSON.'); }
       }
       const out = await matched.fn({ req, res, user, body, params, query: Object.fromEntries(url.searchParams), ip });
       return send(res, 200, out);
@@ -915,7 +966,7 @@ const server = http.createServer(async (req, res) => {
     if (!file.startsWith(PUB + path.sep)) { res.writeHead(403); return res.end(); }
     fs.readFile(file, (err, data) => {
       if (err) { res.writeHead(404, SEC); return res.end('Not found'); }
-      res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache', ...SEC }); res.end(data);
+      res.writeHead(200, { ...responseHeaders({ 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' }) }); res.end(data);
     });
   } catch (e) {
     if (e instanceof HttpError) return send(res, e.status, { error: e.message, ...(e.extra || {}) });
