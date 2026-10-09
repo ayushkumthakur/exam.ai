@@ -6,11 +6,11 @@ const ACCEPT = 'image/png,image/jpeg,image/webp,application/pdf';
 
 // ---------- AI tutor ----------
 async function pgTutor(parts, params) {
-  const hist = S.config.ai_enabled ? (await get('/api/ai/history')).messages : [];
+  let hist = S.config.ai_enabled ? (await get('/api/ai/history')).messages : [];
   const ex = (await get('/api/exams/' + S.user.exam_id)).exam; let tab = 'chat';
   const root = h('div', { class: 'stack' }), view = h('div', { class: 'stack' });
   const tabs = () => h('div', { class: 'chips' }, [['chat', 'Ask AI'], ['paper', 'Solve Paper'], ['gen', 'Generate Questions'], ['notes', 'Study Material']].map(([k, l]) => h('button', { class: 'chip' + (tab === k ? ' on' : ''), onclick: () => { tab = k; draw(); } }, l)));
-  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'AI is not configured on this server yet. An admin needs to add GEMINI_API_KEY or ANTHROPIC_API_KEY in Railway.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
+  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), h('p', { class: 'small muted' }, 'Fresh context per question. Saved chat history is kept separately for reference and is not sent with new questions.'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'AI is not configured on this server yet. An admin needs to add GEMINI_API_KEY or ANTHROPIC_API_KEY in Railway.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
 
   function tChat() {
     const log = h('div', { class: 'chat', 'aria-live': 'polite' }), ta = h('textarea', { rows: 2, placeholder: `Ask a ${ex.name} doubt, paste a question, or attach a photo…`, 'aria-label': 'Your question' });
@@ -40,15 +40,23 @@ async function pgTutor(parts, params) {
       if (!mode) addMsg('user', text || '[uploaded file]'); else if (displayMessage) addMsg('user', displayMessage); else if (msg) addMsg('user', msg); else addMsg('user', { simple: 'Explain simply', detail: 'Explain in detail', another: 'Show another method', again: 'Explain again' }[mode]);
       ta.value = ''; picked = null; file.value = ''; chosen.textContent = '';
       const wait = h('div', { class: 'msg assistant' }, h('span', { class: 'spin' }), ' Thinking carefully…'); log.append(wait); sendBtn.disabled = true; wait.scrollIntoView({ block: 'nearest' });
-      try { const r = await post('/api/ai/ask', { message: text, mode, files, display_message: displayMessage }); wait.remove(); lastId = r.id; addMsg('assistant', r.reply, r.id).scrollIntoView({ block: 'nearest' }); }
+      try { const r = await post('/api/ai/ask', { message: text, mode, files, display_message: displayMessage, fresh_context: true }); wait.remove(); lastId = r.id; addMsg('assistant', r.reply, r.id).scrollIntoView({ block: 'nearest' }); hist.push({ role: 'user', content: displayMessage || text || (files ? '[uploaded file]' : 'AI request') }, { id: r.id, role: 'assistant', content: r.reply }); drawSavedHistory(); }
       catch (e) { wait.replaceChildren(h('div', {}, e.message), h('button', { class: 'btn sm', style: 'margin-top:.5rem', onclick: () => { wait.remove(); ta.value = text; if (files) toast('Re-attach your file to retry.'); } }, 'Try Again')); }
       sendBtn.disabled = false;
     }
     sendBtn.onclick = () => ask(); ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) ask(); });
-    hist.forEach(m => addMsg(m.role, m.content, m.role === 'assistant' ? m.id : null));
-    if (!hist.length) log.append(h('div', { class: 'empty' }, `Ask any ${ex.name} doubt. Answers always include the correct answer, why it is correct, the concept, and an exam tip.`));
-    view.append(log, h('div', { class: 'card stack' }, ta, h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => file.click() }, '📷 Image / PDF'), file, chosen, h('span', { class: 'grow' }), h('button', { class: 'btn ghost sm', onclick: async () => { if (confirm('Clear this chat?')) { await post('/api/ai/clear'); tab = 'chat'; draw(); } } }, 'Clear'), sendBtn),
-      h('p', { class: 'small muted' }, 'Tip: Ctrl+Enter to send. AI can make mistakes. For important facts, verify with your textbook or official source.')));
+    log.append(h('div', { class: 'empty' }, `Ask any ${ex.name} doubt. Each question starts fresh. Answers include the correct answer, explanation, concept, and exam tip.`));
+    const historySlot = h('div');
+    function drawSavedHistory() {
+      historySlot.replaceChildren();
+      if (!hist.length) return;
+      const archive = h('div', { class: 'chat saved-history-list' });
+      hist.forEach(m => archive.append(h('div', { class: 'msg ' + m.role }, m.role === 'assistant' ? md(m.content) : m.content)));
+      historySlot.append(h('details', { class: 'card saved-history' }, h('summary', { style: 'cursor:pointer;font-weight:650' }, `Saved chat history (${hist.length} messages) · not used for new questions`), archive));
+    }
+    drawSavedHistory();
+    view.append(log, h('div', { class: 'card stack' }, ta, h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => file.click() }, '📷 Image / PDF'), file, chosen, h('span', { class: 'grow' }), h('button', { class: 'btn ghost sm', onclick: async () => { if (confirm('Permanently clear saved AI chat history?')) { await post('/api/ai/clear'); hist = []; log.replaceChildren(h('div', { class: 'empty' }, 'Saved history cleared. Your next question will start fresh.')); drawSavedHistory(); } } }, 'Clear History'), sendBtn),
+      h('p', { class: 'small muted' }, 'Each AI request is independent. Use an answer’s follow-up button when you intentionally want to refer to that answer. Ctrl+Enter to send. Verify important facts with your textbook or official sources.')), historySlot);
     if (params.get('ask')) { ta.value = params.get('ask'); history.replaceState(null, '', '#/tutor'); ask(); }
   }
 
