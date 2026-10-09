@@ -59,7 +59,7 @@ const pubQ = r => ({ id: r.id, subject: r.subject, topic: r.topic, difficulty: r
 const fullQ = r => ({ ...pubQ(r), answer: r.answer, explanation: r.explanation, concept: r.concept, tip: r.tip, source_ref: r.source_ref });
 
 // ---------- auth ----------
-const mem = { sendLog: new Map() };
+const mem = { sendLog: new Map(), inflight: new Set() };
 function rateLimit(key, max, windowMs) {
   const t = now(); const arr = (mem.sendLog.get(key) || []).filter(x => t - x < windowMs);
   if (arr.length >= max) throw new HttpError(429, 'Too many attempts. Please try again later.');
