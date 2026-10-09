@@ -15,8 +15,8 @@ function h(tag, attrs, ...kids) {
   return el;
 }
 const svg = (d) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); s.append(p); return s; };
-const ICONS = { home: 'M3 11l9-8 9 8M5 10v10h14V10', practice: 'M4 5h16M4 12h16M4 19h10', revision: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5', pyqs: 'M6 3h9l4 4v14H6zM14 3v5h5', tests: 'M9 11l3 3 8-8M4 4h10M4 10h3M4 16h8', ca: 'M4 5h13v14H4zM17 8h3v9a2 2 0 0 1-2 2M7 9h7M7 13h7', tutor: 'M4 5h16v11H9l-5 4zM8 10h8', plan: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', progress: 'M4 20V10M10 20V4M16 20v-7M22 20H2', profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0', more: 'M5 12h.01M12 12h.01M19 12h.01', library: 'M5 4h5v16H5zM12 4h3l4 16h-3z', admin: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z' };
-const logo = () => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 32 32'); s.innerHTML = '<rect width="32" height="32" rx="8" fill="#1d4ed8"/><path d="M7 22V10l9 3 9-3v12l-9-3z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><circle cx="24" cy="7" r="2.4" fill="#f5a524"/>'; return s; };
+const ICONS = { dashboard: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z', mock: 'M8 3v3m8-3v3M4 8h16M6 5h12a2 2 0 0 1 2 2v12H4V7a2 2 0 0 1 2-2zM8 12h3m-3 4h6', doubt: 'M12 18h.01M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 5M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', mistakes: 'M12 9v4m0 4h.01M10.3 3.8L2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3l-7.5-13.2a2 2 0 0 0-3.4 0z', leaderboard: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 7H4v2a4 4 0 0 0 4 4M17 7h3v2a4 4 0 0 1-4 4M9 3h6', bookmarks: 'M6 3h12v18l-6-4-6 4z', home: 'M3 11l9-8 9 8M5 10v10h14V10', practice: 'M4 5h16M4 12h16M4 19h10', revision: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5', pyqs: 'M6 3h9l4 4v14H6zM14 3v5h5', tests: 'M9 11l3 3 8-8M4 4h10M4 10h3M4 16h8', ca: 'M4 5h13v14H4zM17 8h3v9a2 2 0 0 1-2 2M7 9h7M7 13h7', tutor: 'M4 5h16v11H9l-5 4zM8 10h8', plan: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', progress: 'M4 20V10M10 20V4M16 20v-7M22 20H2', profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0', more: 'M5 12h.01M12 12h.01M19 12h.01', library: 'M5 4h5v16H5zM12 4h3l4 16h-3z', admin: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z' };
+const logo = () => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 32 32'); s.innerHTML = '<defs><linearGradient id="ceaLogoGradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4234bd"/><stop offset="1" stop-color="#8d3e78"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#ceaLogoGradient)"/><path d="M3.8 10.5L16 4.6l12.2 5.9L16 16.4z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.7 13v6c4.3 2.4 10.3 2.4 14.6 0v-6M27.8 11v7" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>'; return s; };
 const toast = (m) => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600); };
 const pct = (v) => v === null || v === undefined ? '–' : v + '%';
 const fmtDate = (t) => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
@@ -339,7 +339,24 @@ function renderShell(page, parts, params) {
   const navItem = ([k, label], cls = '') => h('a', { class: 'nav' + (k === page || (k === 'more' && !MOBILE.some(m => m[0] === page)) ? ' on' : '') + cls, href: '#/' + k }, svg(ICONS[k] || ICONS.more), label);
   const main = h('div', { class: 'page', id: 'page' });
   const isAdmin = S.user.role === 'admin';
-  const sideItems = [...NAV, ['library', 'My Library'], ...(isAdmin ? [['admin', 'Admin']] : [])];
+  const sideItems = [
+    { label: 'Dashboard', icon: 'dashboard', href: '#/home', active: page === 'home' },
+    { label: 'Practice', icon: 'practice', href: '#/practice', active: page === 'practice' },
+    { label: 'Mock Tests', icon: 'mock', href: '#/tests', active: page === 'tests' || page === 'test' || page === 'result' },
+    { label: 'Doubt Solver', icon: 'doubt', href: '#/tutor?mode=doubt', active: page === 'tutor' && params.get('mode') === 'doubt' },
+    { label: 'Mistakes', icon: 'mistakes', href: '#/revision?mistakes=1', active: page === 'revision' && !!params.get('mistakes') },
+    { label: 'Revision', icon: 'revision', href: '#/revision', active: page === 'revision' && !params.get('mistakes') },
+    { label: 'PYQs', icon: 'pyqs', href: '#/pyqs', active: page === 'pyqs' },
+    { label: 'Leaderboard', icon: 'leaderboard', href: '#/progress', active: page === 'progress' },
+    { label: 'Current Affairs', icon: 'ca', href: '#/ca', active: page === 'ca' },
+    { label: 'Study Plan', icon: 'plan', href: '#/plan', active: page === 'plan' },
+    { label: 'Bookmarks', icon: 'bookmarks', href: '#/library', active: page === 'library' },
+    { label: 'AI Assistant', icon: 'tutor', href: '#/tutor', active: page === 'tutor' && params.get('mode') !== 'doubt' },
+    { label: 'Profile', icon: 'profile', href: '#/profile', active: page === 'profile' },
+    ...(isAdmin ? [{ label: 'Admin', icon: 'admin', href: '#/admin', active: page === 'admin' }] : [])
+  ];
+  const sideNavItem = (item) => h('a', { class: 'nav side-nav' + (item.active ? ' on' : ''), href: item.href, 'aria-current': item.active ? 'page' : null },
+    svg(ICONS[item.icon] || ICONS.more), h('span', {}, item.label));
   const search = h('form', { role: 'search', onsubmit: (e) => { e.preventDefault(); const v = e.target.q.value.trim(); if (v.length >= 2) go('#/search' + q({ q: v })); } },
     h('input', { name: 'q', type: 'search', placeholder: 'Search topics, questions, PYQs, notes…', 'aria-label': 'Search', value: page === 'search' ? params.get('q') || '' : '' }));
   const theme = h('button', { class: 'iconbtn', type: 'button', title: 'Toggle light/dark mode', 'aria-label': 'Toggle light/dark mode', onclick: toggleTheme }, getTheme() === 'dark' ? '☀' : '☾');
@@ -348,12 +365,14 @@ function renderShell(page, parts, params) {
     h('span', { class: 'profile-mini-text' }, S.user.name || S.user.email || 'Student'));
   $('#app').replaceChildren(h('div', { class: 'shell' },
     h('nav', { class: 'side', 'aria-label': 'Main' },
-      h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'),
-      h('div', { class: 'nav-section-label' }, 'Study'),
-      sideItems.slice(0, 6).map(i => navItem(i)),
-      h('div', { class: 'nav-section-label nav-section-gap' }, 'Tools'),
-      sideItems.slice(6).map(i => navItem(i)),
-      h('div', { class: 'side-foot' }, h('span', { class: 'small muted' }, 'Learn • Practice • Improve'))),
+      h('div', { class: 'brand' }, logo(), h('span', { class: 'brand-copy' }, h('b', {}, 'Competitive Exam AI'), h('small', {}, 'UPSC · NDA · SSC · BANKING'))),
+      sideItems.map(sideNavItem),
+      h('div', { class: 'side-foot' },
+        h('a', { class: 'sidebar-profile', href: '#/profile', title: 'Open profile' },
+          h('span', { class: 'sidebar-avatar' }, (S.user.name || S.user.email || 'S').slice(0, 1).toUpperCase()),
+          h('span', { class: 'sidebar-user-copy' }, h('b', {}, S.user.name || 'Student'), h('small', {}, S.user.email || 'Open your profile')),
+          h('span', { class: 'sidebar-profile-arrow', 'aria-hidden': 'true' }, '↗')),
+        h('p', { class: 'sidebar-note' }, 'Sample question bank and news digests are included so you can start immediately.'))),
     h('div', { class: 'main' },
       h('div', { class: 'top' },
         h('div', { class: 'top-brand' }, h('div', { class: 'brand' }, logo(), h('span', {}, 'Competitive Exam AI'))),
@@ -386,29 +405,156 @@ async function startTest(body) {
 
 // ---------- home ----------
 async function pgHome() {
-  const d = await get('/api/home');
-  const reco = d.recommendation;
-  return h('div', { class: 'stack' },
-    h('div', { class: 'hero' }, h('h1', {}, `${d.greeting}, ${d.name} 👋`), h('p', {}, `Preparing for ${d.exam.name}`), h('p', {}, d.days_left === null ? '' : d.days_left > 0 ? `${d.days_left} days remaining` : d.days_left === 0 ? 'Exam day is today. Best of luck!' : 'Your target date has passed. Update it in Profile.')),
-    h('div', { class: 'quick-actions card' },
-      h('div', { class: 'quick-title' }, h('b', {}, 'Quick Start'), h('span', { class: 'muted small' }, 'Jump straight into preparation')),
-      h('div', { class: 'quick-grid' },
-        [['practice','Practice Questions','Start a focused set'],['tests','Take a Test','Check your level'],['pyqs','Previous Year Questions','Study real patterns'],['tutor','Ask AI Tutor','Clear any doubt']].map(([k,t,sub]) =>
-          h('a', { class: 'quick-item', href: '#/' + k }, h('span', { class: 'quick-icon' }, svg(ICONS[k] || ICONS.more)), h('span', {}, h('b', {}, t), h('small', { class: 'muted' }, sub))))
-      )),
-    h('div', { class: 'grid g2' },
-      h('div', { class: 'card' }, h('h3', {}, 'Today’s Target'), h('div', { class: 'row between' }, h('span', {}, `${d.today.questions} / ${d.target.questions} questions`), h('span', { class: 'muted small' }, `${d.today.minutes} / ${d.target.minutes} min`)), h('div', { class: 'bar', style: 'margin-top:.5rem' }, h('i', { style: `width:${Math.min(100, Math.round(100 * d.today.questions / Math.max(1, d.target.questions)))}%` }))),
-      h('div', { class: 'card reco' }, h('span', { class: 'badge warn' }, 'What should I do now?'), h('h2', { style: 'margin-top:.4rem' }, reco.title), h('p', {}, reco.detail), h('button', { class: 'btn accent', onclick: () => doAction(reco.action) }, reco.cta))),
-    h('div', { class: 'grid g3' }, [['Streak', d.streak + (d.streak === 1 ? ' day' : ' days')], ['Questions solved', d.questions_solved], ['Accuracy', pct(d.accuracy)]].map(([l, v]) => h('div', { class: 'card stat' }, h('span', { class: 'muted small' }, l), h('b', {}, v)))),
-    h('div', { class: 'grid g2' },
-      h('div', { class: 'card' }, h('h3', {}, 'Continue Studying'), d.continue ? h('p', {}, d.continue.subject + ' → ' + d.continue.topic) : h('p', { class: 'muted' }, 'Start your first practice set.'),
-        h('div', { class: 'row' }, h('button', { class: 'btn primary sm', onclick: () => go('#/practice' + q({ subject: d.continue?.subject, topic: d.continue?.topic, start: d.continue ? 1 : undefined })) }, 'Practice Now'), h('button', { class: 'btn sm', onclick: () => go('#/tutor') }, 'Ask AI')),
-        h('div', { class: 'stack', style: 'margin-top:1rem' }, d.subject_progress.map(s => h('div', {}, h('div', { class: 'row between small' }, h('span', {}, s.subject), h('span', { class: 'muted' }, `${s.covered}/${s.total} topics started`)), h('div', { class: 'bar' }, h('i', { style: `width:${Math.round(100 * s.covered / s.total)}%` })))))),
-      h('div', { class: 'card' }, h('h3', {}, 'Weak Topics'), d.weak_topics.length ? h('div', { class: 'list' }, d.weak_topics.map(w => h('div', { class: 'row between' }, h('span', {}, h('b', {}, w.topic), h('span', { class: 'muted small' }, ' · ' + w.subject)), h('span', { class: 'row' }, h('span', { class: 'badge bad' }, w.accuracy + '%'), h('button', { class: 'btn sm', onclick: () => go('#/revision' + q({ subject: w.subject, topic: w.topic })) }, 'Revise'))))) : h('p', { class: 'muted' }, 'No weak topics yet. Answer at least 3 questions per topic and they will appear here.'))),
-    h('div', { class: 'grid g2' },
-      h('div', { class: 'card' }, h('h3', {}, 'Upcoming Test'), h('p', {}, d.upcoming_test.title), h('button', { class: 'btn sm', onclick: () => d.upcoming_test.resume ? go('#/test/' + d.upcoming_test.id) : go('#/tests') }, d.upcoming_test.resume ? 'Resume Test' : 'Take Test')),
-      h('div', { class: 'card' }, h('h3', {}, 'Study Resources'), h('p', { class: 'muted' }, 'Continue with revision, PYQs, practice, and tests.'))),
-    h('div', { class: 'card' }, h('h3', {}, 'Recent Performance'), d.recent_tests.length ? h('table', {}, h('tbody', {}, d.recent_tests.map(t => h('tr', {}, h('td', {}, t.title), h('td', {}, `${t.score}/${t.max}`), h('td', {}, pct(t.accuracy)), h('td', {}, h('a', { href: '#/result/' + t.id }, 'View')))))) : h('p', { class: 'muted' }, 'No tests taken yet.')));
+  const results = await Promise.all([
+    get('/api/home'),
+    get('/api/tests').catch(() => ({ tests: [] })),
+    get('/api/library').catch(() => ({ bookmarks: [], notes: [], saved_ca: [] }))
+  ]);
+  const d = results[0];
+  const testData = results[1];
+  const libraryData = results[2];
+  const reco = d.recommendation || {};
+  const allTests = testData.tests || [];
+  const submittedTests = allTests.filter(t => t.status === 'submitted');
+  const bookmarkCount = (libraryData.bookmarks || []).length + (libraryData.notes || []).length + (libraryData.saved_ca || []).length;
+  const dailyGoal = Math.max(1, Number(d.target && d.target.questions) || 20);
+  const doneToday = Math.max(0, Number(d.today && d.today.questions) || 0);
+  const goalPct = Math.min(100, Math.round(doneToday / dailyGoal * 100));
+  let daysLabel = 'Target date not set';
+  if (d.days_left !== null && d.days_left !== undefined) daysLabel = d.days_left > 0 ? d.days_left + ' days left' : d.days_left === 0 ? 'Exam day is today' : 'Target date passed';
+  const greeting = (d.questions_solved || 0) === 0 ? 'Ready for your first session?' : 'Ready for your next session?';
+
+  const shortcutSpecs = [
+    ['UPSC_CSE', 'UPSC'], ['NDA', 'NDA'], ['CDS', 'CDS'], ['CAPF', 'CAPF'],
+    ['SSC_CGL', 'SSC'], ['SSC_CHSL', 'SSCCHSL'], ['IBPS_PO', 'IBPS'], ['RRB_NTPC', 'RRB'],
+    ['JEE_MAIN', 'JEE'], ['NEET', 'NEET'], ['CUET', 'CUET'], ['CLAT', 'CLAT']
+  ];
+  const chipExams = shortcutSpecs.map(([id, label]) => {
+    const exam = S.exams.find(e => e.id === id);
+    return exam ? { exam, label } : null;
+  }).filter(Boolean);
+  if (S.exam && !chipExams.some(x => x.exam.id === S.exam.id)) chipExams.unshift({ exam: S.exam, label: S.exam.id });
+
+  async function chooseExam(id) {
+    if (!id || id === S.user.exam_id) return;
+    try {
+      const updated = await put('/api/me', { exam_id: id });
+      S.user = updated.user;
+      toast('Target exam updated');
+      route();
+    } catch (e) {
+      toast(e.message || 'Could not change exam');
+    }
+  }
+
+  const metric = (label, value, caption, iconName) => h('article', { class: 'card dash-stat' },
+    h('div', { class: 'dash-stat-top' },
+      h('span', { class: 'dash-stat-label' }, label),
+      h('span', { class: 'dash-stat-icon', 'aria-hidden': 'true' }, svg(ICONS[iconName] || ICONS.more))),
+    h('strong', { class: 'dash-stat-value' }, value),
+    h('span', { class: 'dash-stat-caption' }, caption));
+
+  const focusRows = (d.weak_topics || []).slice(0, 3).map(w =>
+    h('div', { class: 'dash-focus-row' },
+      h('span', { class: 'dash-focus-dot', 'aria-hidden': 'true' }),
+      h('div', { class: 'dash-focus-copy' },
+        h('b', {}, w.topic),
+        h('small', {}, w.subject + ' · ' + (w.accuracy === null ? 'Needs practice' : w.accuracy + '% accuracy'))),
+      h('button', { class: 'dash-text-action', onclick: () => go('#/revision' + q({ subject: w.subject, topic: w.topic })) }, 'Revise →')));
+  let focusBlock;
+  if (focusRows.length) {
+    focusBlock = h('div', { class: 'dash-focus-list' }, focusRows);
+  } else {
+    focusBlock = h('div', { class: 'dash-empty-focus' },
+      h('span', { class: 'dash-empty-icon', 'aria-hidden': 'true' }, svg(ICONS.progress)),
+      h('div', {},
+        h('b', {}, 'No strong or weak subjects set yet.'),
+        h('p', {}, 'Add your subjects in your profile and practise a few questions. We’ll highlight the areas that need the most attention.'),
+        h('a', { class: 'dash-inline-link', href: '#/profile' }, 'Add them in your profile →')));
+  }
+
+  const heroBadges = h('div', { class: 'dash-hero-badges' },
+    h('span', { class: 'dash-hero-badge' }, svg(ICONS.dashboard), ' PREPARING FOR: ' + (d.exam && d.exam.name || 'Your exam')),
+    h('span', { class: 'dash-hero-badge dash-target-badge' }, daysLabel));
+  const heroActions = h('div', { class: 'dash-hero-actions' },
+    h('a', { class: 'btn dash-primary-action', href: '#/practice?start=1' }, 'Start practice', h('span', { 'aria-hidden': 'true' }, '→')),
+    h('a', { class: 'btn dash-secondary-action', href: '#/tests' }, 'Take a mock test'),
+    h('a', { class: 'btn dash-secondary-action dash-ai-action', href: '#/tutor' }, svg(ICONS.tutor), ' Ask AI tutor'));
+  const heroGoal = h('div', { class: 'dash-goal' },
+    h('div', { class: 'dash-goal-heading' },
+      h('span', {}, svg(ICONS.dashboard), ' Today’s goal · ' + dailyGoal + ' questions'),
+      h('b', {}, doneToday + '/' + dailyGoal)),
+    h('div', { class: 'dash-goal-track', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(dailyGoal), 'aria-valuenow': String(Math.min(doneToday, dailyGoal)), 'aria-label': 'Questions completed today' },
+      h('span', { style: 'width:' + goalPct + '%' })));
+  const hero = h('section', { class: 'dashboard-hero' },
+    h('div', { class: 'dash-hero-orb', 'aria-hidden': 'true' }),
+    heroBadges,
+    h('h1', { class: 'dash-hero-title' }, (d.greeting || 'Hello') + ', ' + (d.name || 'Student') + '.'),
+    h('h2', { class: 'dash-hero-prompt' }, greeting),
+    h('p', { class: 'dash-hero-copy' }, 'You have solved ' + (d.questions_solved || 0) + ' question' + ((d.questions_solved || 0) === 1 ? '' : 's') + ' with ' + pct(d.accuracy) + ' accuracy. Keep the momentum going.'),
+    heroActions,
+    heroGoal);
+
+  const examChipButtons = chipExams.map(({ exam, label }) =>
+    h('button', {
+      type: 'button',
+      class: 'dash-exam-chip' + (exam.id === S.user.exam_id ? ' selected' : ''),
+      'aria-pressed': exam.id === S.user.exam_id ? 'true' : 'false',
+      title: exam.name,
+      onclick: () => chooseExam(exam.id)
+    }, label));
+  const examPicker = h('section', { class: 'dash-exam-picker' },
+    h('div', { class: 'dash-exam-picker-head' },
+      h('span', { class: 'dash-section-kicker' }, 'YOUR TARGET EXAM'),
+      h('a', { class: 'dash-inline-link', href: '#/profile' }, 'Change exam & preferences')),
+    h('div', { class: 'dash-exam-chiprow' }, examChipButtons));
+
+  const stats = h('section', { class: 'dash-stat-grid', 'aria-label': 'Your progress' },
+    metric('QUESTIONS DONE', String(d.questions_solved || 0), (d.streak || 0) + '-day streak', 'dashboard'),
+    metric('ACCURACY', pct(d.accuracy), 'All attempts so far', 'progress'),
+    metric('TESTS TAKEN', String(submittedTests.length), 'Practice and mock', 'mock'),
+    metric('BOOKMARKS', String(bookmarkCount), 'Saved to revise', 'bookmarks'));
+
+  const recommendHead = h('div', { class: 'dash-panel-head' },
+    h('div', {}, h('h2', {}, 'Recommended for you'), h('p', {}, 'Timed practice picked for your target exam.')),
+    h('a', { class: 'dash-inline-link', href: '#/tests' }, 'All tests →'));
+  const recommendRow = h('div', { class: 'dash-recommend-row' },
+    h('span', { class: 'dash-recommend-icon', 'aria-hidden': 'true' }, svg(ICONS.tests)),
+    h('div', { class: 'dash-recommend-copy' },
+      h('b', {}, reco.title || 'Start a focused practice session'),
+      h('p', {}, reco.detail || 'Take a short practice set to see what you already know and what to revise next.'),
+      h('div', { class: 'dash-recommend-meta' }, h('span', {}, '✦ Personalised pick'), h('span', {}, 'Based on your progress'))),
+    h('button', { class: 'btn dash-recommend-cta', onclick: () => doAction(reco.action || { type: 'practice' }) },
+      reco.cta || 'Start now', h('span', { 'aria-hidden': 'true' }, '→')));
+  const recommendPanel = h('section', { class: 'card dash-panel' },
+    recommendHead,
+    recommendRow,
+    h('div', { class: 'dash-panel-foot' },
+      h('a', { class: 'dash-secondary-link', href: '#/practice?start=1' }, 'Practice questions'),
+      h('a', { class: 'dash-secondary-link', href: '#/pyqs' }, 'Explore PYQs')));
+
+  const focusHead = h('div', { class: 'dash-panel-head' },
+    h('div', {}, h('h2', {}, 'Your focus areas'), h('p', {}, 'Built from your practice and updated as you learn.')));
+  const focusPanel = h('section', { class: 'card dash-panel dash-focus-panel' }, focusHead, focusBlock);
+  const columns = h('div', { class: 'dash-columns' }, recommendPanel, focusPanel);
+
+  let recentBlock = null;
+  if ((d.recent_tests || []).length) {
+    const rows = d.recent_tests.slice(0, 5).map(t =>
+      h('a', { class: 'dash-recent-row', href: '#/result/' + t.id },
+        h('span', { class: 'dash-recent-mark', 'aria-hidden': 'true' }, svg(ICONS.tests)),
+        h('span', { class: 'dash-recent-copy' },
+          h('b', {}, t.title),
+          h('small', {}, (t.score ?? '—') + '/' + (t.max ?? '—') + ' marks')),
+        h('span', { class: 'dash-recent-score' }, pct(t.accuracy))));
+    recentBlock = h('section', { class: 'card dash-recent-panel' },
+      h('div', { class: 'dash-panel-head' },
+        h('div', {}, h('h2', {}, 'Recent performance'), h('p', {}, 'Your latest mock and practice test results.')),
+        h('a', { class: 'dash-inline-link', href: '#/tests' }, 'All tests →')),
+      h('div', { class: 'dash-recent-list' }, rows));
+  }
+
+  return h('div', { class: 'dashboard stack' }, hero, examPicker, stats, columns, recentBlock);
 }
 
 // ---------- question session runner (practice / mistakes / PYQ) ----------
