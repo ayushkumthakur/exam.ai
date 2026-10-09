@@ -12,7 +12,7 @@ db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY, email TEXT UNIQUE NOT NULL, name TEXT, role TEXT NOT NULL DEFAULT 'student',
+  id INTEGER PRIMARY KEY, email TEXT UNIQUE NOT NULL, name TEXT, password_hash TEXT, role TEXT NOT NULL DEFAULT 'student',
   exam_id TEXT, level TEXT, target_date TEXT, daily_minutes INTEGER, stage TEXT,
   onboarded INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL
 );
@@ -82,6 +82,10 @@ CREATE TABLE IF NOT EXISTS plan_done (
   user_id INTEGER NOT NULL, day TEXT NOT NULL, task_key TEXT NOT NULL, PRIMARY KEY(user_id, day, task_key)
 );
 `);
+
+// Add password storage for older databases.
+const userColumns = db.prepare('PRAGMA table_info(users)').all();
+if (!userColumns.some(c => c.name === 'password_hash')) db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
 
 // ---- Seed ----
 const now = () => Date.now();
