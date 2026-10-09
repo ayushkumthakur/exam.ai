@@ -15,7 +15,7 @@ function h(tag, attrs, ...kids) {
   return el;
 }
 const svg = (d) => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); s.append(p); return s; };
-const ICONS = { dashboard: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z', mock: 'M8 3v3m8-3v3M4 8h16M6 5h12a2 2 0 0 1 2 2v12H4V7a2 2 0 0 1 2-2zM8 12h3m-3 4h6', doubt: 'M12 18h.01M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2-3 5M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', mistakes: 'M12 9v4m0 4h.01M10.3 3.8L2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3l-7.5-13.2a2 2 0 0 0-3.4 0z', leaderboard: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 7H4v2a4 4 0 0 0 4 4M17 7h3v2a4 4 0 0 1-4 4M9 3h6', bookmarks: 'M6 3h12v18l-6-4-6 4z', home: 'M3 11l9-8 9 8M5 10v10h14V10', practice: 'M4 5h16M4 12h16M4 19h10', revision: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5', pyqs: 'M6 3h9l4 4v14H6zM14 3v5h5', tests: 'M9 11l3 3 8-8M4 4h10M4 10h3M4 16h8', ca: 'M4 5h13v14H4zM17 8h3v9a2 2 0 0 1-2 2M7 9h7M7 13h7', tutor: 'M4 5h16v11H9l-5 4zM8 10h8', plan: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', progress: 'M4 20V10M10 20V4M16 20v-7M22 20H2', profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0', more: 'M5 12h.01M12 12h.01M19 12h.01', library: 'M5 4h5v16H5zM12 4h3l4 16h-3z', admin: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z' };
+const ICONS = { dashboard: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z', mock: 'M8 3v3m8-3v3M4 8h16M6 5h12a2 2 0 0 1 2 2v12H4V7a2 2 0 0 1 2-2zM8 12h3m-3 4h6', doubt: 'M14 4h-4l-1.4 2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4zM12 10a3 3 0 1 0 0 6 3 3 0 0 0 0-6z', mistakes: 'M12 9v4m0 4h.01M10.3 3.8L2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3l-7.5-13.2a2 2 0 0 0-3.4 0z', leaderboard: 'M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 7H4v2a4 4 0 0 0 4 4M17 7h3v2a4 4 0 0 1-4 4M9 3h6', bookmarks: 'M6 3h12v18l-6-4-6 4z', home: 'M3 11l9-8 9 8M5 10v10h14V10', practice: 'M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5zM4 5.5v16M8 7h8M8 11h5M15 15l2 2 3-4', revision: 'M3 12a9 9 0 1 0 3-6.7M3 4v5h5', pyqs: 'M6 3h9l4 4v14H6zM14 3v5h5', tests: 'M9 11l3 3 8-8M4 4h10M4 10h3M4 16h8', ca: 'M4 5h13v14H4zM17 8h3v9a2 2 0 0 1-2 2M7 9h7M7 13h7', tutor: 'M4 5h16v11H9l-5 4zM8 10h8', plan: 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4', progress: 'M4 20V10M10 20V4M16 20v-7M22 20H2', profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0', logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9', more: 'M5 12h.01M12 12h.01M19 12h.01', library: 'M5 4h5v16H5zM12 4h3l4 16h-3z', admin: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z' };
 const logo = () => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 32 32'); s.innerHTML = '<defs><linearGradient id="ceaLogoGradient" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#4234bd"/><stop offset="1" stop-color="#8d3e78"/></linearGradient></defs><rect width="32" height="32" rx="9" fill="url(#ceaLogoGradient)"/><path d="M3.8 10.5L16 4.6l12.2 5.9L16 16.4z" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.7 13v6c4.3 2.4 10.3 2.4 14.6 0v-6M27.8 11v7" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>'; return s; };
 const toast = (m) => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600); };
 const pct = (v) => v === null || v === undefined ? '–' : v + '%';
@@ -377,11 +377,14 @@ function renderShell(page, parts, params) {
       h('div', { class: 'brand' }, logo(), h('span', { class: 'brand-copy' }, h('b', {}, 'Competitive Exam AI'), h('small', {}, 'UPSC · NDA · SSC · BANKING'))),
       sideItems.map(sideNavItem),
       h('div', { class: 'side-foot' },
-        h('a', { class: 'sidebar-profile', href: '#/profile', title: 'Open profile' },
-          h('span', { class: 'sidebar-avatar' }, (S.user.name || S.user.email || 'S').slice(0, 1).toUpperCase()),
-          h('span', { class: 'sidebar-user-copy' }, h('b', {}, S.user.name || 'Student'), h('small', {}, S.user.email || 'Open your profile')),
-          h('span', { class: 'sidebar-profile-arrow', 'aria-hidden': 'true' }, '↗')),
-        h('p', { class: 'sidebar-note' }, 'Sample question bank and news digests are included so you can start immediately.')));
+        h('div', { class: 'sidebar-profile' },
+          h('a', { class: 'sidebar-profile-main', href: '#/profile', title: 'Open profile' },
+            h('span', { class: 'sidebar-avatar' }, (S.user.name || S.user.email || 'S').slice(0, 1).toUpperCase()),
+            h('span', { class: 'sidebar-user-copy' }, h('b', {}, S.user.name || 'Student'), h('small', {}, S.user.email || ''))),
+          h('button', { class: 'sidebar-logout', type: 'button', title: 'Log out', 'aria-label': 'Log out', onclick: async () => {
+            try { await post('/api/auth/logout'); S.user = null; location.hash = '#/'; route(); }
+            catch (e) { toast(e.message || 'Could not log out. Please try again.'); }
+          } }, svg(ICONS.logout))));
   mobileScrim = h('button', { class: 'mobile-nav-scrim', type: 'button', 'aria-label': 'Close navigation menu', tabindex: '-1', onclick: closeMobileNavigation });
   mobileMenuButton = h('button', {
     class: 'iconbtn mobile-menu-toggle', type: 'button', 'aria-controls': 'mobileSideNav',
