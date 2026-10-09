@@ -23,23 +23,23 @@ async function pgTutor(parts, params) {
       if (role === 'assistant') { if (id) m.append(actions(id, text)); } return m;
     }
     function actions(id, text) {
-      const send = (mode, msg) => ask(msg || `Use only the answer below as context for this request; do not rely on any other conversation history.\n\nPrevious answer:\n${text}`, mode);
+      const labels = { simple: 'Explain simply', detail: 'Explain in detail', another: 'Show another method', again: 'Explain again' };\n      const send = (mode, msg) => ask(msg || `Use only the answer below as context for this request; do not rely on any other conversation history.\n\nPrevious answer:\n${text}`, mode, msg || labels[mode]);
       const B = (l, f) => h('button', { class: 'btn sm', onclick: f }, l);
       return h('div', { class: 'row', style: 'margin-top:.7rem' }, B('Explain Simply', () => send('simple')), B('Explain in Detail', () => send('detail')), B('Show Another Method', () => send('another')), B('Explain Again', () => send('again')),
-        B('Give Similar Question', () => ask(`Based only on the answer below, give me one similar practice question testing the same concept. Do not reveal the answer until I ask.\n\nPrevious answer:\n${text}`)), B('Generate 5 Questions', () => { tab = 'gen'; draw(); }), B('Generate Quiz', () => { tab = 'gen'; draw(); }),
+        B('Give Similar Question', () => ask(`Based only on the answer below, give me one similar practice question testing the same concept. Do not reveal the answer until I ask.\n\nPrevious answer:\n${text}`, undefined, 'Give me a similar practice question on the same concept.')), B('Generate 5 Questions', () => { tab = 'gen'; draw(); }), B('Generate Quiz', () => { tab = 'gen'; draw(); }),
         B('Add to Revision', () => post('/api/bookmarks', { kind: 'revision', ref_id: 'ai' + id, title: 'AI explanation', body: text }).then(() => toast('Added to revision items')).catch(e => toast(e.message))),
         B('🔖 Bookmark', () => post('/api/bookmarks', { kind: 'ai', ref_id: 'ai' + id, title: 'AI explanation', body: text }).then(r => toast(r.saved ? 'Bookmarked' : 'Removed')).catch(e => toast(e.message))),
         B('Ask Follow-up', () => ta.focus()), h('span', { class: 'grow' }),
         B('👍 Helpful', () => fb(id, 'helpful')), B('👎 Not Helpful', () => fb(id, 'not_helpful')), B('Report Answer', () => { const n = prompt('What is wrong with this answer? (optional)') ; if (n !== null) fb(id, 'report', n); }));
     }
     const fb = (id, kind, note) => post('/api/ai/feedback', { conversation_id: id, kind, note }).then(() => toast(kind === 'report' ? 'Reported. An admin will review it.' : 'Thanks for the feedback')).catch(e => toast(e.message));
-    async function ask(msg, mode) {
+    async function ask(msg, mode, displayMessage) {
       const text = (msg ?? ta.value).trim(); if (!text && !picked && !mode) return;
       let files; try { files = picked ? [await fileB64(picked)] : undefined; } catch (e) { toast(e.message); return; }
-      if (!mode) addMsg('user', text || '[uploaded file]'); else if (msg) addMsg('user', msg); else addMsg('user', { simple: 'Explain simply', detail: 'Explain in detail', another: 'Show another method', again: 'Explain again' }[mode]);
+      if (!mode) addMsg('user', text || '[uploaded file]'); else if (displayMessage) addMsg('user', displayMessage); else if (msg) addMsg('user', msg); else addMsg('user', { simple: 'Explain simply', detail: 'Explain in detail', another: 'Show another method', again: 'Explain again' }[mode]);
       ta.value = ''; picked = null; file.value = ''; chosen.textContent = '';
       const wait = h('div', { class: 'msg assistant' }, h('span', { class: 'spin' }), ' Thinking carefully…'); log.append(wait); sendBtn.disabled = true; wait.scrollIntoView({ block: 'nearest' });
-      try { const r = await post('/api/ai/ask', { message: text, mode, files }); wait.remove(); lastId = r.id; addMsg('assistant', r.reply, r.id).scrollIntoView({ block: 'nearest' }); }
+      try { const r = await post('/api/ai/ask', { message: text, mode, files, display_message: displayMessage }); wait.remove(); lastId = r.id; addMsg('assistant', r.reply, r.id).scrollIntoView({ block: 'nearest' }); }
       catch (e) { wait.replaceChildren(h('div', {}, e.message), h('button', { class: 'btn sm', style: 'margin-top:.5rem', onclick: () => { wait.remove(); ta.value = text; if (files) toast('Re-attach your file to retry.'); } }, 'Try Again')); }
       sendBtn.disabled = false;
     }
