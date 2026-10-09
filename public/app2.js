@@ -201,8 +201,28 @@ async function pgCA() {
     }
   }, 'Current Affairs Quiz');
 
+  const sourceLinks = [
+    ['Press Information Bureau (PIB)', 'Government schemes, ministry announcements and national updates', 'https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=1'],
+    ['Reserve Bank of India (RBI)', 'Banking, monetary policy and financial announcements', 'https://www.rbi.org.in/Scripts/rss.aspx'],
+    ['Ministry of External Affairs', 'International relations and official diplomatic updates', 'https://www.mea.gov.in/press-releases.htm'],
+    ['ISRO', 'Space missions, science and technology updates', 'https://www.isro.gov.in/'],
+    ['SEBI', 'Capital markets and securities-regulation updates', 'https://www.sebi.gov.in/media/press-releases.html']
+  ];
+  const sources = h('div', { class: 'stack' },
+    h('h2', {}, 'Trusted Current Affairs Sources'),
+    h('p', { class: 'small muted' }, 'Official sources for verification and further reading. Opens in a new tab.'),
+    h('div', { class: 'grid g2' }, sourceLinks.map(([name, desc, url]) =>
+      h('a', { class: 'card nav stack', href: url, target: '_blank', rel: 'noopener noreferrer' },
+        h('div', { class: 'row between' }, h('strong', {}, name), h('span', { class: 'badge' }, 'Official')),
+        h('p', { class: 'small muted' }, desc),
+        h('span', { class: 'small' }, 'Open source ↗')
+      )
+    ))
+  );
+
   return h('div', { class: 'stack' },
     h('div', { class: 'row between' }, h('h1', {}, 'Current Affairs'), S.config.ai_enabled ? quiz : null),
+    sources,
     list
   );
 }
