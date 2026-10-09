@@ -141,3 +141,11 @@ table{width:100%;border-collapse:collapse;font-size:.92rem}th,td{text-align:left
 @media (min-width:821px){.top-brand{display:block}.top>.brand{display:none}}
 @media (max-width:820px){.top{padding:.65rem .85rem}.top-brand{display:block}.top-brand .brand{font-size:1rem}.top-brand .brand svg{width:28px;height:28px}.top-search{display:none}.top form{max-width:none}.profile-mini-text{display:none}.top-exam{display:none}.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:520px){.profile-mini,.iconbtn{width:36px;height:36px}.quick-item{padding:.6rem}.quick-item small{display:none}.quick-icon{width:30px;height:30px}.hero{padding:1.1rem}.page{padding:.85rem}}
+
+/* Robust auth layout: keep email/password fields on separate rows */
+.auth form{display:flex!important;flex-direction:column!important;gap:14px!important}
+.auth form>input,
+.auth form>div{display:block!important;width:100%!important;margin:0!important}
+.auth form>div.err:empty{display:none!important}
+.auth form>div:last-child{margin-top:0!important}
+.auth form input+input{margin-top:0!important}
