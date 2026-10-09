@@ -451,13 +451,11 @@ function applyProfile(u, b, partial) {
   if (b.exam_id !== undefined) { if (!loadExam(b.exam_id)) throw bad('Please select a valid exam.'); f.exam_id = b.exam_id; }
   if (b.level !== undefined) { if (!LEVELS.includes(b.level)) throw bad('Invalid preparation level.'); f.level = b.level; }
   if (b.target_date !== undefined) { if (!/^\d{4}-\d{2}-\d{2}$/.test(b.target_date) || isNaN(Date.parse(b.target_date))) throw bad('Enter a valid target exam date.'); if (b.target_date < dayStr()) throw bad('Target date must be in the future.'); f.target_date = b.target_date; }
-  if (b.daily_minutes !== undefined) { if (!MINS.includes(+b.daily_minutes)) throw bad('Invalid daily study time.'); f.dailroute('POST', '/api/auth/change-password', A, (c) => {
-  validatePassword(String(c.body.password || ''), String(c.body.confirm_password || ''));
-  db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hashPassword(String(c.body.password)), c.user.id);
-  const u = db.prepare('SELECT * FROM users WHERE id=?').get(c.user.id);
-  return { user: meJson(u) };
-});
- : [];
+  if (b.daily_minutes !== undefined) { if (!MINS.includes(+b.daily_minutes)) throw bad('Invalid daily study time.'); f.daily_minutes = +b.daily_minutes; }
+  if (b.stage !== undefined && b.stage !== '') { if (!STAGES.includes(b.stage)) throw bad('Invalid preparation stage.'); f.stage = b.stage; }
+  if (b.selected_subjects !== undefined) {
+    const ex = loadExam(b.exam_id || u.exam_id);
+    const arr = Array.isArray(b.selected_subjects) ? [...new Set(b.selected_subjects.map(String))] : [];
     if (ex && ex.category.startsWith('School') && !arr.length) throw bad('Select at least one school subject.');
     if (ex) { const ok = new Set(ex.subjects); if (arr.some(x => !ok.has(x))) throw bad('Invalid subject selection.'); }
     f.selected_subjects = JSON.stringify(arr);
