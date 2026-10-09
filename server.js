@@ -710,10 +710,10 @@ route('POST', '/api/ai/ask', ONB, (c) => guarded(c.user, 'ask', async () => {
   const exam = loadExam(c.user.exam_id), msg = String(c.body.message || '').trim().slice(0, 4000), mode = c.body.mode;
   const files = mediaBlocks(c.body.files);
   if (!msg && !files.length && !MODE_HINT[mode]) throw bad('Type a question or upload an image.');
-  const hist = db.prepare('SELECT role,content FROM ai_conversations WHERE user_id=? AND exam_id=? ORDER BY id DESC LIMIT 6').all(c.user.id, exam.id).reverse();
+  // Every AI Tutor request is a fresh model context. Stored conversation rows are used only for UI history.
   let text = MODE_HINT[mode] ? `${MODE_HINT[mode]}${msg ? '\nStudent note: ' + msg : ''}` : msg;
   if (files.length) text = `The student uploaded ${files.length > 1 ? 'files' : 'a file'} containing an exam question. Read it carefully, identify the subject and topic, solve it, explain, and give the final answer. If the content is blurry, cropped, or otherwise not clearly readable, reply with exactly: "Please upload a clearer image so I can solve it accurately." and nothing else. Never guess unreadable content.\n${msg}`;
-  const messages = [...hist.map(h => ({ role: h.role, content: h.content })), { role: 'user', content: files.length ? [...files, { type: 'text', text }] : text }];
+  const messages = [{ role: 'user', content: files.length ? [...files, { type: 'text', text }] : text }];
   const r = await ai.callClaude({ system: ai.TUTOR_SYSTEM(tutorCtx(c.user, exam)), messages, maxTokens: 2000 });
   if (!r.ok) throw new HttpError(502, ai.friendlyError(r.error), { retry: true, code: r.error });
   const saveUser = msg || (files.length ? '[uploaded file]' : MODE_HINT[mode]);
