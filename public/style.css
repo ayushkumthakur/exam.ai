@@ -149,3 +149,10 @@ table{width:100%;border-collapse:collapse;font-size:.92rem}th,td{text-align:left
 .auth form>div.err:empty{display:none!important}
 .auth form>div:last-child{margin-top:0!important}
 .auth form input+input{margin-top:0!important}
+
+/* Password visibility toggle */
+.auth .password-wrap{position:relative;width:100%;margin:0}
+.auth .password-wrap input{padding-right:3.2rem}
+.auth .password-toggle{position:absolute;right:.65rem;top:50%;transform:translateY(-50%);width:32px;height:32px;border:0;background:transparent;color:var(--muted);cursor:pointer;border-radius:8px;font-size:1rem;display:grid;place-items:center}
+.auth .password-toggle:hover{background:var(--info-soft);color:var(--brand-2)}
+.auth .password-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
