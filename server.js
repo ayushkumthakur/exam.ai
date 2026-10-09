@@ -289,6 +289,19 @@ function storeAiQuestions(user, exam, list) {
   return list.map(q => { const id = Number(ins.run(exam.id, q.subject, q.topic, q.difficulty, q.text, JSON.stringify(q.options), q.answer, q.explanation, q.concept, q.tip, user.id, now()).lastInsertRowid);
     return db.prepare('SELECT * FROM questions WHERE id=?').get(id); });
 }
+function cleanTestAnswers(ids, input) {
+  const list = [...ids].map(Number).filter(Number.isInteger);
+  if (!list.length) return {};
+  const rows = db.prepare(`SELECT id,options FROM questions WHERE id IN (${list.map(() => '?').join(',')})`).all(...list);
+  const max = new Map(rows.map(r => [String(r.id), (J(r.options) || []).length]));
+  return Object.fromEntries(Object.entries(input || {}).filter(([id, choice]) =>
+    max.has(id) && Number.isInteger(choice) && choice >= 0 && choice < max.get(id)));
+}
+function cleanTestTimes(ids, input) {
+  const allowed = new Set([...ids].map(String));
+  return Object.fromEntries(Object.entries(input || {}).filter(([id, ms]) =>
+    allowed.has(id) && Number.isFinite(ms) && ms >= 0 && ms <= 3600000));
+}
 function testView(t, user) {
   const ids = J(t.question_ids);
   const rows = db.prepare(`SELECT * FROM questions WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids);
@@ -578,11 +591,12 @@ route('GET', '/api/tests/:id', ONB, (c) => {
 route('PUT', '/api/tests/:id/save', ONB, (c) => {
   const t = db.prepare('SELECT * FROM tests WHERE id=? AND user_id=?').get(+c.params.id, c.user.id);
   if (!t) throw new HttpError(404, 'Test not found.'); if (t.status !== 'active') return { ok: true, status: t.status };
-  const ids = new Set(J(t.question_ids).map(String)), clean = (o) => Object.fromEntries(Object.entries(o || {}).filter(([k]) => ids.has(k)));
-  const ans = clean(c.body.answers), times = clean(c.body.times);
-  for (const k of Object.keys(ans)) if (!Number.isInteger(ans[k]) || ans[k] < 0 || ans[k] > 5) delete ans[k];
+  const questionIds = J(t.question_ids), ids = new Set(questionIds.map(String));
+  const ans = cleanTestAnswers(questionIds, c.body.answers), times = cleanTestTimes(questionIds, c.body.times);
+  const marked = [...new Set((Array.isArray(c.body.marked) ? c.body.marked : []).map(String).filter(k => ids.has(k)))].slice(0, 200);
+  const currentIdx = Math.min(questionIds.length - 1, Math.max(0, Math.floor(Number(c.body.current_idx) || 0)));
   db.prepare('UPDATE tests SET answers=?, marked=?, times=?, current_idx=?, updated_at=? WHERE id=?')
-    .run(JSON.stringify(ans), JSON.stringify((c.body.marked || []).filter(k => ids.has(String(k))).slice(0, 200)), JSON.stringify(times), Math.max(0, +c.body.current_idx || 0), now(), t.id);
+    .run(JSON.stringify(ans), JSON.stringify(marked), JSON.stringify(times), currentIdx, now(), t.id);
   return { ok: true, saved_at: now() };
 });
 route('POST', '/api/tests/:id/submit', ONB, (c) => {
@@ -590,9 +604,9 @@ route('POST', '/api/tests/:id/submit', ONB, (c) => {
   if (!t) throw new HttpError(404, 'Test not found.');
   if (t.status === 'submitted') return { test: testView(t, c.user), duplicate: true }; // idempotent: no double submission
   const exam = loadExam(t.exam_id) || loadExam(c.user.exam_id);
-  const ids = new Set(J(t.question_ids).map(String));
-  const pick = (o) => Object.fromEntries(Object.entries(o || {}).filter(([k]) => ids.has(k)));
-  const answers = { ...J(t.answers), ...pick(c.body.answers) }, times = { ...J(t.times), ...pick(c.body.times) };
+  const questionIds = J(t.question_ids);
+  const answers = { ...cleanTestAnswers(questionIds, J(t.answers)), ...cleanTestAnswers(questionIds, c.body.answers) };
+  const times = { ...cleanTestTimes(questionIds, J(t.times)), ...cleanTestTimes(questionIds, c.body.times) };
   const res = scoreTest(t, exam, c.user, answers, times);
   // atomic claim to defeat concurrent duplicate submits
   const claim = db.prepare("UPDATE tests SET status='submitted', answers=?, times=?, result=?, submitted_at=?, updated_at=? WHERE id=? AND status='active'")
