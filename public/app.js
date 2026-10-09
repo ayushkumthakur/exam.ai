@@ -65,6 +65,16 @@ const S = { user: null, config: {}, exams: [], exam: null };
 const NAV = [['home', 'Home'], ['practice', 'Practice'], ['revision', 'Revision'], ['pyqs', 'PYQs'], ['tests', 'Tests'], ['ca', 'Current Affairs'], ['tutor', 'AI Tutor'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['profile', 'Profile']];
 const MOBILE = [['home', 'Home'], ['practice', 'Practice'], ['tests', 'Tests'], ['tutor', 'AI Tutor'], ['more', 'More']];
 
+function getTheme() {
+  return localStorage.getItem('cea-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+}
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem('cea-theme', theme);
+}
+function toggleTheme() { applyTheme(getTheme() === 'dark' ? 'light' : 'dark'); route(); }
+applyTheme(getTheme());
+
 async function boot() {
   try {
     S.config = await get('/api/config'); S.exams = (await get('/api/exams')).exams;
@@ -316,10 +326,28 @@ function renderShell(page, parts, params) {
   const main = h('div', { class: 'page', id: 'page' });
   const isAdmin = S.user.role === 'admin';
   const sideItems = [...NAV, ['library', 'My Library'], ...(isAdmin ? [['admin', 'Admin']] : [])];
-  const search = h('form', { role: 'search', onsubmit: (e) => { e.preventDefault(); const v = e.target.q.value.trim(); if (v.length >= 2) go('#/search' + q({ q: v })); } }, h('input', { name: 'q', type: 'search', placeholder: 'Search topics, questions, PYQs, notes…', 'aria-label': 'Search', value: page === 'search' ? params.get('q') || '' : '' }));
+  const search = h('form', { role: 'search', onsubmit: (e) => { e.preventDefault(); const v = e.target.q.value.trim(); if (v.length >= 2) go('#/search' + q({ q: v })); } },
+    h('input', { name: 'q', type: 'search', placeholder: 'Search topics, questions, PYQs, notes…', 'aria-label': 'Search', value: page === 'search' ? params.get('q') || '' : '' }));
+  const theme = h('button', { class: 'iconbtn', type: 'button', title: 'Toggle light/dark mode', 'aria-label': 'Toggle light/dark mode', onclick: toggleTheme }, getTheme() === 'dark' ? '☀' : '☾');
+  const profile = h('a', { class: 'profile-mini', href: '#/profile', title: 'Open profile' },
+    h('span', { class: 'avatar' }, (S.user.name || S.user.email || 'S').slice(0,1).toUpperCase()),
+    h('span', { class: 'profile-mini-text' }, S.user.name || S.user.email || 'Student'));
   $('#app').replaceChildren(h('div', { class: 'shell' },
-    h('nav', { class: 'side', 'aria-label': 'Main' }, h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'), sideItems.map(i => navItem(i))),
-    h('div', { class: 'main' }, h('div', { class: 'top' }, h('div', { class: 'brand' }, logo(), h('span', {}, 'Exam AI')), search, h('span', { class: 'badge' }, S.exam ? S.exam.name : '')), main)),
+    h('nav', { class: 'side', 'aria-label': 'Main' },
+      h('div', { class: 'brand' }, logo(), 'Competitive Exam AI'),
+      h('div', { class: 'nav-section-label' }, 'Study'),
+      sideItems.slice(0, 6).map(i => navItem(i)),
+      h('div', { class: 'nav-section-label nav-section-gap' }, 'Tools'),
+      sideItems.slice(6).map(i => navItem(i)),
+      h('div', { class: 'side-foot' }, h('span', { class: 'small muted' }, 'Learn • Practice • Improve'))),
+    h('div', { class: 'main' },
+      h('div', { class: 'top' },
+        h('div', { class: 'top-brand' }, h('div', { class: 'brand' }, logo(), h('span', {}, 'Competitive Exam AI'))),
+        search,
+        h('span', { class: 'badge top-exam' }, S.exam ? S.exam.name : ''),
+        theme,
+        profile),
+      main)),
     h('nav', { class: 'bottom', 'aria-label': 'Primary' }, MOBILE.map(i => navItem(i))));
   const pages = { home: pgHome, practice: pgPractice, revision: pgRevision, pyqs: pgPyqs, tests: pgTests, test: pgTestTake, result: pgResult, ca: pgCA, tutor: pgTutor, plan: pgPlan, progress: pgProgress, profile: pgProfile, library: pgLibrary, search: pgSearch, more: pgMore, admin: pgAdmin };
   const fn = pages[page] || pgHome; window.scrollTo(0, 0);
@@ -349,6 +377,12 @@ async function pgHome() {
   const reco = d.recommendation;
   return h('div', { class: 'stack' },
     h('div', { class: 'hero' }, h('h1', {}, `${d.greeting}, ${d.name} 👋`), h('p', {}, `Preparing for ${d.exam.name}`), h('p', {}, d.days_left === null ? '' : d.days_left > 0 ? `${d.days_left} days remaining` : d.days_left === 0 ? 'Exam day is today. Best of luck!' : 'Your target date has passed. Update it in Profile.')),
+    h('div', { class: 'quick-actions card' },
+      h('div', { class: 'quick-title' }, h('b', {}, 'Quick Start'), h('span', { class: 'muted small' }, 'Jump straight into preparation')),
+      h('div', { class: 'quick-grid' },
+        [['practice','Practice Questions','Start a focused set'],['tests','Take a Test','Check your level'],['pyqs','Previous Year Questions','Study real patterns'],['tutor','Ask AI Tutor','Clear any doubt']].map(([k,t,sub]) =>
+          h('a', { class: 'quick-item', href: '#/' + k }, h('span', { class: 'quick-icon' }, svg(ICONS[k] || ICONS.more)), h('span', {}, h('b', {}, t), h('small', { class: 'muted' }, sub))))
+      )),
     h('div', { class: 'grid g2' },
       h('div', { class: 'card' }, h('h3', {}, 'Today’s Target'), h('div', { class: 'row between' }, h('span', {}, `${d.today.questions} / ${d.target.questions} questions`), h('span', { class: 'muted small' }, `${d.today.minutes} / ${d.target.minutes} min`)), h('div', { class: 'bar', style: 'margin-top:.5rem' }, h('i', { style: `width:${Math.min(100, Math.round(100 * d.today.questions / Math.max(1, d.target.questions)))}%` }))),
       h('div', { class: 'card reco' }, h('span', { class: 'badge warn' }, 'What should I do now?'), h('h2', { style: 'margin-top:.4rem' }, reco.title), h('p', {}, reco.detail), h('button', { class: 'btn accent', onclick: () => doAction(reco.action) }, reco.cta))),
