@@ -612,7 +612,7 @@ route('POST', '/api/tests/:id/submit', ONB, (c) => {
   const claim = db.prepare("UPDATE tests SET status='submitted', answers=?, times=?, result=?, submitted_at=?, updated_at=? WHERE id=? AND status='active'")
     .run(JSON.stringify(answers), JSON.stringify(times), JSON.stringify(res), now(), now(), t.id);
   if (claim.changes === 1) {
-    const rows = db.prepare(`SELECT * FROM questions WHERE id IN (${[...ids].map(() => '?').join(',')})`).all(...ids);
+    const rows = db.prepare(`SELECT * FROM questions WHERE id IN (${questionIds.map(() => '?').join(',')})`).all(...questionIds);
     for (const q of rows) { const ch = answers[q.id]; if (ch !== undefined && ch !== null) recordAnswer(c.user, exam, q, ch, +times[q.id] || 0, 'test'); }
   }
   return { test: testView(db.prepare('SELECT * FROM tests WHERE id=?').get(t.id), c.user) };
