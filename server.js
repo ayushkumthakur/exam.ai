@@ -814,24 +814,8 @@ route('POST', '/api/admin/ca', ADM, (c) => {
   return { id: Number(id) };
 });
 route('DELETE', '/api/admin/ca/:id', ADM, (c) => { db.prepare('DELETE FROM current_affairs WHERE id=?').run(+c.params.id); return { ok: true }; });
-route('POST', '/api/admin/ca/refresh', ADM, async (c) => {
-  throw new HttpError(410, 'Current Affairs AI refresh is disabled to conserve API credits.');
-  if (!ai.aiEnabled() || ai.aiProvider() !== 'gemini') throw bad('Grounded current-affairs refresh needs the Gemini provider.');
-  const examIds = listExams().map(e => e.id);
-  const r = await ai.generateCurrentAffairs({ today: dayStr(), days: Math.min(14, Math.max(1, +c.body.days || 7)), examList: examIds, maxItems: Math.min(15, Math.max(5, +c.body.maxItems || 12)) });
-  if (!r.ok) throw bad(ai.friendlyError(r.error));
-  const inserted = [], skipped = [];
-  for (const x of r.items || []) {
-    try {
-      const exists = db.prepare('SELECT id FROM current_affairs WHERE title=? AND event_date=?').get(x.title, x.event_date);
-      if (exists) { skipped.push(x.title); continue; }
-      const exams = ',' + [...new Set(x.exams)].join(',') + ',';
-      const id = db.prepare('INSERT INTO current_affairs (title,summary,category,exams,event_date,source,created_at) VALUES (?,?,?,?,?,?,?)')
-        .run(x.title, x.summary, x.category, exams, x.event_date, x.source_url, now()).lastInsertRowid;
-      inserted.push(Number(id));
-    } catch { skipped.push(x.title); }
-  }
-  return { ok: true, searched_days: c.body.days || 7, inserted: inserted.length, skipped: skipped.length, ids: inserted };
+route('POST', '/api/admin/ca/refresh', ADM, async () => {
+  return await refreshCurrentAffairsFeeds();
 });
 
 route('GET', '/api/admin/reports', ADM, () => ({ reports: db.prepare(`SELECT f.id,f.kind,f.note,f.status,f.created_at,u.email, c.content answer,
@@ -868,17 +852,83 @@ async function refreshCurrentAffairsAuto(days, maxItems) {
     caRefreshBusy = false;
   }
 }
+// ---------- low-cost official current-affairs feed ingestion ----------
+const CA_FEEDS = [
+  { name: 'Press Information Bureau', url: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3' },
+  { name: 'Reserve Bank of India', url: 'https://www.rbi.org.in/Scripts/RSS.aspx?Id=6' }
+];
+function xmlText(value) {
+  return String(value || '').replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, '$1')
+    .replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
+    .replace(/&#(\\d+);/g, (_, n) => String.fromCodePoint(Math.min(0x10ffff, +n)))
+    .replace(/\\s+/g, ' ').trim();
+}
+function xmlField(block, tag) {
+  const m = block.match(new RegExp('<' + tag + '(?:\\s[^>]*)?>([\\s\\S]*?)<\\/' + tag + '>', 'i'));
+  return m ? xmlText(m[1]) : '';
+}
+function caCategory(title, summary, feed) {
+  const t = (title + ' ' + summary).toLowerCase();
+  if (/rbi|reserve bank|inflation|gdp|repo rate|banking|economy|trade|finance|budget/.test(t)) return 'Economy';
+  if (/defen[cs]e|army|navy|air force|missile|military|exercise/.test(t)) return 'Defence';
+  if (/space|isro|science|technology|quantum|satellite|research|digital/.test(t)) return 'Science & Technology';
+  if (/climate|environment|forest|wildlife|renewable|pollution/.test(t)) return 'Environment';
+  if (/sport|cricket|hockey|olympic|medal|tournament/.test(t)) return 'Sports';
+  if (/award|prize|honour/.test(t)) return 'Awards';
+  if (/appointed|appointment|chairman|chief justice|governor|president of/.test(t)) return 'Appointments';
+  if (/scheme|yojana|benefit|launched.*scheme/.test(t)) return 'Government Schemes';
+  if (/international|bilateral|united nations|world bank|imf|summit|foreign minister/.test(t)) return 'International';
+  return feed === 'Press Information Bureau' ? 'National' : 'Economy';
+}
+async function refreshCurrentAffairsFeeds() {
+  const results = [];
+  let added = 0, skipped = 0, failed = 0;
+  for (const feed of CA_FEEDS) {
+    try {
+      const response = await fetch(feed.url, { headers: { 'user-agent': 'CompetitiveExamAI/1.0 (official public RSS reader)', accept: 'application/rss+xml, application/xml, text/xml' }, signal: AbortSignal.timeout(9000) });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const xml = await response.text();
+      const entries = [...xml.matchAll(/<(item|entry)\\b[^>]*>([\\s\\S]*?)<\\/(?:item|entry)>/gi)].slice(0, 40);
+      let feedAdded = 0;
+      for (const [, , block] of entries) {
+        const title = xmlField(block, 'title').slice(0, 300);
+        if (!title) continue;
+        const summary = (xmlField(block, 'description') || xmlField(block, 'summary') || xmlField(block, 'content')).slice(0, 4000) || title;
+        const link = xmlField(block, 'link') || ((block.match(/<link\\b[^>]*href=["']([^"']+)/i) || [])[1] || '');
+        const pub = xmlField(block, 'pubDate') || xmlField(block, 'published') || xmlField(block, 'updated');
+        const parsedDate = pub ? Date.parse(pub) : NaN;
+        const eventDate = Number.isFinite(parsedDate) ? dayStr(parsedDate) : dayStr();
+        if (eventDate < dayStr(now() - 7 * DAY) || eventDate > dayStr(now() + DAY)) { skipped++; continue; }
+        if (db.prepare('SELECT id FROM current_affairs WHERE title=? AND event_date=?').get(title, eventDate)) { skipped++; continue; }
+        const category = caCategory(title, summary, feed.name);
+        try {
+          db.prepare('INSERT INTO current_affairs (title,summary,category,exams,event_date,source,created_at) VALUES (?,?,?,?,?,?,?)')
+            .run(title, summary, category, 'ALL', eventDate, (link && /^https?:\\/\\//i.test(link)) ? link : feed.name, now());
+          added++; feedAdded++;
+        } catch (e) { if (!/unique|constraint/i.test(e.message)) console.error('[ca-feed-insert]', e.message); skipped++; }
+      }
+      results.push({ source: feed.name, fetched: entries.length, added: feedAdded });
+    } catch (e) {
+      failed++; results.push({ source: feed.name, error: e.message });
+      console.error('[ca-feed]', feed.name, e.message);
+    }
+  }
+  return { ok: failed < CA_FEEDS.length, added, skipped, failed, sources: results, updated: dayStr() };
+}
+let caFeedRefreshBusy = false;
+async function runCaFeedRefresh() {
+  if (caFeedRefreshBusy) return;
+  caFeedRefreshBusy = true;
+  try { await refreshCurrentAffairsFeeds(); }
+  catch (e) { console.error('[ca-feed-refresh]', e.message); }
+  finally { caFeedRefreshBusy = false; }
+}
 function startCurrentAffairsAutoRefresh() {
-  // Disabled to conserve Gemini API credits. Existing current-affairs data is preserved.
-  return;
-  // Daily: refresh the latest 24-hour window.
-  refreshCurrentAffairsAuto(2, 12).catch(e => console.error('[ca-refresh]', e.message));
-  // Weekly: refresh a wider 7-day window once every 7 days.
-  setTimeout(() => {
-    refreshCurrentAffairsAuto(7, 25).catch(e => console.error('[ca-weekly-refresh]', e.message));
-    setInterval(() => refreshCurrentAffairsAuto(7, 25).catch(e => console.error('[ca-weekly-refresh]', e.message)), 7 * 24 * 60 * 60 * 1000);
-  }, 60 * 1000);
-  setInterval(() => refreshCurrentAffairsAuto(2, 12).catch(e => console.error('[ca-refresh]', e.message)), 24 * 60 * 60 * 1000);
+  // Official RSS only: no AI calls. Refresh at startup and every 6 hours.
+  setTimeout(() => runCaFeedRefresh(), 15000);
+  setInterval(() => runCaFeedRefresh(), 6 * 60 * 60 * 1000);
 }
 
 // ---------- request hardening ----------
