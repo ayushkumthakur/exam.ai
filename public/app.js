@@ -384,7 +384,7 @@ function renderShell(page, parts, params) {
           h('button', { class: 'sidebar-logout', type: 'button', title: 'Log out', 'aria-label': 'Log out', onclick: async () => {
             try { await post('/api/auth/logout'); S.user = null; location.hash = '#/'; route(); }
             catch (e) { toast(e.message || 'Could not log out. Please try again.'); }
-          } }, svg(ICONS.logout))));
+          } }, svg(ICONS.logout)))));
   mobileScrim = h('button', { class: 'mobile-nav-scrim', type: 'button', 'aria-label': 'Close navigation menu', tabindex: '-1', onclick: closeMobileNavigation });
   mobileMenuButton = h('button', {
     class: 'iconbtn mobile-menu-toggle', type: 'button', 'aria-controls': 'mobileSideNav',
