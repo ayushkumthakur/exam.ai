@@ -336,6 +336,16 @@ function renderOnboarding() {
 
 // ---------- shell ----------
 function renderShell(page, parts, params) {
+  let mobileScrim = null, mobileMenuButton = null;
+  const closeMobileNavigation = () => {
+    const sideEl = $('#mobileSideNav');
+    if (sideEl) sideEl.classList.remove('mobile-open');
+    if (mobileScrim) mobileScrim.classList.remove('is-open');
+    if (mobileMenuButton) {
+      mobileMenuButton.setAttribute('aria-expanded', 'false');
+      mobileMenuButton.textContent = '☰';
+    }
+  };
   const navItem = ([k, label], cls = '') => h('a', { class: 'nav' + (k === page || (k === 'more' && !MOBILE.some(m => m[0] === page)) ? ' on' : '') + cls, href: '#/' + k }, svg(ICONS[k] || ICONS.more), label);
   const main = h('div', { class: 'page', id: 'page' });
   const isAdmin = S.user.role === 'admin';
@@ -355,7 +365,7 @@ function renderShell(page, parts, params) {
     { label: 'Profile', icon: 'profile', href: '#/profile', active: page === 'profile' },
     ...(isAdmin ? [{ label: 'Admin', icon: 'admin', href: '#/admin', active: page === 'admin' }] : [])
   ];
-  const sideNavItem = (item) => h('a', { class: 'nav side-nav' + (item.active ? ' on' : ''), href: item.href, 'aria-current': item.active ? 'page' : null },
+  const sideNavItem = (item) => h('a', { class: 'nav side-nav' + (item.active ? ' on' : ''), href: item.href, 'aria-current': item.active ? 'page' : null, onclick: closeMobileNavigation },
     svg(ICONS[item.icon] || ICONS.more), h('span', {}, item.label));
   const search = h('form', { role: 'search', onsubmit: (e) => { e.preventDefault(); const v = e.target.q.value.trim(); if (v.length >= 2) go('#/search' + q({ q: v })); } },
     h('input', { name: 'q', type: 'search', placeholder: 'Search topics, questions, PYQs, notes…', 'aria-label': 'Search', value: page === 'search' ? params.get('q') || '' : '' }));
@@ -363,8 +373,7 @@ function renderShell(page, parts, params) {
   const profile = h('a', { class: 'profile-mini', href: '#/profile', title: 'Open profile' },
     h('span', { class: 'avatar' }, (S.user.name || S.user.email || 'S').slice(0,1).toUpperCase()),
     h('span', { class: 'profile-mini-text' }, S.user.name || S.user.email || 'Student'));
-  $('#app').replaceChildren(h('div', { class: 'shell' },
-    h('nav', { class: 'side', 'aria-label': 'Main' },
+  const side = h('nav', { class: 'side', id: 'mobileSideNav', 'aria-label': 'Main' },
       h('div', { class: 'brand' }, logo(), h('span', { class: 'brand-copy' }, h('b', {}, 'Competitive Exam AI'), h('small', {}, 'UPSC · NDA · SSC · BANKING'))),
       sideItems.map(sideNavItem),
       h('div', { class: 'side-foot' },
@@ -372,9 +381,29 @@ function renderShell(page, parts, params) {
           h('span', { class: 'sidebar-avatar' }, (S.user.name || S.user.email || 'S').slice(0, 1).toUpperCase()),
           h('span', { class: 'sidebar-user-copy' }, h('b', {}, S.user.name || 'Student'), h('small', {}, S.user.email || 'Open your profile')),
           h('span', { class: 'sidebar-profile-arrow', 'aria-hidden': 'true' }, '↗')),
-        h('p', { class: 'sidebar-note' }, 'Sample question bank and news digests are included so you can start immediately.'))),
+        h('p', { class: 'sidebar-note' }, 'Sample question bank and news digests are included so you can start immediately.')));
+  mobileScrim = h('button', { class: 'mobile-nav-scrim', type: 'button', 'aria-label': 'Close navigation menu', tabindex: '-1', onclick: closeMobileNavigation });
+  mobileMenuButton = h('button', {
+    class: 'iconbtn mobile-menu-toggle', type: 'button', 'aria-controls': 'mobileSideNav',
+    'aria-expanded': 'false', 'aria-label': 'Open navigation menu', title: 'Open navigation menu',
+    onclick: () => {
+      const sideEl = $('#mobileSideNav');
+      if (!sideEl || !mobileScrim) return;
+      const opened = sideEl.classList.toggle('mobile-open');
+      mobileScrim.classList.toggle('is-open', opened);
+      mobileMenuButton.setAttribute('aria-expanded', String(opened));
+      mobileMenuButton.setAttribute('aria-label', opened ? 'Close navigation menu' : 'Open navigation menu');
+      mobileMenuButton.setAttribute('title', opened ? 'Close navigation menu' : 'Open navigation menu');
+      mobileMenuButton.textContent = opened ? '×' : '☰';
+      if (opened) sideEl.querySelector('.side-nav')?.focus();
+    }
+  }, '☰');
+  $('#app').replaceChildren(h('div', { class: 'shell' },
+    side,
+    mobileScrim,
     h('div', { class: 'main' },
       h('div', { class: 'top' },
+        mobileMenuButton,
         h('div', { class: 'top-brand' }, h('div', { class: 'brand' }, logo(), h('span', {}, 'Competitive Exam AI'))),
         search,
         h('span', { class: 'badge top-exam' }, S.exam ? S.exam.name : ''),
