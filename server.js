@@ -357,7 +357,6 @@ function buildPlan(user, exam) {
   if (openM) cand.push({ key: 'mistakes', type: 'mistakes', title: `Review ${Math.min(openM, 10)} past mistakes`, minutes: 10 });
   const pt = q[0] || null;
   cand.push({ key: 'practice', type: 'practice', title: pt ? `Practice ${pt.topic}` : `Practice ${exam.subjects[(new Date().getDate()) % exam.subjects.length]}`, minutes: stage === 'Just Started' ? 25 : 20, subject: pt ? pt.subject : undefined, topic: pt ? pt.topic : undefined });
-  cand.push({ key: 'ca', type: 'current_affairs', title: 'Read today’s current affairs', minutes: 10 });
   if (stage !== 'Just Started' || budget >= 180) cand.push({ key: 'test', type: 'test', title: near || stage === 'Revision' ? 'Take a sectional mock' : 'Take a 10-question topic test', minutes: near || stage === 'Revision' ? 30 : 15 });
   const tasks = []; let used = 0;
   for (const t of cand) { if (used + t.minutes <= budget || tasks.length < 2) { tasks.push(t); used += t.minutes; } }
@@ -816,6 +815,7 @@ route('POST', '/api/admin/ca', ADM, (c) => {
 });
 route('DELETE', '/api/admin/ca/:id', ADM, (c) => { db.prepare('DELETE FROM current_affairs WHERE id=?').run(+c.params.id); return { ok: true }; });
 route('POST', '/api/admin/ca/refresh', ADM, async (c) => {
+  throw new HttpError(410, 'Current Affairs AI refresh is disabled to conserve API credits.');
   if (!ai.aiEnabled() || ai.aiProvider() !== 'gemini') throw bad('Grounded current-affairs refresh needs the Gemini provider.');
   const examIds = listExams().map(e => e.id);
   const r = await ai.generateCurrentAffairs({ today: dayStr(), days: Math.min(14, Math.max(1, +c.body.days || 7)), examList: examIds, maxItems: Math.min(15, Math.max(5, +c.body.maxItems || 12)) });
@@ -869,6 +869,8 @@ async function refreshCurrentAffairsAuto(days, maxItems) {
   }
 }
 function startCurrentAffairsAutoRefresh() {
+  // Disabled to conserve Gemini API credits. Existing current-affairs data is preserved.
+  return;
   // Daily: refresh the latest 24-hour window.
   refreshCurrentAffairsAuto(2, 12).catch(e => console.error('[ca-refresh]', e.message));
   // Weekly: refresh a wider 7-day window once every 7 days.
