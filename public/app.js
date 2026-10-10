@@ -860,3 +860,8 @@ async function pgResult(parts) {
 }
 
 boot();
+
+// Installable app support. Cache only the public static shell; never cache API or student data.
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}), { once: true });
+}
