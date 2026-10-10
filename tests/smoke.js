@@ -50,9 +50,13 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   r = await api('PUT', '/api/me', { exam_id: 'SSC_CHSL' }); r = await api('GET', '/api/mistakes'); ok(r.data.total >= 1, 'history preserved after switching back');
   // test flow
   r = await api('POST', '/api/tests/create', { kind: 'pyq' }); ok(r.status === 400, 'PYQ test refused when no verified PYQs exist (no mislabelling)');
-  r = await api('POST', '/api/tests/create', { kind: 'topic', subject: 'Quantitative Aptitude', topic: 'Percentage', count: 20 }); ok(r.status === 200, 'create topic test');
+  r = await api('POST', '/api/tests/create', { kind: 'topic', subject: 'Quantitative Aptitude', topic: 'Percentage', count: 20 });
+  ok(r.status === 200 && Number.isInteger(r.data.id), `create topic test (HTTP ${r.status}${r.data.error ? `: ${r.data.error}` : ''})`);
+  if (r.status !== 200 || !Number.isInteger(r.data.id)) {
+    console.error('Topic test creation response:', JSON.stringify(r.data));
+  } else {
   const tid = r.data.id;
-  r = await api('GET', '/api/tests/' + tid); ok(r.data.test.questions.length > 0 && !('answer' in r.data.test.questions[0]), 'test hides answers while active');
+  r = await api('GET', '/api/tests/' + tid); ok(r.status === 200 && r.data.test?.questions?.length > 0 && !('answer' in r.data.test.questions[0]), 'test hides answers while active');
   const q0 = r.data.test.questions[0];
   r = await api('PUT', `/api/tests/${tid}/save`, { answers: { [q0.id]: 1 }, marked: [q0.id], current_idx: 0, times: { [q0.id]: 4000 } }); ok(r.data.ok, 'autosave');
   r = await api('GET', '/api/tests/' + tid); ok(r.data.test.answers[q0.id] === 1 && r.data.test.marked.map(String).includes(String(q0.id)), 'resume preserves answers + marks');
@@ -64,6 +68,7 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   r = await api('GET', '/api/search?q=percent'); ok(r.data.topics.length > 0, 'search finds topics');
   r = await api('POST', '/api/ai/ask', { message: 'hi' }); ok(r.status === 502 && /not configured/.test(r.data.error), 'AI unconfigured fails gracefully');
   r = await api('GET', '/api/pyq/analysis'); ok(r.data.sufficient === false, 'no trend claims from insufficient PYQ data');
+  }
   r = await api('POST', '/api/auth/logout', {}); r = await api('GET', '/api/me'); ok(r.data.user === null, 'logout');
   // admin
   cookie = ''; const ae = 'admin@x.com'; r = await api('POST', '/api/auth/login', { email: ae, password: pw });
