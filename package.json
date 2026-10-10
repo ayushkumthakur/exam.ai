@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/ai-quality.js && node tests/smoke.js"
+    "test": "node tests/ai-quality.js && node tests/smoke.js",
+    "test:e2e": "node tests/run-smoke.js"
   },
   "engines": {
     "node": ">=22"
