@@ -96,7 +96,8 @@ Ensure the SQLite data directory persists across restarts and deployments. Never
 - [ ] Buyer creates their own hosting account and configures their own secrets/API keys.
 - [ ] Buyer receives setup and deployment instructions.
 - [ ] Buyer verifies admin access and tests signup, AI generation, mock submission, saved results, and email flows.
-- [ ] Database backup/restore process is tested if existing user data is being transferred.
+- [x] Local SQLite snapshots are created automatically after startup and every 24 hours; each snapshot is integrity-checked and the newest 7 are retained by default. Set `DB_BACKUP_KEEP` to change retention (1–30).
+- [ ] Off-site backup is not configured: local snapshots share the Railway persistent volume and do not protect against volume loss. Configure external object storage and test a restore before treating disaster recovery as complete.
 - [ ] Any third-party provider accounts, API usage costs, domains, and hosting are transferred explicitly or excluded in writing.
 - [ ] Ownership, included assets, support period, payment terms, and permitted use are documented in the sale agreement.
 

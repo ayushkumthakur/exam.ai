@@ -173,7 +173,7 @@ async function callClaude(opts) {
   // Resilient provider fallback: only retry another configured provider for transient
   // failures or quota limits. Invalid credentials/model settings should stay visible.
   const retryable = first.error === 'AI_TIMEOUT' || first.error === 'AI_NETWORK' ||
-    first.error === 'AI_HTTP_429' || /^AI_HTTP_5\d\d$/.test(first.error || '');
+    ['AI_HTTP_401', 'AI_HTTP_403', 'AI_HTTP_429'].includes(first.error) || /^AI_HTTP_5\d\d$/.test(first.error || '');
   if (!retryable) return first;
   const secondary = primary === 'gemini' ? (ANTHROPIC_KEY() ? 'anthropic' : null) : (GEMINI_KEY() ? 'gemini' : null);
   if (!secondary) return first;
