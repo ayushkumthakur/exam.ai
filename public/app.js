@@ -458,7 +458,7 @@ async function pgHome() {
 
   const shortcutSpecs = [
     ['UPSC_CSE', 'UPSC'], ['NDA', 'NDA'], ['CDS', 'CDS'], ['CAPF', 'CAPF'],
-    ['SSC_CGL', 'SSC'], ['SSC_CHSL', 'SSCCHSL'], ['IBPS_PO', 'IBPS'], ['RRB_NTPC', 'RRB'],
+    ['SSC_CGL', 'SSC'], ['SSC_CHSL', 'SSC CHSL'], ['IBPS_PO', 'IBPS'], ['RRB_NTPC', 'RRB'],
     ['JEE_MAIN', 'JEE'], ['NEET', 'NEET'], ['CUET', 'CUET'], ['CLAT', 'CLAT']
   ];
   const chipExams = shortcutSpecs.map(([id, label]) => {
@@ -523,7 +523,7 @@ async function pgHome() {
     heroBadges,
     h('h1', { class: 'dash-hero-title' }, (d.greeting || 'Hello') + ', ' + (d.name || 'Student') + '.'),
     h('h2', { class: 'dash-hero-prompt' }, greeting),
-    h('p', { class: 'dash-hero-copy' }, 'You have solved ' + (d.questions_solved || 0) + ' question' + ((d.questions_solved || 0) === 1 ? '' : 's') + ' with ' + pct(d.accuracy) + ' accuracy. Keep the momentum going.'),
+    h('p', { class: 'dash-hero-copy' }, (d.questions_solved || 0) === 0 ? 'Solve a short practice set so the app can learn your strengths and build your plan.' : 'You have solved ' + d.questions_solved + ' question' + (d.questions_solved === 1 ? '' : 's') + ' with ' + pct(d.accuracy) + ' accuracy. Keep the momentum going.'),
     heroActions,
     heroGoal);
 
@@ -548,7 +548,7 @@ async function pgHome() {
     metric('BOOKMARKS', String(bookmarkCount), 'Saved to revise', 'bookmarks'));
 
   const recommendHead = h('div', { class: 'dash-panel-head' },
-    h('div', {}, h('h2', {}, 'Recommended for you'), h('p', {}, 'Timed practice picked for your target exam.')),
+    h('div', {}, h('h2', {}, 'What should I do now?'), h('p', {}, 'Your next best step, picked from your progress.')),
     h('a', { class: 'dash-inline-link', href: '#/tests' }, 'All tests →'));
   const recommendRow = h('div', { class: 'dash-recommend-row' },
     h('span', { class: 'dash-recommend-icon', 'aria-hidden': 'true' }, svg(ICONS.tests)),
@@ -557,7 +557,7 @@ async function pgHome() {
       h('p', {}, reco.detail || 'Take a short practice set to see what you already know and what to revise next.'),
       h('div', { class: 'dash-recommend-meta' }, h('span', {}, '✦ Personalised pick'), h('span', {}, 'Based on your progress'))),
     h('button', { class: 'btn dash-recommend-cta', onclick: () => doAction(reco.action || { type: 'practice' }) },
-      reco.cta || 'Start now', h('span', { 'aria-hidden': 'true' }, '→')));
+      String(reco.cta || 'Start now').replace(/\s*[→➜>]+\s*$/, ''), h('span', { 'aria-hidden': 'true' }, '→')));
   const recommendPanel = h('section', { class: 'card dash-panel' },
     recommendHead,
     recommendRow,
@@ -568,7 +568,7 @@ async function pgHome() {
   const focusHead = h('div', { class: 'dash-panel-head' },
     h('div', {}, h('h2', {}, 'Your focus areas'), h('p', {}, 'Built from your practice and updated as you learn.')));
   const focusPanel = h('section', { class: 'card dash-panel dash-focus-panel' }, focusHead, focusBlock);
-  const columns = h('div', { class: 'dash-columns' }, recommendPanel, focusPanel);
+  const columns = focusPanel;
 
   let recentBlock = null;
   if ((d.recent_tests || []).length) {
@@ -586,7 +586,7 @@ async function pgHome() {
       h('div', { class: 'dash-recent-list' }, rows));
   }
 
-  return h('div', { class: 'dashboard stack' }, hero, examPicker, stats, columns, recentBlock);
+  return h('div', { class: 'dashboard stack' }, hero, recommendPanel, examPicker, stats, columns, recentBlock);
 }
 
 // ---------- question session runner (practice / mistakes / PYQ) ----------
