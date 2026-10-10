@@ -52,9 +52,11 @@ Set variables in your deployment environment or local shell. Never commit API ke
 | `PORT` | HTTP port; defaults to 3000. |
 | `NODE_ENV` | Set to `production` for production cookie/security behavior. |
 | `DATA_DIR` | Directory for persistent app data and the application secret. Back this directory up. |
-| `AI_PROVIDER` | Selects the configured AI provider; confirm the supported value in `ai.js`. |
-| `GEMINI_API_KEY` | API key for Gemini AI features, if using Gemini. Treat as a secret. |
-| `GEMINI_MODEL` | Optional model configuration for Gemini. |
+| `AI_PROVIDER` | Primary provider: `gemini` (default) or `anthropic`. If it is unavailable, the other configured provider is used for timeouts, network errors, HTTP 429, and HTTP 5xx responses. |
+| `GEMINI_API_KEY` | Secret API key for Gemini; required if Gemini is the primary or backup provider. |
+| `GEMINI_MODEL` | Optional Gemini model override; defaults to `gemini-2.5-flash`. |
+| `ANTHROPIC_API_KEY` | Secret API key for Anthropic; required if Anthropic is the primary or backup provider. |
+| `ANTHROPIC_MODEL` | Optional Anthropic model override; defaults to the model configured in `ai.js`. |
 | `ADMIN_EMAILS` | Comma-separated email addresses granted admin role by the application. |
 | `RESEND_API_KEY` / `resend_api_key` | Email provider key, if configured in your deployment. Keep only the variable name your deployment code actually reads. |
 | `MAIL_FROM` | Sender address for configured email delivery. |
