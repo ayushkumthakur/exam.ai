@@ -1,5 +1,6 @@
 // AI layer: Gemini Developer API first, with Anthropic fallback.
 // API keys are server-side only.
+const aiMetrics = require('./ai-metrics');
 const PROVIDER = () => (process.env.AI_PROVIDER || 'gemini').toLowerCase();
 const GEMINI_KEY = () => GEMINI_KEYS()[0];
 const GEMINI_MODEL = () => process.env.GEMINI_MODEL || 'gemini-2.5-flash';
@@ -59,6 +60,7 @@ async function callGemini({ system, messages, maxTokens = 1500, timeoutMs = 4500
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), timeoutMs);
     try {
+      aiMetrics.record({ type: 'request', provider: 'gemini', model: GEMINI_MODEL(), keySlot: i + 1 });
       const response = await fetch(url, {
         method: 'POST', signal: ctl.signal,
         headers: { 'content-type': 'application/json', 'x-goog-api-key': keys[i] },
@@ -71,22 +73,31 @@ async function callGemini({ system, messages, maxTokens = 1500, timeoutMs = 4500
       });
       if (!response.ok) {
         last = { ok: false, error: 'AI_HTTP_' + response.status };
+        aiMetrics.record({ type: 'error', provider: 'gemini', model: GEMINI_MODEL(), keySlot: i + 1, error: last.error });
         // Rotate on per-key auth/quota errors and transient provider/network failures.
         const retryable = [401, 403, 429].includes(response.status) || response.status >= 500;
-        if (retryable && i < keys.length - 1) continue;
+        if (retryable && i < keys.length - 1) {
+          aiMetrics.record({ type: 'rotation', provider: 'gemini', model: GEMINI_MODEL(), fromSlot: i + 1, toSlot: i + 2, reason: last.error });
+          continue;
+        }
         return last;
       }
       const j = await response.json();
       const text = (j.candidates || []).flatMap(x => x.content?.parts || []).map(x => x.text || '').join('\\n').trim();
       if (!text) {
         last = { ok: false, error: 'AI_EMPTY' };
-        if (i < keys.length - 1) continue;
+        aiMetrics.record({ type: 'error', provider: 'gemini', model: GEMINI_MODEL(), keySlot: i + 1, error: last.error });
+        if (i < keys.length - 1) { aiMetrics.record({ type: 'rotation', provider: 'gemini', model: GEMINI_MODEL(), fromSlot: i + 1, toSlot: i + 2, reason: last.error }); continue; }
         return last;
       }
+      const usage = j.usageMetadata || {};
+      aiMetrics.record({ type: 'success', provider: 'gemini', model: GEMINI_MODEL(), keySlot: i + 1,
+        promptTokens: usage.promptTokenCount, outputTokens: usage.candidatesTokenCount, totalTokens: usage.totalTokenCount });
       return { ok: true, text, provider: 'gemini', model: GEMINI_MODEL(), sources: groundingSources(j) };
     } catch (e) {
       last = { ok: false, error: e.name === 'AbortError' ? 'AI_TIMEOUT' : 'AI_NETWORK' };
-      if (i < keys.length - 1) continue;
+      aiMetrics.record({ type: 'error', provider: 'gemini', model: GEMINI_MODEL(), keySlot: i + 1, error: last.error });
+      if (i < keys.length - 1) { aiMetrics.record({ type: 'rotation', provider: 'gemini', model: GEMINI_MODEL(), fromSlot: i + 1, toSlot: i + 2, reason: last.error }); continue; }
       return last;
     } finally { clearTimeout(t); }
   }
