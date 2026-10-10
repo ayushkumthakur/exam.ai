@@ -253,6 +253,54 @@ function validateQuestion(x, allowed) {
     concept: String(x.concept || '').trim() || null, tip: String(x.tip || '').trim() || null };
 }
 
+// Exam-specific calibration for non-UPSC exams. UPSC prompt behavior is deliberately left unchanged.
+function nonUpscExamCalibration(examName) {
+  const name = String(examName || '').toLowerCase();
+  if (!name || /upsc|civil services/.test(name)) return null;
+  if (/cbse class ix|cbse class 9/.test(name)) return 'CBSE Class IX calibration: align to Class 9 NCERT/CBSE learning outcomes and the selected subject. Use age-appropriate concept checks, direct application, short calculations, diagrams/data-based interpretation where relevant, and school-exam phrasing. Do not import Class 10–12 or competitive-exam content.';
+  if (/cbse class x|cbse class 10/.test(name)) return 'CBSE Class X calibration: align to the Class 10 NCERT/CBSE syllabus and selected subject. Use board-style competency-based MCQs, case/source/data-based interpretation, standard applications and textbook concepts. Keep language and calculation level appropriate to Class 10.';
+  if (/cbse class xi|cbse class 11/.test(name)) return 'CBSE Class XI calibration: use the selected stream and subject at Class 11 NCERT level. Test conceptual foundations and appropriate multi-step application, with school-exam wording and no Class 12/university material.';
+  if (/cbse class xii|cbse class 12/.test(name)) return 'CBSE Class XII calibration: use the selected stream and subject at Class 12 NCERT/CBSE board level. Include competency-based, assertion/reason, case/data-based and standard board-style applications where suitable. Match the exact subject and avoid out-of-syllabus competitive-exam tricks.';
+  if (/jee advanced/.test(name)) return 'JEE Advanced calibration: engineering-entrance level Physics/Chemistry/Mathematics with deep conceptual integration, non-routine multi-step reasoning and close distractors. Use multi-concept problems; when a single-correct MCQ is requested, still provide exactly one defensible answer. Never imitate UPSC general-studies question style.';
+  if (/jee main/.test(name)) return 'JEE Main calibration: Class 11–12 Physics/Chemistry/Mathematics at JEE Main level, with precise concepts, formula application and moderate calculation length. Include realistic numerical/conceptual traps, not lengthy olympiad problems.';
+  if (/neet/.test(name)) return 'NEET UG calibration: NCERT-centred Biology, Chemistry and Physics. Biology should test precise NCERT facts and concepts; Chemistry should mix physical, organic and inorganic syllabus questions; Physics should use concise numerical/conceptual application. Keep distractors plausible and avoid JEE Advanced-style over-complexity.';
+  if (/ssc cgl/.test(name)) return 'SSC CGL Tier-I calibration: speed-and-accuracy oriented Quantitative Aptitude, Reasoning, English and General Awareness. Use standard SSC patterns, concise stems, common traps and realistic solving time; do not use UPSC-style long analysis.';
+  if (/ssc chsl/.test(name)) return 'SSC CHSL calibration: Tier-I level arithmetic, reasoning, English and general awareness with concise questions and basic-to-moderate calculations, appropriate to the 10+2 recruitment exam.';
+  if (/ssc mts|ssc gd|ssc selection/.test(name)) return 'SSC entry-level recruitment calibration: direct, concise arithmetic, reasoning, language and general-awareness questions; keep the level and time demand suitable for the named SSC exam, not CGL or UPSC.';
+  if (/ssc cpo|ssc stenographer/.test(name)) return 'SSC specialised recruitment calibration: use the named exam’s level and subject mix, with concise SSC-style language, speed-based reasoning/quantitative items and plausible distractors.';
+  if (/sbi|ibps|rbi|nabard|bank|clerk|po \(/.test(name)) return 'Banking-exam calibration: time-pressured aptitude and reasoning, bank-exam English, data interpretation, puzzles/seating arrangements where the subject allows, and relevant banking/economy awareness. Hard questions may involve layered DI or multi-condition reasoning but must remain solvable in realistic exam time.';
+  if (/rrb|railway|rpf/.test(name)) return 'Railway recruitment calibration: concise CBT-style arithmetic, general intelligence/reasoning and general awareness/science appropriate to the named post. Emphasise speed, standard patterns and school-level science where relevant; do not use banking puzzles or UPSC-style analysis unless the selected subject specifically requires it.';
+  if (/nda/.test(name)) return 'NDA calibration: school-level Mathematics plus General Ability English/science/history/geography/polity/current affairs, at NDA competitive level. Use concept application and fair competitive distractors; no university-level questions.';
+  if (/cds/.test(name)) return 'CDS calibration: graduate-entry defence exam style. English should test vocabulary, grammar and comprehension; General Knowledge should span relevant static/current topics; Elementary Mathematics should stay within CDS-level school mathematics. Keep each question aligned to the selected paper.';
+  if (/afcat/.test(name)) return 'AFCAT calibration: concise timed questions in English, numerical ability, reasoning/military aptitude and general awareness. Use AFCAT-level vocabulary, pattern recognition and arithmetic; avoid lengthy UPSC or advanced-engineering problems.';
+  if (/agniveer|capf|state police/.test(name)) return 'Defence/police recruitment calibration: concise objective questions in the selected subject, with school-level quantitative aptitude, reasoning, general awareness and language as appropriate to the named recruitment exam.';
+  if (/ctet|state tet|kvs|nvs|dsssb/.test(name)) return 'Teaching-exam calibration: pedagogy questions should use classroom scenarios, child development, inclusive education, learning theories and teaching methods; language and subject questions should match teacher-eligibility/recruitment level. Avoid generic GK-only quizzes when the selected subject is pedagogy.';
+  if (/cuet/.test(name)) return 'CUET UG calibration: align to the selected domain subject and NCERT/appropriate Class 12 level; English should use comprehension/vocabulary/language skills, and General Test questions should use concise general knowledge, reasoning and quantitative aptitude. Do not mix unrelated domain subjects.';
+  if (/clat/.test(name)) return 'CLAT UG calibration: use passage-based comprehension and reasoning. Legal reasoning should apply principles to factual passages without requiring prior legal knowledge; current affairs/GK should be context-rich, logical reasoning should use arguments, and quantitative techniques should use short data sets.';
+  if (/state pcs/.test(name)) return 'State PCS calibration: state-relevant history, geography, polity, economy, environment and current affairs, with factual-conceptual questions and statement-based elimination appropriate to the named state exam. Do not invent state-specific facts; if the state is unspecified, stay with broadly applicable Indian topics.';
+  if (/other competitive/.test(name)) return 'General competitive-exam calibration: use the selected subject’s listed syllabus, objective exam wording, realistic time demand and common exam patterns. Avoid presenting generic trivia as a specialised exam question.';
+  return 'Use the named exam’s actual syllabus, subject mix, common question style and expected solving time. Derive question framing from the selected exam name and subject, and do not import another exam’s level or style.';
+}
+
+function nonUpscDifficultyCalibration(examName, difficulty, subject) {
+  const name = String(examName || '').toLowerCase();
+  if (!name || /upsc|civil services/.test(name)) return '';
+  const s = String(subject || '').toLowerCase();
+  if (difficulty === 'easy') return 'Exam-specific easy level: test one core syllabus concept, a direct calculation or straightforward application. Keep distractors plausible but not deceptive.';
+  if (difficulty === 'medium') return 'Exam-specific moderate level: use a representative question with one or two meaningful reasoning/application steps and exam-realistic distractors.';
+  if (difficulty === 'hard') {
+    if (/jee advanced/.test(name)) return 'Exam-specific hard level: integrate multiple Physics/Chemistry/Mathematics concepts and require non-routine multi-step reasoning while remaining syllabus-valid.';
+    if (/jee main|neet/.test(name)) return 'Exam-specific hard level: use the upper end of the named entrance exam, combining concepts or adding a subtle but fair application; do not exceed its syllabus.';
+    if (/bank|sbi|ibps|rbi|nabard/.test(name)) return 'Exam-specific hard level: require layered data interpretation, a multi-condition puzzle, or careful quantitative reasoning that is still realistic under banking-exam time pressure.';
+    if (/railway|rrb|rpf|ssc|afcat|nda|cds|agniveer|police/.test(name)) return 'Exam-specific hard level: use a less-obvious standard pattern, multiple reasoning steps or a careful calculation, without becoming lengthy or out of scope for this recruitment exam.';
+    if (/ctet|tet|kvs|nvs|dsssb/.test(name) && /pedagogy|child/.test(s)) return 'Exam-specific hard level: use a nuanced classroom scenario requiring application of child development/pedagogy principles, with one best-supported teaching response.';
+    if (/clat/.test(name)) return 'Exam-specific hard level: use a denser passage or multi-step inference/application, while keeping the answer supported by the supplied passage or principle.';
+    if (/cbse class/.test(name)) return 'Exam-specific hard level: use a board-appropriate competency-based or case/data-based question requiring linked concepts, but remain inside the selected class syllabus.';
+    return 'Exam-specific hard level: require deeper concept application, multiple reasoning steps or careful elimination, without ambiguity, obscure trivia or out-of-syllabus tricks.';
+  }
+  return '';
+}
+
 async function generateQuestions({ examName, subject, topic, difficulty, count, weakNote, level }) {
   const exam = String(examName || '').toLowerCase();
   const calibration = /upsc.*civil|civil services.*prelims/.test(exam)
@@ -261,7 +309,7 @@ async function generateQuestions({ examName, subject, topic, difficulty, count, 
       ? 'SSC CGL calibration: match Tier-I speed and accuracy; use short-to-medium arithmetic/reasoning steps, standard vocabulary/grammar and plausible traps; hard means a multi-step or less-obvious but syllabus-valid question, not lengthy UPSC-style analysis.'
       : /nda/.test(exam)
         ? 'NDA calibration: match NDA-level school mathematics and general ability; test concepts and application with competitive-exam distractors, not university-level content.'
-        : 'Use the named exam’s actual syllabus, level, common question style and expected solving time; do not import the difficulty or style of another exam.';
+        : (nonUpscExamCalibration(examName) || 'Use the named exam’s actual syllabus, level, common question style and expected solving time; do not import the difficulty or style of another exam.');
   const levelGuide = difficulty === 'easy'
     ? 'Easy: foundational, direct, one main idea; still exam-relevant.'
     : difficulty === 'hard'
@@ -269,10 +317,11 @@ async function generateQuestions({ examName, subject, topic, difficulty, count, 
       : difficulty === 'medium'
         ? 'Moderate: representative exam-level application, typically one or two reasoning steps, with plausible distractors.'
         : 'Mixed exam-realistic set: choose a natural spread of easy, moderate and hard questions appropriate to this exam, and label each question honestly.';
+  const difficultyCalibration = nonUpscDifficultyCalibration(examName, difficulty, subject);
   const system = `You are an experienced paper setter for ${examName} (India). Produce original exam-standard MCQs, not generic school quiz questions. Output ONLY a JSON array, no prose.
 Each item: {"text":string,"options":[4 distinct strings],"answer":index 0-3,"explanation":string (step-by-step, verified),"concept":string,"tip":string,"subject":"${subject}","topic":"${topic}","difficulty":"easy|medium|hard"}.
 Exam-style calibration: ${calibration}
-Requested difficulty: ${levelGuide}
+Requested difficulty: ${levelGuide}${difficultyCalibration ? '\n' + difficultyCalibration : ''}
 Quality rules: exactly one defensible correct option; four distinct plausible options; distractors should reflect common mistakes; match the selected subject/topic and exam syllabus; keep wording and solving time realistic for the exam; verify arithmetic, answer key and explanation independently. Do not make every question the same template. No ambiguous, unanswerable, duplicate, invented-current-affairs, or out-of-syllabus questions. Do NOT copy or claim these are real previous-year questions. Label difficulty honestly; never call a routine question hard or a tricky question easy. Level of student: ${level || 'intermediate'}.${weakNote ? ' Focus: ' + weakNote : ''}`;
   const r = await callClaude({ system, maxTokens: 5000, messages: [{ role: 'user', content: `Write ${count} ${difficulty === 'any' ? 'mixed exam-realistic difficulty' : difficulty} MCQs on ${subject} → ${topic} for ${examName}. Return valid JSON only. Make the question quality and difficulty resemble this exam, not a generic quiz.` }] });
   if (!r.ok) return r;
@@ -318,4 +367,4 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
   return { ok: true, questions: good, dropped: arr.length - good.length, verification: 'single-pass' };
 }
 
-module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate };
+module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration };
