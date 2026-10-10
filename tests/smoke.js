@@ -66,6 +66,14 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   let wrong; for (const q of qs) { const a = await api('POST', '/api/practice/answer', { question_id: q.id, choice: 3 }); if (!a.data.correct) { wrong = a.data; break; } }
   ok(wrong && wrong.mistake && wrong.mistake.how_to_avoid, 'mistake analysis present');
   r = await api('GET', '/api/mistakes'); ok(r.data.total >= 1, 'mistake stored');
+  r = await api('GET', '/api/practice/smart');
+  ok(r.status === 200 && r.data.exam_id === 'SSC_CHSL' && ['easy', 'medium', 'hard'].includes(r.data.difficulty) &&
+    ['adaptive', 'baseline'].includes(r.data.strategy) && r.data.subject, 'Smart Practice selects exam-safe adaptive plan');
+  const smartQs = await api('GET', '/api/practice/questions' + '?' + new URLSearchParams({
+    subject: r.data.subject, ...(r.data.topic ? { topic: r.data.topic } : {}), difficulty: r.data.difficulty, limit: '20'
+  }).toString());
+  ok(smartQs.status === 200 && smartQs.data.questions.every(q => q.subject === r.data.subject &&
+    (!r.data.topic || q.topic === r.data.topic)), 'Smart Practice questions match the recommended topic');
   // NDA user must never see SSC-only content: switch exam, history preserved
   r = await api('PUT', '/api/me', { exam_id: 'NDA' }); ok(r.data.user.exam_id === 'NDA', 'change exam');
   r = await api('GET', '/api/mistakes'); ok(r.data.total === 0, 'exams do not mix: SSC mistakes not shown under NDA');
