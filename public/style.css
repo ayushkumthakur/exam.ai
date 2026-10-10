@@ -326,3 +326,44 @@ input:focus,select:focus,textarea:focus{border-color:var(--brand-2);box-shadow:0
   html{scroll-behavior:auto}
   .card,.quick-item,.exam,.btn,.nav,input,select,textarea{transition:none}
 }
+
+
+/* Premium refinement — shared UI across practice, tests, tutor and settings. */
+:root{--ease-premium:cubic-bezier(.2,.75,.25,1)}
+::selection{background:var(--accent-soft);color:var(--ink)}
+html{scroll-behavior:smooth;scroll-padding-top:5rem}
+body{letter-spacing:-.008em}
+button,.btn,.chip,.exam,.opt,.nav,.quick-item{transition:background-color .16s var(--ease-premium),border-color .16s var(--ease-premium),box-shadow .16s var(--ease-premium),transform .16s var(--ease-premium),color .16s var(--ease-premium)}
+.btn{font-weight:650;letter-spacing:-.01em;border-radius:12px}
+.btn.primary{box-shadow:0 4px 12px color-mix(in srgb,var(--brand) 18%,transparent)}
+.btn.primary:hover:not(:disabled){filter:brightness(1.04);transform:translateY(-1px);box-shadow:0 7px 18px color-mix(in srgb,var(--brand) 23%,transparent)}
+.btn:active:not(:disabled),.chip:active,.exam:active,.opt:active{transform:translateY(0) scale(.99)}
+input,select,textarea{border-radius:12px;transition:border-color .16s ease,box-shadow .16s ease}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand-2);box-shadow:0 0 0 4px color-mix(in srgb,var(--brand-2) 13%,transparent)}
+.card{box-shadow:0 2px 5px rgba(18,25,55,.025),0 8px 24px rgba(18,25,55,.035)}
+.card:hover{border-color:color-mix(in srgb,var(--brand-2) 24%,var(--line))}
+.nav{min-height:42px}
+.nav.on{font-weight:700}
+.opt{line-height:1.45;min-height:54px}
+.opt:hover:not(.right):not(.wrong){transform:translateY(-1px);box-shadow:0 3px 10px rgba(35,45,90,.06)}
+.q-text{line-height:1.65;letter-spacing:-.015em}
+.sol{line-height:1.65}
+.badge{letter-spacing:.01em}
+table th{font-size:.77rem;text-transform:uppercase;letter-spacing:.055em;color:var(--muted);font-weight:750}
+table td,table th{padding:.72rem .65rem}
+details{border:1px solid var(--line);border-radius:12px;padding:.75rem .9rem}
+details>summary{cursor:pointer;font-weight:650}
+#toast{box-shadow:0 10px 32px rgba(0,0,0,.18);backdrop-filter:blur(12px)}
+:root[data-theme="dark"] .card{box-shadow:0 3px 12px rgba(0,0,0,.12)}
+:root[data-theme="dark"] .btn.primary{box-shadow:0 4px 14px rgba(0,0,0,.18)}
+@media(max-width:820px){
+  html{scroll-padding-top:4rem}
+  .btn{min-height:44px}
+  .opt{padding:.8rem .75rem;gap:.55rem}
+  table{display:block;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch}
+  .auth{padding:1rem}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  button,.btn,.chip,.exam,.opt,.nav,.quick-item,.card,input,select,textarea{transition:none!important}
+}
