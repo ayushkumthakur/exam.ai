@@ -829,20 +829,25 @@ async function pgTests(parts, params) {
   const examId = S.user.exam_id === 'UPSC_CSE' && ['UPSC_CSE','UPSC_CSAT'].includes(paperId) ? paperId : S.user.exam_id;
   const [list, ex] = await Promise.all([get('/api/tests' + q({ exam_id: examId })), get('/api/exams/' + examId)]); const exam = ex.exam;
   const availableSubjects = Array.isArray(S.user.selected_subjects) && S.user.selected_subjects.length ? S.user.selected_subjects : exam.subjects;
-  const o = { kind: 'full_mock', subject: availableSubjects[0], topic: '', count: 20, difficulty: 'any', minutes: '' }; const form = h('div', { class: 'card stack' });
+  const o = { kind: 'full_mock', subject: availableSubjects[0], topic: '', count: 20, difficulty: 'any', minutes: '', mode: 'real' }; const form = h('div', { class: 'card stack' });
   const KINDS = [['full_mock', 'Full Mock'], ['sectional', 'Sectional Mock'], ['subject', 'Subject Test'], ['topic', 'Topic Test'], ['pyq', 'PYQ Test'], ['pyq_pattern', 'PYQ Pattern Mock'], ['ai_mock', 'AI Generated Mock'], ['weak_topic', 'Weak Topic Test']];
   function draw() {
-    const needS = ['sectional', 'subject', 'topic'].includes(o.kind), needT = o.kind === 'topic', needN = ['subject', 'topic', 'weak_topic', 'pyq_pattern', 'ai_mock'].includes(o.kind), needD = ['subject', 'topic', 'full_mock', 'sectional', 'ai_mock'].includes(o.kind);
+    const realMode = o.kind === 'full_mock' && o.mode === 'real';
+    const needS = ['sectional', 'subject', 'topic'].includes(o.kind), needT = o.kind === 'topic', needN = ['subject', 'topic', 'weak_topic', 'pyq_pattern', 'ai_mock'].includes(o.kind), needD = ['subject', 'topic', 'sectional', 'ai_mock'].includes(o.kind) || (o.kind === 'full_mock' && !realMode);
     const topics = exam.syllabus.find(s => s.subject === o.subject)?.topics || []; if (needT && !topics.includes(o.topic)) o.topic = topics[0];
     const f = (l, el) => h('div', {}, h('label', {}, l), el);
     form.replaceChildren(h('div', { class: 'row between' }, h('h2', {}, 'Create My Test'), S.user.exam_id === 'UPSC_CSE' ? h('a', { class: 'btn ghost sm', href: '#/tests' }, '← Choose paper') : null), h('div', { class: 'chips' }, KINDS.map(([k, l]) => h('button', { class: 'chip' + (o.kind === k ? ' on' : ''), onclick: () => { o.kind = k; draw(); } }, l))),
-      o.kind === 'full_mock' ? h('div', { class: 'info' }, `${exam.name} pattern: ${exam.pattern.sections.map(s => `${s.subject} ${s.questions}`).join(' · ')} · ${exam.pattern.minutes} min · negative marking per section.` + (exam.id === 'UPSC_CSAT' ? ' CSAT is qualifying (33% minimum).' : '') + (exam.verified ? '' : ' (Pattern is an approximate default. Confirm with the official notification.)')) : null,
+      o.kind === 'full_mock' ? h('div', { class: 'chips blueprint-mode-picker' },
+        h('button', { class: 'chip' + (realMode ? ' on' : ''), onclick: () => { o.mode = 'real'; draw(); } }, 'Real Exam Mode'),
+        h('button', { class: 'chip' + (!realMode ? ' on' : ''), onclick: () => { o.mode = 'practice'; draw(); } }, 'Practice Mode')) : null,
+      o.kind === 'full_mock' ? h('div', { class: 'info' }, `${exam.name} pattern: ${exam.pattern.sections.map(s => `${s.subject} ${s.questions} × ${s.marks} marks (−${s.negative})`).join(' · ')} · ${exam.pattern.minutes} min.` + (exam.pattern.audit?.sectionTimingMinutes && realMode ? ` Section timer: ${exam.pattern.audit.sectionTimingMinutes} minutes per section.` : '') + (exam.id === 'UPSC_CSAT' ? ' CSAT is qualifying (33% minimum).' : '') + (exam.verified ? '' : ' Subject splits are practice allocations where noted; confirm current details against the official notification.')) : null,
+      realMode ? h('div', { class: 'blueprint-lock-note' }, 'Real Exam Mode locks the paper length, section distribution, overall duration and difficulty mix. Official sectional timers are enforced when available.') : null,
       h('div', { class: 'grid g3' }, needS ? f('Subject', h('select', { onchange: (e) => { o.subject = e.target.value; draw(); } }, exam.syllabus.filter(s => availableSubjects.includes(s.subject)).map(s => h('option', { value: s.subject, selected: s.subject === o.subject }, s.subject)))) : null,
         needT ? f('Topic', h('select', { onchange: (e) => o.topic = e.target.value }, topics.map(t => h('option', { value: t, selected: t === o.topic }, t)))) : null,
         needN ? f('Number of questions', h('input', { type: 'number', min: 1, max: 100, value: o.count, oninput: (e) => o.count = +e.target.value })) : null,
         needD ? f('Difficulty', h('select', { onchange: (e) => o.difficulty = e.target.value }, [['any', 'Any'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === o.difficulty }, l)))) : null,
-        f('Duration (minutes, optional)', h('input', { type: 'number', min: 1, max: 300, placeholder: 'Auto', value: o.minutes, oninput: (e) => o.minutes = e.target.value }))),
-      h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => { e.target.disabled = true; e.target.replaceChildren(h('span', { class: 'spin' }), ' Building…'); await startTest({ ...o, exam_id: examId, minutes: o.minutes || undefined }); e.target.disabled = false; e.target.textContent = 'Start Test'; } }, 'Start Test'));
+        !realMode ? f('Duration (minutes, optional)', h('input', { type: 'number', min: 1, max: 300, placeholder: 'Auto', value: o.minutes, oninput: (e) => o.minutes = e.target.value })) : null),
+      h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => { e.target.disabled = true; e.target.replaceChildren(h('span', { class: 'spin' }), ' Building…'); await startTest({ ...o, exam_id: examId, difficulty: realMode ? 'any' : o.difficulty, minutes: realMode ? undefined : (o.minutes || undefined) }); e.target.disabled = false; e.target.textContent = 'Start Test'; } }, 'Start Test'));
   } draw();
   return h('div', { class: 'stack mock-hub' },
     h('section', { class: 'mock-brand-hero' },
