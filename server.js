@@ -379,17 +379,24 @@ function scoreTest(t, exam, user, answers, times) {
   if (!wentWell.length) wentWell.push('You completed the test, which gives the system real data to personalise your plan.');
   if (accuracy !== null && accuracy < 60) wentWrong.push(`Accuracy was ${accuracy}% on attempted questions.`);
   if (weak.length) wentWrong.push(`Weak topics: ${weak.map(w => w.topic).join(', ')}.`);
-  if (wrong && max && (wrong * 1) / attempted > 0.35) wentWrong.push(`${wrong} wrong answers cost negative marks. Skip questions you cannot narrow down.`);
+  if (wrong && attempted && wrong / attempted > 0.35) wentWrong.push(`${wrong} wrong answers suggest attempting fewer uncertain questions where negative marking applies.`);
+  if (wrong && attempted && wrong / attempted >= 0.25) wentWrong.push('Review incorrect answers before taking another full mock.');
   if (!wentWrong.length) wentWrong.push('No major problem areas in this test.');
   const timeNotes = [];
-  if (skipped / Math.max(total, 1) > 0.25) timeNotes.push(`${skipped} of ${total} questions were left unattempted: practise pacing.`);
+  if (skipped / Math.max(total, 1) > 0.25) timeNotes.push(`${skipped} of ${total} questions were left unattempted: practise pacing and prioritise easier questions first.`);
+  if (attempted && wrong / attempted >= 0.3) timeNotes.push('Accuracy-first strategy: eliminate options carefully and avoid blind guesses when negative marking applies.');
+  if (totalMs > 0 && totalMs / Math.max(total, 1) > 120000) timeNotes.push('Average time exceeded 2 minutes per question; practise timed sets to improve question selection.');
   if (slow.length) timeNotes.push(`${slow.length} question(s) took more than twice your average time.`);
   if (!timeNotes.length) timeNotes.push('No significant time-management problems detected.');
   const nextTopic = weak[0] || topics.filter(x => x.attempted).sort((a, b) => (a.accuracy ?? 100) - (b.accuracy ?? 100))[0] || null;
   return { score: Math.round(score * 100) / 100, max: Math.round(max * 100) / 100, correct, wrong, skipped, total, accuracy, total_minutes: Math.round(totalMs / 6000) / 10,
     by_subject: subj, by_topic: topics, slow, coaching: {
       went_well: wentWell, went_wrong: wentWrong, weak_topics: weak.map(w => w.topic), strong_topics: strong, time_problems: timeNotes,
-      accuracy_problems: accuracy !== null && accuracy < 60 ? [`Aim for 70%+ accuracy before increasing speed.`] : [],
+      accuracy_problems: [
+        ...(accuracy !== null && accuracy < 60 ? ['Aim for 70%+ accuracy before increasing speed.'] : []),
+        ...(attempted > 0 && wrong / attempted >= 0.3 ? ['Reduce avoidable negative marks: review incorrect answers and practise elimination.'] : []),
+        ...(skipped / Math.max(total, 1) > 0.25 ? ['Build a question-selection strategy for skipped questions; solve easy questions first.'] : []),
+      ],
       recommended_revision: nextTopic ? { subject: nextTopic.subject, topic: nextTopic.topic } : null,
       recommended_test: nextTopic ? { kind: 'topic', subject: nextTopic.subject, topic: nextTopic.topic, count: 10 } : { kind: 'subject', subject: exam.subjects[0], count: 10 },
     } };
