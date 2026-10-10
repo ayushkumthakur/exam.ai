@@ -638,7 +638,7 @@ async function pgPractice(parts, params) {
   async function start(src) {
     box.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Preparing questions…'));
     try {
-      const r = await get('/api/practice/questions' + q({ ...sel, source: src ?? sel.source, limit: 10 }));
+      const r = await get('/api/practice/questions' + q({ ...sel, source: src ?? sel.source, limit: 20 }));
       if (!r.questions.length) { setup(h('div', { class: 'note' }, 'No questions found for this selection yet. Try another topic, or generate questions with the AI Tutor.')); return; }
       box.replaceChildren(runSession(r.questions, { mode: 'practice', title: sel.topic || sel.subject || 'Mixed practice', onFinish: () => setup() }));
     } catch (e) { setup(errBox(e, () => start(src))); }
