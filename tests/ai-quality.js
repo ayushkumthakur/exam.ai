@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions } = require('../ai');
+const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration } = require('../ai');
 
 const base = {
   text: 'A sample exam question asks which value is correct?',
@@ -48,3 +48,14 @@ assert.equal(areDuplicateQuestions(base, [{ ...base, text: 'A sample exam questi
 assert.equal(areDuplicateQuestions({ text: 'A train travels 120 kilometres in 2 hours. What is its average speed in kilometres per hour?' }, [{ text: 'A train travels 150 kilometres in 3 hours. What is its average speed in kilometres per hour?' }]), true, 'numeric variants of the same question template are detected');
 assert.equal(areDuplicateQuestions({ text: 'A train travels 120 kilometres in 2 hours. What is its average speed in kilometres per hour?' }, [{ text: 'A shopkeeper sells 12 pens at a profit of 15 percent. Calculate the selling price of one pen.' }]), false, 'different questions from the same subject are retained');
 assert.equal(areDuplicateQuestions('Which planet is known as the Red Planet?', ['Which planet is known as the Red Planet?']), true, 'short exact duplicates are detected');
+
+assert.match(priorityExamCalibration('UPSC CSE Prelims — Paper I (General Studies)', 'Polity', 'Fundamental Rights'), /statement-based and multi-statement questions/i, 'UPSC GS uses real prelims question construction');
+assert.match(priorityExamCalibration('UPSC CSAT — Prelims Paper II (Qualifying)', 'Quantitative Aptitude', 'Percentages'), /80 questions, 200 marks, 120 minutes/i, 'UPSC CSAT uses its separate qualifying paper style');
+assert.match(priorityExamCalibration('SSC CGL (Tier 1)', 'Quantitative Aptitude', 'Percentage'), /25 per section.*60 minutes/s, 'SSC CGL calibration includes the Tier-I section split and timer');
+assert.match(priorityExamCalibration('SSC CGL (Tier 1)', 'English', 'Error Spotting'), /error spotting.*fill in the blanks/i, 'SSC CGL English uses SSC question formats');
+assert.match(priorityExamCalibration('RBI Grade B (Phase 1)', 'General Awareness', 'Monetary Policy'), /RBI and monetary policy.*never invent current figures/i, 'RBI Grade B GA is economy and banking focused');
+assert.match(priorityExamCalibration('RBI Grade B (Phase 1)', 'Reasoning', 'Seating Arrangement'), /banking-style seating arrangements and puzzles/i, 'RBI Grade B reasoning uses banking exam patterns');
+assert.match(priorityDifficultyCalibration('UPSC CSE Prelims — Paper I (General Studies)', 'History', 'hard'), /statement combinations and close elimination/i, 'UPSC hard difficulty is nuanced not obscure');
+assert.match(priorityDifficultyCalibration('SSC CGL (Tier 1)', 'Quantitative Aptitude', 'hard'), /SSC CGL difficulty.*time pressure/i, 'SSC CGL hard difficulty remains time-pressured');
+assert.match(priorityDifficultyCalibration('RBI Grade B (Phase 1)', 'General Awareness', 'hard'), /economy\/banking depth/i, 'RBI Grade B hard GA adds specialist depth');
+assert.equal(priorityExamCalibration('JEE Main', 'Physics', 'Mechanics'), null, 'priority calibration leaves other exam calibration to existing logic');
