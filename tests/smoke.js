@@ -2,7 +2,7 @@
 const BASE = process.env.BASE || 'http://localhost:3111';
 let cookie = '', fails = 0;
 async function api(method, url, body, opts = {}) {
-  const r = await fetch(BASE + url, { method, headers: { 'content-type': 'application/json', ...(opts.nocookie ? {} : { cookie }) }, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(BASE + url, { method, headers: { 'content-type': 'application/json', origin: BASE, ...(opts.nocookie ? {} : { cookie }) }, body: body ? JSON.stringify(body) : undefined });
   const sc = r.headers.get('set-cookie'); if (sc && !opts.nocookie) cookie = sc.split(';')[0];
   return { status: r.status, data: await r.json().catch(() => ({})) };
 }
@@ -10,12 +10,27 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
 (async () => {
   const email = `s${Date.now()}@test.com`;
   ok((await api('GET', '/api/home')).status === 401, 'unauthenticated home blocked');
-  let r = await api('POST', '/api/auth/send-otp', { email: 'bad' }); ok(r.status === 400, 'invalid email rejected');
-  r = await api('POST', '/api/auth/send-otp', { email }); ok(r.status === 200 && r.data.dev_otp, 'send otp');
-  const code = r.data.dev_otp;
-  r = await api('POST', '/api/auth/send-otp', { email }); ok(r.status === 429, 'resend throttled');
-  r = await api('POST', '/api/auth/verify-otp', { email, code: code === '000000' ? '111111' : '000000' }); ok(r.status === 400, 'wrong otp rejected');
-  r = await api('POST', '/api/auth/verify-otp', { email, code }); ok(r.status === 200 && r.data.is_new, 'verify otp -> new user');
+  // Seed enough admin questions: every test needs at least 20 questions.
+  const pw0 = 'Test@12345', adminEmail = 'admin@x.com';
+  let ar = await api('POST', '/api/auth/signup', { email: adminEmail, password: pw0, confirm_password: pw0 });
+  if (ar.status === 409) ar = await api('POST', '/api/auth/login', { email: adminEmail, password: pw0 });
+  let seeded = 0;
+  for (let i = 0; i < 20; i++) {
+    const q = await api('POST', '/api/admin/questions', { exam_id: 'SSC_CHSL', subject: 'Quantitative Aptitude', topic: 'Percentage', difficulty: 'easy', text: `Smoke question ${Date.now()}-${i}: what is ${10 + i}% of 200?`, options: [String(2 * (10 + i)), String(3 * (10 + i)), String(4 * (10 + i)), String(5 * (10 + i))], answer: 0, explanation: `${10 + i}% of 200 equals ${10 + i} x 2 = ${2 * (10 + i)}.`, source_type: 'ADMIN_PRACTICE' });
+    if (q.status === 200) seeded++;
+  }
+  ok(seeded === 20, 'admin can add practice questions (20 seeded)');
+  await api('POST', '/api/auth/logout', {});
+  cookie = '';
+  const pw = 'Test@12345';
+  let r = await api('POST', '/api/auth/signup', { email: 'bad', password: pw, confirm_password: pw }); ok(r.status === 400, 'invalid email rejected');
+  r = await api('POST', '/api/auth/signup', { email, password: 'abc', confirm_password: 'abc' }); ok(r.status === 400, 'weak password rejected');
+  r = await api('POST', '/api/auth/signup', { email, password: pw, confirm_password: pw + 'x' }); ok(r.status === 400, 'mismatched confirm password rejected');
+  r = await api('POST', '/api/auth/signup', { email, password: pw, confirm_password: pw }); ok(r.status === 200 && r.data.user && r.data.user.email === email, 'signup creates account + session');
+  r = await api('POST', '/api/auth/signup', { email, password: pw, confirm_password: pw }, { nocookie: true }); ok(r.status === 409, 'duplicate signup rejected');
+  await api('POST', '/api/auth/logout', {}); ok((await api('GET', '/api/me')).data.user === null, 'logout clears session');
+  r = await api('POST', '/api/auth/login', { email, password: 'Wrong@12345' }); ok(r.status === 401, 'wrong password rejected');
+  r = await api('POST', '/api/auth/login', { email, password: pw }); ok(r.status === 200 && r.data.user, 'login with correct password');
   ok((await api('GET', '/api/home')).status === 409, 'home blocked until onboarding');
   ok((await api('GET', '/api/admin/stats')).status === 403, 'student cannot reach admin');
   const fut = new Date(Date.now() + 120 * 864e5).toISOString().slice(0, 10);
@@ -35,12 +50,12 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   r = await api('PUT', '/api/me', { exam_id: 'SSC_CHSL' }); r = await api('GET', '/api/mistakes'); ok(r.data.total >= 1, 'history preserved after switching back');
   // test flow
   r = await api('POST', '/api/tests/create', { kind: 'pyq' }); ok(r.status === 400, 'PYQ test refused when no verified PYQs exist (no mislabelling)');
-  r = await api('POST', '/api/tests/create', { kind: 'topic', subject: 'Quantitative Aptitude', topic: 'Percentage', count: 5 }); ok(r.status === 200, 'create topic test');
+  r = await api('POST', '/api/tests/create', { kind: 'topic', subject: 'Quantitative Aptitude', topic: 'Percentage', count: 20 }); ok(r.status === 200, 'create topic test');
   const tid = r.data.id;
   r = await api('GET', '/api/tests/' + tid); ok(r.data.test.questions.length > 0 && !('answer' in r.data.test.questions[0]), 'test hides answers while active');
   const q0 = r.data.test.questions[0];
   r = await api('PUT', `/api/tests/${tid}/save`, { answers: { [q0.id]: 1 }, marked: [q0.id], current_idx: 0, times: { [q0.id]: 4000 } }); ok(r.data.ok, 'autosave');
-  r = await api('GET', '/api/tests/' + tid); ok(r.data.test.answers[q0.id] === 1 && r.data.test.marked.includes(q0.id), 'resume preserves answers + marks');
+  r = await api('GET', '/api/tests/' + tid); ok(r.data.test.answers[q0.id] === 1 && r.data.test.marked.map(String).includes(String(q0.id)), 'resume preserves answers + marks');
   const [s1, s2] = await Promise.all([api('POST', `/api/tests/${tid}/submit`, { answers: { [q0.id]: 1 } }), api('POST', `/api/tests/${tid}/submit`, { answers: { [q0.id]: 1 } })]);
   ok(s1.status === 200 && s2.status === 200 && s1.data.test.result.score === s2.data.test.result.score, 'duplicate submit is idempotent');
   const cnt = (await api('GET', '/api/progress')).data; ok(cnt.analyst.length > 0, 'progress analyst');
@@ -51,8 +66,8 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   r = await api('GET', '/api/pyq/analysis'); ok(r.data.sufficient === false, 'no trend claims from insufficient PYQ data');
   r = await api('POST', '/api/auth/logout', {}); r = await api('GET', '/api/me'); ok(r.data.user === null, 'logout');
   // admin
-  const ae = 'admin@x.com'; r = await api('POST', '/api/auth/send-otp', { email: ae }, { nocookie: true });
-  r = await api('POST', '/api/auth/verify-otp', { email: ae, code: r.data.dev_otp }); ok(r.data.user.role === 'admin', 'admin role via ADMIN_EMAILS');
+  cookie = ''; const ae = 'admin@x.com'; r = await api('POST', '/api/auth/login', { email: ae, password: pw });
+  ok(r.data.user && r.data.user.role === 'admin', 'admin role via ADMIN_EMAILS');
   r = await api('POST', '/api/admin/questions', { exam_id: 'SSC_CHSL', subject: 'English', topic: 'Grammar', difficulty: 'easy', text: 'Pick the correct spelling:', options: ['Recieve', 'Receive'], answer: 1, explanation: 'i before e except after c.', source_type: 'VERIFIED_PYQ' }); ok(r.data.errors.length === 1, 'VERIFIED_PYQ without source metadata rejected');
   r = await api('POST', '/api/admin/exams', { id: 'MY_EXAM', name: 'My Exam', category: 'Other', minutes: 30, sections: [{ subject: 'Reasoning', questions: 20, marks: 1, negative: 0.25 }] }); ok(r.data.ok, 'admin can add exam');
   console.log(fails ? `\n${fails} FAILED` : '\nALL PASSED'); process.exit(fails ? 1 : 0);
