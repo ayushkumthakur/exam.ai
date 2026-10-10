@@ -114,24 +114,22 @@ if (examCount === 0) {
   const ins = db.prepare('INSERT OR IGNORE INTO exams (id,name,category,pattern,verified) VALUES (?,?,?,?,?)');
   for (const e of EXAMS) ins.run(e.id, e.name, e.category, JSON.stringify(e.pattern), 0);
 }
-// Migrate the old default UPSC catalog to a single CSE exam containing both papers.
-// Only replace the known legacy default pattern; preserve any custom admin-edited pattern.
+// Keep UPSC Prelims Paper I and CSAT Paper II as separate choices within the UPSC category.
 {
   const row = db.prepare("SELECT pattern FROM exams WHERE id='UPSC_CSE'").get();
   if (row) {
     const current = JSON.parse(row.pattern || '{}');
     const subjects = (current.sections || []).map(s => s.subject);
-    const legacyDefault = current.minutes === 120 &&
-      subjects.join('|') === 'History|Geography|Polity|Economics|Environment|General Awareness|Quantitative Aptitude' &&
-      !(current.sections || []).some(s => s.paper);
+    const oldCombinedDefault = current.minutes === 240 &&
+      subjects.join('|') === 'History|Geography|Polity|Economics|Environment|General Awareness|Quantitative Aptitude|Reasoning|English';
     const target = EXAMS.find(e => e.id === 'UPSC_CSE');
-    if (legacyDefault && target) db.prepare("UPDATE exams SET name=?, pattern=? WHERE id='UPSC_CSE'")
-      .run(target.name, JSON.stringify(target.pattern));
+    if (oldCombinedDefault && target) db.prepare("UPDATE exams SET name=?, category=?, pattern=? WHERE id='UPSC_CSE'")
+      .run(target.name, target.category, JSON.stringify(target.pattern));
   }
-  // Hide the old separate CSAT exam from new selections without deleting its history or questions.
-  db.prepare("UPDATE exams SET active=0 WHERE id='UPSC_CSAT'").run();
-  // Keep students who had selected the old CSAT entry working inside the unified UPSC CSE section.
-  db.prepare("UPDATE users SET exam_id='UPSC_CSE' WHERE exam_id='UPSC_CSAT'").run();
+  // Restore the separate CSAT exam option. Keep its existing questions and test history.
+  const csat = EXAMS.find(e => e.id === 'UPSC_CSAT');
+  if (csat) db.prepare("UPDATE exams SET name=?, category=?, active=1 WHERE id='UPSC_CSAT'")
+    .run(csat.name, csat.category);
 }
 const qCount = db.prepare('SELECT COUNT(*) c FROM questions').get().c;
 if (qCount === 0) {
@@ -182,10 +180,9 @@ if (qCount === 0) {
   }
 }
 
-/* Idempotently seed the CSAT Paper II practice bank under the unified UPSC_CSE exam.
+/* Idempotently seed CSAT Paper II questions under the separate UPSC_CSAT exam option.
  * Questions are original ADMIN_PRACTICE content, never labelled as official PYQs.
  * Quantitative Aptitude items reuse the existing authored aptitude bank.
- * Existing UPSC_CSAT rows are retained for history; this migration copies rather than deletes.
  */
 {
   const csatSeed = SEED.filter(s => s.subject === 'Quantitative Aptitude').concat(CSAT_SEED);
@@ -194,8 +191,8 @@ if (qCount === 0) {
     SELECT ?,?,?,?,?,?,?,?,?,?,'ADMIN_PRACTICE',?
     WHERE NOT EXISTS (SELECT 1 FROM questions WHERE exam_id=? AND text=?)`);
   for (const s of csatSeed) {
-    ins.run('UPSC_CSE', s.subject, s.topic, s.difficulty, s.text, JSON.stringify(s.options),
-      s.answer, s.explanation, s.concept, s.tip, now(), 'UPSC_CSE', s.text);
+    ins.run('UPSC_CSAT', s.subject, s.topic, s.difficulty, s.text, JSON.stringify(s.options),
+      s.answer, s.explanation, s.concept, s.tip, now(), 'UPSC_CSAT', s.text);
   }
 }
 
