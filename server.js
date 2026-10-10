@@ -79,8 +79,12 @@ const TRUST_PROXY = PROD || process.env.TRUST_PROXY === '1';
 const IP_RE = /^[0-9a-fA-F:.]{3,45}$/;
 function clientIp(req) {
   if (TRUST_PROXY) {
-    const first = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-    if (IP_RE.test(first)) return first;
+    // Proxies append the connecting client address to X-Forwarded-For. Trusting the
+    // first value lets a caller spoof arbitrary IPs and evade per-IP throttles.
+    const chain = String(req.headers['x-forwarded-for'] || '').split(',').map(v => v.trim());
+    for (let i = chain.length - 1; i >= 0; i--) {
+      if (IP_RE.test(chain[i])) return chain[i];
+    }
   }
   return req.socket.remoteAddress || 'unknown';
 }
@@ -1151,6 +1155,16 @@ const server = http.createServer(async (req, res) => {
       if (matched.opts.auth && !user) return send(res, 401, { error: 'Please log in.' });
       if (matched.opts.admin && user.role !== 'admin') return send(res, 403, { error: 'Admins only.' });
       if (matched.opts.onboarded && !user.onboarded) return send(res, 409, { error: 'Please finish setting up your profile.', code: 'ONBOARDING' });
+
+      // Throttle expensive generation/analysis and test creation before reading large bodies
+      // or invoking external AI APIs. Limits are per client IP and, when logged in, per account.
+      if (url.pathname.startsWith('/api/ai/')) {
+        rateLimit('ai-ip:' + ip, 20, 60000);
+        if (user) rateLimit('ai-user:' + user.id, 12, 60000);
+      } else if (method === 'POST' && /^\/api\/tests(?:\/|$)/.test(url.pathname)) {
+        rateLimit('test-create-ip:' + ip, 30, 60000);
+        if (user) rateLimit('test-create-user:' + user.id, 15, 60000);
+      }
       let body = {};
       if (method !== 'GET' && method !== 'DELETE') {
         if (!/application\/json/.test(req.headers['content-type'] || '')) throw bad('Expected JSON.');
