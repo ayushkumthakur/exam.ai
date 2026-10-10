@@ -158,4 +158,17 @@ if (qCount === 0) {
   }
 }
 
+/* Add CSAT-style quantitative aptitude practice to existing persistent databases. */
+{
+  const ins = db.prepare(`INSERT INTO questions
+    (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,created_at)
+    SELECT NULL,?,?,?,?,?,?,?,?,?,'ADMIN_PRACTICE',?
+    WHERE NOT EXISTS (SELECT 1 FROM questions WHERE exam_id IS NULL AND text=?)`);
+  for (const s of SEED) {
+    if (!String(s.concept || '').startsWith('Quantitative Aptitude / CSAT-style')) continue;
+    ins.run(s.subject, s.topic, s.difficulty, s.text, JSON.stringify(s.options),
+      s.answer, s.explanation, s.concept, s.tip, now(), s.text);
+  }
+}
+
 module.exports = db;
