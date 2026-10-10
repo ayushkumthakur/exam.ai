@@ -116,4 +116,46 @@ if (qCount === 0) {
   for (const s of SEED) ins.run(s.subject, s.topic, s.difficulty, s.text, JSON.stringify(s.options), s.answer, s.explanation, s.concept, s.tip, now());
 }
 
+/*
+ * Idempotent UPSC practice-bank migration.
+ * These authored practice questions are not official UPSC PYQs. Seed them into
+ * existing persistent Railway databases too; the original seed ran only when
+ * the entire questions table was empty.
+ */
+{
+  const upscSubjects = new Set(['History', 'Geography', 'Polity', 'Economics', 'Environment', 'General Awareness']);
+  const ins = db.prepare(`INSERT INTO questions
+    (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,created_at)
+    SELECT ?,?,?,?,?,?,?,?,?,?,'ADMIN_PRACTICE',?
+    WHERE NOT EXISTS (SELECT 1 FROM questions WHERE exam_id=? AND text=?)`);
+  for (const s of SEED) {
+    if (!upscSubjects.has(s.subject)) continue;
+    // Only add the explicitly curated UPSC set; do not relabel unrelated legacy seed items.
+    if (![
+      'Which Harappan site is especially known for its dockyard?',
+      'Ashoka’s major rock edicts were primarily issued to communicate his:',
+      'The construction of the Qutub Minar was begun by:',
+      'The Permanent Settlement of Bengal was introduced in 1793 under:',
+      'The Coriolis force is caused by the:',
+      'Which river is commonly described as flowing through a rift valley between the Vindhya and Satpura ranges?',
+      'The Strait of Malacca connects the Andaman Sea with the:',
+      'Fundamental Rights are primarily contained in which Part of the Constitution of India?',
+      'A Money Bill can be introduced in the Lok Sabha only on the recommendation of the:',
+      'The power of judicial review enables courts to:',
+      'Which Article guarantees equality before the law and equal protection of the laws?',
+      'Inflation refers to a sustained increase in the:',
+      'In India, the Monetary Policy Committee is responsible for decisions relating primarily to the:',
+      'A rise in the repo rate, other things remaining equal, is generally intended to:',
+      'In a food chain, organisms that make their own food using sunlight are called:',
+      'Which gas is the largest contributor to human-caused long-term global warming among these options?',
+      'A biodiversity hotspot is identified using high endemism and:',
+      'Which institution publishes the World Economic Outlook report?',
+      'The Indian Space Research Organisation (ISRO) functions under the:',
+      'The Comptroller and Auditor General of India is appointed by the:'
+    ].includes(s.text)) continue;
+    ins.run('UPSC_CSE', s.subject, s.topic, s.difficulty, s.text, JSON.stringify(s.options),
+      s.answer, s.explanation, s.concept, s.tip, now(), 'UPSC_CSE', s.text);
+  }
+}
+
 module.exports = db;
