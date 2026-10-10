@@ -49,7 +49,7 @@ assert.equal(areDuplicateQuestions({ text: 'A train travels 120 kilometres in 2 
 assert.equal(areDuplicateQuestions({ text: 'A train travels 120 kilometres in 2 hours. What is its average speed in kilometres per hour?' }, [{ text: 'A shopkeeper sells 12 pens at a profit of 15 percent. Calculate the selling price of one pen.' }]), false, 'different questions from the same subject are retained');
 assert.equal(areDuplicateQuestions('Which planet is known as the Red Planet?', ['Which planet is known as the Red Planet?']), true, 'short exact duplicates are detected');
 
-assert.match(priorityExamCalibration('UPSC CSE Prelims — Paper I (General Studies)', 'Polity', 'Fundamental Rights'), /statement-based and multi-statement questions/i, 'UPSC GS uses real prelims question construction');
+assert.match(priorityExamCalibration('UPSC CSE Prelims — Paper I (General Studies)', 'Polity', 'Fundamental Rights'), /two\/three-statement questions/i, 'UPSC GS uses real prelims question construction');
 assert.match(priorityExamCalibration('UPSC CSAT — Prelims Paper II (Qualifying)', 'Quantitative Aptitude', 'Percentages'), /80 questions, 200 marks, 120 minutes/i, 'UPSC CSAT uses its separate qualifying paper style');
 assert.match(priorityExamCalibration('SSC CGL (Tier 1)', 'Quantitative Aptitude', 'Percentage'), /25 per section.*60 minutes/s, 'SSC CGL calibration includes the Tier-I section split and timer');
 assert.match(priorityExamCalibration('SSC CGL (Tier 1)', 'English', 'Error Spotting'), /error spotting.*fill in the blanks/i, 'SSC CGL English uses SSC question formats');
