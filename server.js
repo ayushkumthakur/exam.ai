@@ -45,7 +45,15 @@ function loadExam(id) {
   exam.subjects = pattern.sections.map(s => s.subject);
   return exam;
 }
-const listExams = () => db.prepare('SELECT id FROM exams WHERE active=1 ORDER BY category,name').all().map(r => loadExam(r.id));
+const listExams = () => db.prepare("SELECT id FROM exams WHERE active=1 AND id<>'UPSC_CSAT' ORDER BY category,name").all().map(r => loadExam(r.id));
+
+// CSAT remains an internal paper record so its bank/history survive, but students select one UPSC CSE exam.
+function requestExam(user, requestedId) {
+  const id = String(requestedId || user.exam_id || '');
+  if (id === user.exam_id) return loadExam(id);
+  if (user.exam_id === 'UPSC_CSE' && id === 'UPSC_CSAT') return loadExam(id);
+  throw bad('This paper is not available under your selected exam.');
+}
 
 // questions visible to a user: only their exam's subjects/topics, never other users' private AI questions
 function visible(user, exam, alias = 'q') {
@@ -620,7 +628,7 @@ route('GET', '/api/home', ONB, (c) => {
 
 // Practice
 route('GET', '/api/practice/smart', ONB, (c) => {
-  const exam = loadExam(c.user.exam_id);
+  const exam = requestExam(c.user, c.query.exam_id);
   const queue = revisionQueue(c.user, exam);
   const weak = weakTopics(c.user, exam, 5);
   const target = queue[0] || weak[0] || null;
@@ -634,7 +642,7 @@ route('GET', '/api/practice/smart', ONB, (c) => {
   return { exam_id: exam.id, subject, topic, difficulty, reason, strategy: target ? 'adaptive' : 'baseline' };
 });
 route('GET', '/api/practice/questions', ONB, (c) => {
-  const exam = loadExam(c.user.exam_id), q = c.query; const v = visible(c.user, exam);
+  const q = c.query, exam = requestExam(c.user, q.exam_id); const v = visible(c.user, exam);
   let sql = `SELECT q.* FROM questions q WHERE ${v.sql}`; const p = [...v.params];
   if (q.subject) { if (!exam.subjects.includes(q.subject)) throw bad('Subject is not part of your exam.'); sql += ' AND q.subject=?'; p.push(q.subject); }
   if (q.topic) { sql += ' AND q.topic=?'; p.push(q.topic); }
@@ -664,7 +672,7 @@ route('GET', '/api/practice/questions', ONB, (c) => {
   return { questions: questions.map(pubQ), unseen_remaining: Math.max(0, unseenCount - offset - unseen.length), retrying_wrong_answers: offset + unseen.length >= unseenCount };
 });
 route('POST', '/api/practice/answer', ONB, (c) => {
-  const exam = loadExam(c.user.exam_id), { question_id, choice, time_ms } = c.body;
+  const exam = requestExam(c.user, c.body.exam_id), { question_id, choice, time_ms } = c.body;
   const mode = ['practice', 'mistake', 'pyq'].includes(c.body.mode) ? c.body.mode : 'practice';
   const v = visible(c.user, exam);
   const q = db.prepare(`SELECT q.* FROM questions q WHERE q.id=? AND ${v.sql}`).get(+question_id, ...v.params);
@@ -711,11 +719,11 @@ route('POST', '/api/revision/complete', ONB, (c) => {
 
 // Tests
 route('POST', '/api/tests/create', ONB, async (c) => {
-  const exam = loadExam(c.user.exam_id);
+  const exam = requestExam(c.user, c.body.exam_id);
   return guarded(c.user, 'testcreate', async () => buildTest(c.user, exam, c.body));
 });
-route('GET', '/api/tests', ONB, (c) => ({ tests: db.prepare('SELECT id,kind,title,status,minutes,result,started_at,submitted_at FROM tests WHERE user_id=? AND exam_id=? ORDER BY id DESC LIMIT 30').all(c.user.id, c.user.exam_id)
-  .map(t => { const r = J(t.result); return { id: t.id, kind: t.kind, title: t.title, status: t.status, minutes: t.minutes, started_at: t.started_at, score: r?.score ?? null, max: r?.max ?? null, accuracy: r?.accuracy ?? null }; }) }));
+route('GET', '/api/tests', ONB, (c) => { const exam = requestExam(c.user, c.query.exam_id); return { tests: db.prepare('SELECT id,kind,title,status,minutes,result,started_at,submitted_at FROM tests WHERE user_id=? AND exam_id=? ORDER BY id DESC LIMIT 30').all(c.user.id, exam.id)
+  .map(t => { const r = J(t.result); return { id: t.id, kind: t.kind, title: t.title, status: t.status, minutes: t.minutes, started_at: t.started_at, score: r?.score ?? null, max: r?.max ?? null, accuracy: r?.accuracy ?? null }; }) }; });
 route('GET', '/api/tests/:id', ONB, (c) => {
   const t = db.prepare('SELECT * FROM tests WHERE id=? AND user_id=?').get(+c.params.id, c.user.id);
   if (!t) throw new HttpError(404, 'Test not found.'); return { test: testView(t, c.user) };
@@ -896,7 +904,7 @@ route('GET', '/api/ai/history', ONB, (c) => ({ messages: db.prepare('SELECT id,r
 route('POST', '/api/ai/clear', ONB, (c) => { db.prepare('DELETE FROM ai_conversations WHERE user_id=? AND exam_id=?').run(c.user.id, c.user.exam_id); return { ok: true }; });
 
 route('POST', '/api/ai/generate', ONB, (c) => guarded(c.user, 'gen', async () => {
-  const exam = loadExam(c.user.exam_id); let { subject, topic } = c.body;
+  const exam = requestExam(c.user, c.body.exam_id); let { subject, topic } = c.body;
   const count = Math.min(Math.max(+c.body.count || 5, 1), 10), difficulty = ['easy', 'medium', 'hard'].includes(c.body.difficulty) ? c.body.difficulty : 'medium';
   let focus = '';
   if (!subject) { const w = weakTopics(c.user, exam, 1)[0]; if (w) { subject = w.subject; topic = w.topic; focus = 'the student keeps getting this topic wrong'; } }
