@@ -795,18 +795,15 @@ async function revMistakes() {
 async function pgTests() {
   const [list, ex] = await Promise.all([get('/api/tests'), get('/api/exams/' + S.user.exam_id)]); const exam = ex.exam;
   const availableSubjects = Array.isArray(S.user.selected_subjects) && S.user.selected_subjects.length ? S.user.selected_subjects : exam.subjects;
-  const isUpscCse = exam.id === 'UPSC_CSE';
-  const o = { kind: 'full_mock', subject: availableSubjects[0], topic: '', count: 20, difficulty: 'any', minutes: '', paper: 'Paper I' }; const form = h('div', { class: 'card stack' });
+  const o = { kind: 'full_mock', subject: availableSubjects[0], topic: '', count: 20, difficulty: 'any', minutes: '' }; const form = h('div', { class: 'card stack' });
   const KINDS = [['full_mock', 'Full Mock'], ['sectional', 'Sectional Mock'], ['subject', 'Subject Test'], ['topic', 'Topic Test'], ['pyq', 'PYQ Test'], ['pyq_pattern', 'PYQ Pattern Mock'], ['ai_mock', 'AI Generated Mock'], ['weak_topic', 'Weak Topic Test']];
   function draw() {
     const needS = ['sectional', 'subject', 'topic'].includes(o.kind), needT = o.kind === 'topic', needN = ['subject', 'topic', 'weak_topic', 'pyq_pattern', 'ai_mock'].includes(o.kind), needD = ['subject', 'topic', 'full_mock', 'sectional', 'ai_mock'].includes(o.kind);
     const topics = exam.syllabus.find(s => s.subject === o.subject)?.topics || []; if (needT && !topics.includes(o.topic)) o.topic = topics[0];
     const f = (l, el) => h('div', {}, h('label', {}, l), el);
-    const mockSections = isUpscCse && o.kind === 'full_mock' ? exam.pattern.sections.filter(s => s.paper === o.paper) : exam.pattern.sections;
     form.replaceChildren(h('h2', {}, 'Create My Test'), h('div', { class: 'chips' }, KINDS.map(([k, l]) => h('button', { class: 'chip' + (o.kind === k ? ' on' : ''), onclick: () => { o.kind = k; draw(); } }, l))),
-      o.kind === 'full_mock' ? h('div', { class: 'info' }, `${exam.name}${isUpscCse ? ' · ' + o.paper + (o.paper === 'Paper I' ? ' (General Studies)' : ' (CSAT)') : ''} pattern: ${mockSections.map(s => `${s.subject} ${s.questions}`).join(' · ')} · ${isUpscCse ? 120 : exam.pattern.minutes} min · negative marking per section.` + (exam.verified ? '' : ' (Pattern is an approximate default. Confirm with the official notification.)')) : null,
-      h('div', { class: 'grid g3' }, o.kind === 'full_mock' && isUpscCse ? f('UPSC CSE Paper', h('select', { value: o.paper, onchange: (e) => { o.paper = e.target.value; draw(); } }, [['Paper I', 'Paper I — General Studies'], ['Paper II', 'Paper II — CSAT (Qualifying)']].map(([v,l]) => h('option', { value: v, selected: o.paper === v }, l)))) : null,
-        needS ? f('Subject', h('select', { onchange: (e) => { o.subject = e.target.value; draw(); } }, exam.syllabus.filter(s => availableSubjects.includes(s.subject)).map(s => h('option', { value: s.subject, selected: s.subject === o.subject }, s.subject)))) : null,
+      o.kind === 'full_mock' ? h('div', { class: 'info' }, `${exam.name} pattern: ${exam.pattern.sections.map(s => `${s.subject} ${s.questions}`).join(' · ')} · ${exam.pattern.minutes} min · negative marking per section.` + (exam.id === 'UPSC_CSAT' ? ' CSAT is qualifying (33% minimum).' : '') + (exam.verified ? '' : ' (Pattern is an approximate default. Confirm with the official notification.)')) : null,
+      h('div', { class: 'grid g3' }, needS ? f('Subject', h('select', { onchange: (e) => { o.subject = e.target.value; draw(); } }, exam.syllabus.filter(s => availableSubjects.includes(s.subject)).map(s => h('option', { value: s.subject, selected: s.subject === o.subject }, s.subject)))) : null,
         needT ? f('Topic', h('select', { onchange: (e) => o.topic = e.target.value }, topics.map(t => h('option', { value: t, selected: t === o.topic }, t)))) : null,
         needN ? f('Number of questions', h('input', { type: 'number', min: 1, max: 100, value: o.count, oninput: (e) => o.count = +e.target.value })) : null,
         needD ? f('Difficulty', h('select', { onchange: (e) => o.difficulty = e.target.value }, [['any', 'Any'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === o.difficulty }, l)))) : null,
