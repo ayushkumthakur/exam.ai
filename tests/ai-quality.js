@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const { EXAMS } = require('../data/catalog');
 const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration } = require('../ai');
-const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, filterAnswersToStartedSections } = require('../paper-blueprint');
+const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers } = require('../paper-blueprint');
 
 const base = {
   text: 'A sample exam question asks which value is correct?',
@@ -84,7 +84,6 @@ assert.equal(rbi.minutes, 120, 'RBI Grade B Phase-I duration is 120 minutes');
 assert.equal(rbi.sections[0].negative, 0.25, 'RBI Grade B Phase-I negative marking is 0.25');
 assert.equal(rbi.audit.status, 'verified_baseline', 'RBI Phase-I official baseline is recorded');
 
-console.log('PASS AI question quality, pattern audit and real-paper blueprint regression tests');
 
 const cglSections = [
   { subject: 'Reasoning', questions: 25, marks: 2, negative: 0.5 },
@@ -103,10 +102,13 @@ assert.equal(cglBlueprint.timedSections, true, 'real SSC CGL mock enables timed 
 assert.deepEqual(cglBlueprint.sections.map(section => section.durationSeconds), [900, 900, 900, 900], 'SSC CGL uses four 15-minute sections');
 assert.deepEqual(cglBlueprint.sections.map(section => section.startsAtOffsetSeconds), [0, 900, 1800, 2700], 'section timers run sequentially from test start');
 assert.equal(activeSectionIndex(cglBlueprint, 901), 1, 'blueprint identifies current section from elapsed time');
-assert.equal(filterAnswersToStartedSections(cglBlueprint, { 'Reasoning-0': 1, 'General Awareness-0': 2 }, 899)['General Awareness-0'], undefined, 'future-section answers are rejected before that section starts');
-assert.equal(filterAnswersToStartedSections(cglBlueprint, { 'Reasoning-0': 1, 'General Awareness-0': 2 }, 901)['General Awareness-0'], 2, 'answers are accepted once their section starts');
+assert.deepEqual(mergeBlueprintAnswers(cglBlueprint, {}, { 'Reasoning-0': 1, 'General Awareness-0': 2 }, 899), { 'Reasoning-0': 1 }, 'future-section answers are rejected before that section starts');
+assert.deepEqual(mergeBlueprintAnswers(cglBlueprint, { 'Reasoning-0': 1 }, { 'Reasoning-0': 3, 'General Awareness-0': 2 }, 901), { 'Reasoning-0': 1, 'General Awareness-0': 2 }, 'past-section answers are locked while the current section accepts answers');
+assert.deepEqual(mergeBlueprintAnswers(cglBlueprint, { 'Reasoning-0': 1, 'General Awareness-0': 2 }, { 'Reasoning-0': 3 }, 1801), { 'Reasoning-0': 1, 'General Awareness-0': 2 }, 'expired sections remain locked after the next section begins');
 const upscBlueprint = createPaperBlueprint({
   exam: { id: 'UPSC_CSE', name: 'UPSC CSE GS', pattern: { minutes: 120, sections: cglSections } },
   kind: 'full_mock', mode: 'real', questions: cglQuestions, minutes: 120, startedAt: 100000
 });
 assert.equal(upscBlueprint.timedSections, false, 'exams without verified sectional timers retain one overall timer');
+
+console.log('PASS AI question quality, pattern audit and real-paper blueprint regression tests');
