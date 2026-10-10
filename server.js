@@ -614,6 +614,20 @@ route('GET', '/api/home', ONB, (c) => {
 });
 
 // Practice
+route('GET', '/api/practice/smart', ONB, (c) => {
+  const exam = loadExam(c.user.exam_id);
+  const queue = revisionQueue(c.user, exam);
+  const weak = weakTopics(c.user, exam, 5);
+  const target = queue[0] || weak[0] || null;
+  const subject = target?.subject || exam.subjects[0];
+  const topic = target?.topic || null;
+  const accuracy = target?.accuracy;
+  const difficulty = accuracy == null ? 'medium' : accuracy < 40 ? 'easy' : accuracy < 70 ? 'medium' : 'hard';
+  const reason = target
+    ? (target.reason || `Your accuracy in ${topic} is ${accuracy}%.`)
+    : 'Starting with a balanced set to learn your strengths; future sets will adapt to your results.';
+  return { exam_id: exam.id, subject, topic, difficulty, reason, strategy: target ? 'adaptive' : 'baseline' };
+});
 route('GET', '/api/practice/questions', ONB, (c) => {
   const exam = loadExam(c.user.exam_id), q = c.query; const v = visible(c.user, exam);
   let sql = `SELECT q.* FROM questions q WHERE ${v.sql}`; const p = [...v.params];
