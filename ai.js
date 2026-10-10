@@ -253,6 +253,40 @@ function validateQuestion(x, allowed) {
     concept: String(x.concept || '').trim() || null, tip: String(x.tip || '').trim() || null };
 }
 
+// Conservative lexical near-duplicate detection. Numbers are normalised only for
+// similarity checks so trivial numeric variants of the same template are caught.
+function questionTextKey(value) {
+  return String(value || '').normalize('NFKC').toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
+const QUESTION_STOPWORDS = new Set(['a','an','the','is','are','was','were','be','been','being','of','to','in','on','at','by','for','from','with','and','or','as','if','which','what','who','when','where','how','does','do','did','has','have','had','this','that','these','those','following','correct','incorrect','not']);
+function questionSimilarityTokens(value) {
+  return questionTextKey(value).replace(/\b\d+(?:[.,]\d+)*\b/g, ' number ')
+    .split(/\s+/).filter(token => token.length > 1 && !QUESTION_STOPWORDS.has(token));
+}
+function areDuplicateQuestions(candidate, others, threshold = 0.84) {
+  const textOf = value => typeof value === 'string' ? value : (value && (value.text || value.question)) || '';
+  const candidateText = textOf(candidate);
+  const candidateKey = questionTextKey(candidateText);
+  if (!candidateKey) return false;
+  const candidateTokens = new Set(questionSimilarityTokens(candidateText));
+  for (const other of (others || [])) {
+    const otherText = textOf(other);
+    const otherKey = questionTextKey(otherText);
+    if (!otherKey) continue;
+    if (candidateKey === otherKey) return true;
+    const otherTokens = new Set(questionSimilarityTokens(otherText));
+    if (candidateTokens.size < 6 || otherTokens.size < 6) continue;
+    let intersection = 0;
+    for (const token of candidateTokens) if (otherTokens.has(token)) intersection++;
+    const union = candidateTokens.size + otherTokens.size - intersection;
+    const jaccard = union ? intersection / union : 0;
+    const lengthRatio = Math.min(candidateTokens.size, otherTokens.size) / Math.max(candidateTokens.size, otherTokens.size);
+    if (jaccard >= threshold && lengthRatio >= 0.78) return true;
+  }
+  return false;
+}
+
 // Exam-specific calibration for non-UPSC exams. UPSC prompt behavior is deliberately left unchanged.
 function nonUpscExamCalibration(examName) {
   const name = String(examName || '').toLowerCase();
@@ -328,12 +362,11 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
   const arr = extractJson(r.text);
   if (!Array.isArray(arr)) return { ok: false, error: 'AI_INVALID' };
   const valid = arr.map(x => validateQuestion(x, { subject, topic, difficulty })).filter(Boolean);
-  // Drop near-identical question text in the same generated batch.
-  const seen = new Set(), good = [];
+  // Remove exact and conservative lexical near-duplicates within this batch.
+  const good = [];
   for (const q of valid) {
-    const key = q.text.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-    if (!key || seen.has(key)) continue;
-    seen.add(key); good.push(q);
+    if (areDuplicateQuestions(q, good)) continue;
+    good.push(q);
   }
   if (!good.length) return { ok: false, error: 'AI_INVALID' };
 
@@ -349,7 +382,7 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
     }));
     const verified = await callClaude({
       maxTokens: Math.min(5000, 500 + good.length * 350),
-      system: `You are an independent competitive-exam answer-key auditor. Do not trust the proposed answer. Solve each MCQ yourself from the question and options first. Then compare your independently solved option with proposed_answer and check whether proposed_explanation is factually and logically correct. Flag ambiguous, underspecified, out-of-syllabus, or multiple-correct-option questions as invalid. Output ONLY a JSON array with one object per item: {"index":0,"independent_answer":0,"valid":true,"reason":"brief reason"}. independent_answer must be an option index 0-3. valid is true only if there is exactly one defensible answer, your answer matches proposed_answer, and the explanation is correct. If uncertain, valid=false.`,
+      system: `You are an independent competitive-exam answer-key auditor. Do not trust the proposed answer. Solve each MCQ yourself from the question and options first. Then compare your independently solved option with proposed_answer and check whether proposed_explanation is factually and logically correct. Flag ambiguous, underspecified, out-of-syllabus, or multiple-correct-option questions as invalid. Compare every question with every other question in this batch; if it repeats the same task with only superficial wording or number changes, mark it as a duplicate of the earlier item. Output ONLY a JSON array with one object per item: {\"index\":0,\"independent_answer\":0,\"valid\":true,\"duplicate_of\":null,\"reason\":\"brief reason\"}. independent_answer must be an option index 0-3. valid is true only if there is exactly one defensible answer, your answer matches proposed_answer, and the explanation is correct. duplicate_of must be null for a unique question or the earlier item index for a duplicate. If uncertain about correctness, valid=false.`,
       messages: [{ role: 'user', content: JSON.stringify(verifyInput) }]
     });
     if (!verified.ok) return { ok: false, error: 'AI_VERIFY_UNAVAILABLE' };
@@ -358,8 +391,9 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
     const auditByIndex = new Map(audit.filter(x => x && Number.isInteger(x.index)).map(x => [x.index, x]));
     const checked = good.filter((q, index) => {
       const a = auditByIndex.get(index);
-      return !!a && a.valid === true && Number.isInteger(a.independent_answer) &&
-        a.independent_answer === q.answer && a.independent_answer >= 0 && a.independent_answer < 4;
+      return !!a && a.valid === true && a.duplicate_of === null &&
+        Number.isInteger(a.independent_answer) && a.independent_answer === q.answer &&
+        a.independent_answer >= 0 && a.independent_answer < 4;
     });
     if (!checked.length) return { ok: false, error: 'AI_VERIFY_REJECTED' };
     return { ok: true, questions: checked, dropped: arr.length - checked.length, verification: 'independent' };
@@ -367,4 +401,4 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
   return { ok: true, questions: good, dropped: arr.length - good.length, verification: 'single-pass' };
 }
 
-module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration };
+module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, questionTextKey, areDuplicateQuestions };
