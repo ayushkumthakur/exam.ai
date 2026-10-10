@@ -131,6 +131,30 @@ if (examCount === 0) {
   if (csat) db.prepare("UPDATE exams SET name=?, category=?, active=1 WHERE id='UPSC_CSAT'")
     .run(csat.name, csat.category);
 }
+
+// Priority-exam pattern audit migration. Update only untouched catalog defaults; preserve admin-customized patterns.
+{
+  const catalogById = new Map(EXAMS.map(exam => [exam.id, exam]));
+  const sameCorePattern = (left, right) => left && right && left.minutes === right.minutes &&
+    JSON.stringify((left.sections || []).map(s => [s.subject, s.questions, s.marks, s.negative, s.paper || null])) ===
+    JSON.stringify((right.sections || []).map(s => [s.subject, s.questions, s.marks, s.negative, s.paper || null]));
+  const select = db.prepare('SELECT pattern FROM exams WHERE id=?');
+  const update = db.prepare('UPDATE exams SET pattern=? WHERE id=?');
+  for (const id of ['UPSC_CSE', 'UPSC_CSAT', 'SSC_CGL', 'RBI_B']) {
+    const seeded = catalogById.get(id);
+    const row = select.get(id);
+    if (!seeded || !row) continue;
+    const current = JSON.parse(row.pattern || '{}');
+    if (sameCorePattern(current, seeded.pattern)) {
+      // Preserve any admin-authored note while recording the official audit metadata.
+      update.run(JSON.stringify({ ...current, note: seeded.pattern.note, audit: seeded.pattern.audit }), id);
+    } else if (current.audit && ['verified_baseline', 'verified_baseline_with_runtime_gap', 'partially_verified'].includes(current.audit.status)) {
+      // A prior audited default has since been customized: keep all admin edits and flag the review state.
+      update.run(JSON.stringify({ ...current, audit: { ...current.audit, status: 'custom_pattern_requires_review', lastCheckedAt: '2026-10-10', reviewReason: 'The saved section counts or timing differ from the audited catalog baseline. Review this custom pattern before presenting it as official.' } }), id);
+    }
+  }
+}
+
 const qCount = db.prepare('SELECT COUNT(*) c FROM questions').get().c;
 if (qCount === 0) {
   const ins = db.prepare(`INSERT INTO questions (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,created_at)
