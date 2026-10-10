@@ -101,7 +101,7 @@ const EXAMS = [
   ['AFCAT','AFCAT','Defence',P(120,[S('General Awareness',25,3,1),S('English',30,3,1),S('Quantitative Aptitude',18,3,1),S('Reasoning',27,3,1)])],
   ['AGNIVEER','Agniveer / Defence Recruitment','Defence',P(60,[S('General Awareness',25,1,0.25),S('Mathematics',25,1,0.25),S('Reasoning',25,1,0.25),S('English',25,1,0.25)])],
   // UPSC
-  ['UPSC_CSE','UPSC Civil Services (Prelims)','UPSC',P(120,[S('History',17,2,0.667),S('Geography',17,2,0.667),S('Polity',17,2,0.667),S('Economics',17,2,0.667),S('Environment',16,2,0.667),S('General Awareness',16,2,0.667)])],
+  ['UPSC_CSE','UPSC Civil Services (Prelims)','UPSC',P(120,[S('History',17,2,0.667),S('Geography',17,2,0.667),S('Polity',17,2,0.667),S('Economics',17,2,0.667),S('Environment',16,2,0.667),S('General Awareness',16,2,0.667),S('Quantitative Aptitude',80,2.5,0.833)])],
   ['UPSC_CAPF','UPSC CAPF','UPSC',P(120,[S('General Awareness',100,2,0.667),S('English',25,2,0.667),S('Reasoning',25,2,0.667)])],
   ['UPSC_OTHER','Other UPSC Examinations','UPSC',P(120,[S('General Awareness',50,2,0.667),S('English',25,2,0.667),S('Reasoning',25,2,0.667)])],
   // SSC
