@@ -868,7 +868,19 @@ route('POST', '/api/admin/questions', ADM, (c) => {
       const v = ai.validateQuestion({ ...m, difficulty: m.difficulty || 'medium' }, {}); if (!v) throw new Error('invalid question (need text, 2-6 distinct options, valid answer index, explanation, subject, topic, difficulty)');
       if (m.exam_id && !loadExam(m.exam_id)) throw new Error('unknown exam_id');
       if (type !== 'ADMIN_PRACTICE' && !m.exam_id) throw new Error('exam_id required for PYQ / PYQ-pattern questions');
-      if (type === 'VERIFIED_PYQ' && !(m.pyq_year && m.pyq_paper && m.source_ref)) throw new Error('VERIFIED_PYQ needs pyq_year, pyq_paper and source_ref');
+      if (type === 'VERIFIED_PYQ') {
+        if (!(m.pyq_year && m.pyq_paper && m.source_ref)) throw new Error('VERIFIED_PYQ needs pyq_year, pyq_paper and source_ref');
+        const year = Number(m.pyq_year);
+        if (!Number.isInteger(year) || year < 2000 || year > new Date().getFullYear() + 1) throw new Error('PYQ year must be a valid year from 2000 through next year');
+        if (String(m.source_ref).length > 2000) throw new Error('source_ref must be 2000 characters or fewer');
+        let sourceUrl;
+        try { sourceUrl = new URL(String(m.source_ref)); } catch { throw new Error('source_ref must be a valid official-source HTTPS URL'); }
+        if (sourceUrl.protocol !== 'https:' || !sourceUrl.hostname || sourceUrl.username || sourceUrl.password ||
+            sourceUrl.hostname === 'localhost' || sourceUrl.hostname.endsWith('.localhost') ||
+            /^127\\./.test(sourceUrl.hostname) || sourceUrl.hostname === '::1') {
+          throw new Error('source_ref must be a public HTTPS URL; verify it points to the official exam authority or official question paper');
+        }
+      }
       const id = ins.run(m.exam_id || null, v.subject, v.topic, v.difficulty, v.text, JSON.stringify(v.options), v.answer, v.explanation, v.concept, v.tip, type, m.pyq_year ? +m.pyq_year : null, m.pyq_paper || null, m.pyq_shift || null, m.source_ref || null, now()).lastInsertRowid;
       added.push(Number(id));
     } catch (e) { errors.push({ index: i, error: e.message }); }
