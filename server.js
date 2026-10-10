@@ -329,7 +329,6 @@ function questionDedupKey(value) {
 function storeAiQuestions(user, exam, list) {
   const ins = db.prepare(`INSERT INTO questions (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,owner_user_id,created_at)
     VALUES (?,?,?,?,?,?,?,?,?,?, 'AI_GENERATED', ?, ?)`);
-  const find = db.prepare('SELECT id FROM questions WHERE exam_id=? AND subject=? AND topic=? AND lower(text)=lower(?) LIMIT 1');
   const seen = new Set(), stored = [];
   for (const q of list) {
     const key = questionDedupKey(q.text);
