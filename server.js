@@ -271,7 +271,7 @@ async function buildTest(user, exam, b) {
       : exam.name + ' ' + b.subject + ' Sectional';
     minutes = b.minutes ? +b.minutes : (exam.id === 'UPSC_CSE' && ['Paper I', 'Paper II'].includes(b.paper)
       ? 120
-      : Math.max(5, Math.round((exam.pattern.minutes || 60) * qs.length / Math.max(patternTotal, 1)));
+      : Math.max(5, Math.round((exam.pattern.minutes || 60) * qs.length / Math.max(patternTotal, 1))));
   } else if (kind === 'subject') {
     needSubject(); qs = pickQuestions(user, exam, { subject: b.subject, difficulty: diff, limit: count });
     if (qs.length < count) qs = qs.concat(await aiFillQuestions(user, exam, b.subject, null, diff, count - qs.length)).slice(0, count);
