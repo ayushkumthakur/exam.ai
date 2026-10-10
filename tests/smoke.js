@@ -87,6 +87,10 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
     const expectedCount = pattern.sections.reduce((n, s) => n + s.questions, 0);
     ok(fullMockTest.status === 200 && fullMockTest.data.test.questions.length === expectedCount,
       'full mock contains the complete exam pattern');
+    ok(fullMockTest.data.test.blueprint?.questionCount === expectedCount && fullMockTest.data.test.blueprint.sections.length === pattern.sections.length,
+      'full mock returns a persisted section-by-section paper blueprint');
+    ok(fullMockTest.data.test.blueprint.mode === 'real' && fullMockTest.data.test.blueprint.timedSections === false,
+      'real mock defaults to fixed difficulty and only uses verified sectional timers');
     await api('POST', '/api/tests/' + fullMock.data.id + '/submit', { answers: {} });
   } else {
     ok(fullMock.status === 400 && /complete/i.test(fullMock.data.error || ''),
