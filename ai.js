@@ -83,7 +83,7 @@ async function callGemini({ system, messages, maxTokens = 1500, timeoutMs = 4500
         return last;
       }
       const j = await response.json();
-      const text = (j.candidates || []).flatMap(x => x.content?.parts || []).map(x => x.text || '').join('\\n').trim();
+      const text = (j.candidates || []).flatMap(x => x.content?.parts || []).map(x => x.text || '').join('\n').trim();
       if (!text) {
         last = { ok: false, error: 'AI_EMPTY' };
         aiMetrics.record({ type: 'error', provider: 'gemini', model: GEMINI_MODEL(), keySlot: i + 1, error: last.error });
