@@ -117,9 +117,20 @@ async function callAnthropic({ system, messages, maxTokens = 1500, timeoutMs = 4
 }
 
 async function callClaude(opts) {
-  const p = activeProvider();
-  if (!p) return { ok: false, error: 'AI_NOT_CONFIGURED' };
-  return p === 'gemini' ? callGemini(opts) : callAnthropic(opts);
+  const primary = activeProvider();
+  if (!primary) return { ok: false, error: 'AI_NOT_CONFIGURED' };
+  const first = primary === 'gemini' ? await callGemini(opts) : await callAnthropic(opts);
+  if (first.ok) return first;
+
+  // Resilient provider fallback: only retry another configured provider for transient
+  // failures or quota limits. Invalid credentials/model settings should stay visible.
+  const retryable = first.error === 'AI_TIMEOUT' || first.error === 'AI_NETWORK' ||
+    first.error === 'AI_HTTP_429' || /^AI_HTTP_5\\d\\d$/.test(first.error || '');
+  if (!retryable) return first;
+  const secondary = primary === 'gemini' ? (ANTHROPIC_KEY() ? 'anthropic' : null) : (GEMINI_KEY() ? 'gemini' : null);
+  if (!secondary) return first;
+  const fallback = secondary === 'gemini' ? await callGemini(opts) : await callAnthropic(opts);
+  return fallback.ok ? { ...fallback, fallback_used: true } : first;
 }
 
 const FRIENDLY = {
