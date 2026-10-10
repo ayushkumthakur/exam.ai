@@ -430,7 +430,8 @@ route('POST', '/api/auth/signup', {}, (c) => {
     if (existing.password_hash) throw new HttpError(409, 'An account with this email already exists. Please log in.');
     throw new HttpError(409, 'This email belongs to an older OTP account. Please use a different email to create a password account.');
   }
-  const role = ADMIN_EMAILS.includes(email) ? 'admin' : 'student';
+  const role = 'student';
+  // Public signup must never grant administrator privileges; provision admins separately.
   db.prepare('INSERT INTO users (email,password_hash,role,created_at) VALUES (?,?,?,?)').run(email, hashPassword(password), role, now());
   const u = db.prepare('SELECT * FROM users WHERE email=?').get(email);
   newSession(c.res, u.id);
