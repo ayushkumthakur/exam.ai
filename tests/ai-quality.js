@@ -34,6 +34,8 @@ assert.match(nonUpscExamCalibration('RRB NTPC (CBT 1)'), /Railway recruitment ca
 assert.match(nonUpscExamCalibration('CTET (Paper 1)'), /classroom scenarios/i, 'teaching exams get pedagogy scenarios');
 assert.match(nonUpscExamCalibration('CLAT (UG)'), /passage-based/i, 'CLAT gets passage-based questions');
 assert.match(nonUpscExamCalibration('CBSE Class X'), /Class 10 NCERT/i, 'CBSE classes get class-level board questions');
+assert.match(nonUpscExamCalibration('CBSE Class XI'), /Class XI calibration/i, 'CBSE Class XI does not fall through to Class X');
+assert.match(nonUpscExamCalibration('CBSE Class XII — Science'), /Class XII calibration/i, 'CBSE Class XII does not fall through to Class X or XI');
 assert.equal(nonUpscExamCalibration('UPSC CSE Prelims — Paper I (General Studies)'), null, 'UPSC calibration is deliberately untouched');
 assert.equal(nonUpscDifficultyCalibration('UPSC CSE Prelims — Paper I (General Studies)', 'hard', 'History'), '', 'UPSC difficulty prompt is deliberately untouched');
 assert.match(nonUpscDifficultyCalibration('JEE Advanced', 'hard', 'Physics'), /multiple Physics\/Chemistry\/Mathematics concepts/i, 'JEE Advanced hard level is exam-specific');
