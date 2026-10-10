@@ -63,8 +63,9 @@ async function stopServer() {
 (async () => {
   let exitCode = 1;
   try {
-    // Public signup must always create a student. Create the account first, then
-    // exercise the explicit one-time bootstrap promotion used for admin provisioning.
+    // Public signup must always create a student. Provision the admin fixture
+    // directly in this disposable test database, never through startup environment
+    // variables that could accidentally promote/reset a production account.
     startServer();
     await waitForServer();
     const signup = await fetch(base + '/api/auth/signup', {
@@ -78,10 +79,14 @@ async function stopServer() {
     }
     await stopServer();
 
-    startServer({
-      BOOTSTRAP_ADMIN_EMAIL: adminEmail,
-      BOOTSTRAP_ADMIN_PASSWORD: adminPassword
-    });
+    const promote = spawnSync(process.execPath, ['-e',
+      "const db=require('./db'); const r=db.prepare(\"UPDATE users SET role='admin' WHERE email=?\").run('admin@x.com'); if (!r.changes) process.exit(1);"
+    ], { cwd: root, env: baseEnv, encoding: 'utf8' });
+    if (promote.error || promote.status !== 0) {
+      throw new Error('Could not provision the isolated admin test fixture.');
+    }
+
+    startServer();
     await waitForServer();
 
     const result = spawnSync(process.execPath, ['tests/smoke.js'], {
