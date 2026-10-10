@@ -10,6 +10,10 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
 (async () => {
   const email = `s${Date.now()}@test.com`;
   ok((await api('GET', '/api/home')).status === 401, 'unauthenticated home blocked');
+  const headerCheck = await fetch(BASE + '/api/config');
+  ok(headerCheck.headers.get('x-content-type-options') === 'nosniff' && headerCheck.headers.get('x-frame-options') === 'DENY',
+    'security headers protect API responses');
+  ok(Boolean(headerCheck.headers.get('content-security-policy')), 'content security policy present');
   // Seed enough admin questions: every test needs at least 20 questions.
   const pw0 = process.env.SMOKE_ADMIN_PASSWORD || 'Test@12345', adminEmail = 'admin@x.com';
   let ar = await api('POST', '/api/auth/signup', { email: adminEmail, password: pw0, confirm_password: pw0 });
@@ -31,7 +35,12 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   ok(csrf.status === 403, 'cross-site signup request rejected before session creation');
   r = await api('POST', '/api/auth/signup', { email, password: pw, confirm_password: pw }); ok(r.status === 200 && r.data.user && r.data.user.email === email, 'signup creates account + session');
   r = await api('POST', '/api/auth/signup', { email, password: pw, confirm_password: pw }, { nocookie: true }); ok(r.status === 409, 'duplicate signup rejected');
-  await api('POST', '/api/auth/logout', {}); ok((await api('GET', '/api/me')).data.user === null, 'logout clears session');
+  const oldSessionCookie = cookie;
+  await api('POST', '/api/auth/logout', {});
+  ok((await api('GET', '/api/me')).data.user === null, 'logout clears session cookie');
+  cookie = oldSessionCookie;
+  ok((await api('GET', '/api/me')).data.user === null, 'logout revokes server-side session token');
+  cookie = '';
   r = await api('POST', '/api/auth/login', { email, password: 'Wrong@12345' }); ok(r.status === 401, 'wrong password rejected');
   r = await api('POST', '/api/auth/login', { email, password: pw }); ok(r.status === 200 && r.data.user, 'login with correct password');
   ok((await api('GET', '/api/home')).status === 409, 'home blocked until onboarding');
