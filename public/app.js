@@ -460,9 +460,10 @@ async function pgHome() {
   if (d.days_left !== null && d.days_left !== undefined) daysLabel = d.days_left > 0 ? d.days_left + ' days left' : d.days_left === 0 ? 'Exam day is today' : 'Target date passed';
   const greeting = (d.questions_solved || 0) === 0 ? 'Ready for your first session?' : 'Ready for your next session?';
 
+  // Keep the two priority tracks first without hiding shortcuts for other exams.
   const shortcutSpecs = [
-    ['UPSC_CSE', 'UPSC'], ['NDA', 'NDA'], ['CDS', 'CDS'], ['CAPF', 'CAPF'],
-    ['SSC_CGL', 'SSC'], ['SSC_CHSL', 'SSC CHSL'], ['IBPS_PO', 'IBPS'], ['RRB_NTPC', 'RRB'],
+    ['UPSC_CSE', 'UPSC'], ['SSC_CGL', 'SSC CGL'], ['NDA', 'NDA'], ['CDS', 'CDS'], ['CAPF', 'CAPF'],
+    ['SSC_CHSL', 'SSC CHSL'], ['IBPS_PO', 'IBPS'], ['RRB_NTPC', 'RRB'],
     ['JEE_MAIN', 'JEE'], ['NEET', 'NEET'], ['CUET', 'CUET'], ['CLAT', 'CLAT']
   ];
   const chipExams = shortcutSpecs.map(([id, label]) => {
