@@ -11,7 +11,18 @@ try {
   const indexes = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all().map(x => x.name));
   assert.ok(indexes.has('a_user_exam_question_id'), 'answer-history lookup index exists');
   assert.ok(indexes.has('m_user_exam_resolved'), 'Mistake Book/revision index exists');
-  console.log('PASS database performance indexes in isolated SQLite database');
+  const csat = db.prepare("SELECT id, name, pattern FROM exams WHERE id='UPSC_CSAT'").get();
+  assert.ok(csat, 'UPSC CSAT Paper II exists as a separate exam');
+  const pattern = JSON.parse(csat.pattern);
+  assert.equal(pattern.minutes, 120, 'CSAT mock duration is 120 minutes');
+  assert.equal(pattern.sections.reduce((n, section) => n + section.questions, 0), 80, 'CSAT mock pattern totals 80 questions');
+  const bank = db.prepare("SELECT subject, COUNT(*) AS count FROM questions WHERE exam_id='UPSC_CSAT' GROUP BY subject").all();
+  const bySubject = Object.fromEntries(bank.map(row => [row.subject, row.count]));
+  assert.equal(bySubject['Quantitative Aptitude'], 28, 'CSAT quantitative aptitude bank is seeded');
+  assert.equal(bySubject.Reasoning, 26, 'CSAT reasoning bank is seeded');
+  assert.equal(bySubject.English, 26, 'CSAT comprehension bank is seeded');
+  assert.equal(bank.reduce((n, row) => n + row.count, 0), 80, 'CSAT practice bank has 80 questions');
+  console.log('PASS database indexes and complete CSAT Paper II bank in isolated SQLite database');
   db.close();
 } finally {
   fs.rmSync(dataDir, { recursive: true, force: true });

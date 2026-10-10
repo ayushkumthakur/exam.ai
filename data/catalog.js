@@ -102,6 +102,9 @@ const EXAMS = [
   ['AGNIVEER','Agniveer / Defence Recruitment','Defence',P(60,[S('General Awareness',25,1,0.25),S('Mathematics',25,1,0.25),S('Reasoning',25,1,0.25),S('English',25,1,0.25)])],
   // UPSC
   ['UPSC_CSE','UPSC Civil Services (Prelims)','UPSC',P(120,[S('History',17,2,0.667),S('Geography',17,2,0.667),S('Polity',17,2,0.667),S('Economics',17,2,0.667),S('Environment',16,2,0.667),S('General Awareness',16,2,0.667),S('Quantitative Aptitude',80,2.5,0.833)])],
+  ['UPSC_CSAT','UPSC CSAT (Prelims Paper II)','UPSC',P(120,[
+    S('Quantitative Aptitude',28,2.5,0.833),S('Reasoning',26,2.5,0.833),S('English',26,2.5,0.833)
+  ],'Official CSAT Paper II has 80 questions, 200 marks and 120 minutes, with one-third negative marking. The subject-wise split shown here is a practice allocation, not an official fixed split. Questions in this app are practice content unless explicitly labelled Verified PYQ.')],
   ['UPSC_CAPF','UPSC CAPF','UPSC',P(120,[S('General Awareness',100,2,0.667),S('English',25,2,0.667),S('Reasoning',25,2,0.667)])],
   ['UPSC_OTHER','Other UPSC Examinations','UPSC',P(120,[S('General Awareness',50,2,0.667),S('English',25,2,0.667),S('Reasoning',25,2,0.667)])],
   // SSC

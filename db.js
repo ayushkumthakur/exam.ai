@@ -4,6 +4,7 @@ const fs = require('fs');
 const { EXAMS } = require('./data/catalog');
 const SEED = require('./data/seed_questions');
 const CA_SEED = require('./data/current_affairs');
+const CSAT_SEED = require('./data/csat_questions');
 
 const dir = process.env.DATA_DIR || path.join(__dirname, 'storage');
 fs.mkdirSync(dir, { recursive: true });
@@ -162,16 +163,19 @@ if (qCount === 0) {
   }
 }
 
-/* Add CSAT-style quantitative aptitude practice to existing persistent databases. */
+/* Idempotently seed a dedicated UPSC CSAT Paper II bank on new and existing databases.
+ * Questions are original ADMIN_PRACTICE content, never labelled as official PYQs.
+ * Quantitative Aptitude items reuse the existing authored aptitude bank.
+ */
 {
+  const csatSeed = SEED.filter(s => s.subject === 'Quantitative Aptitude').concat(CSAT_SEED);
   const ins = db.prepare(`INSERT INTO questions
     (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,created_at)
-    SELECT NULL,?,?,?,?,?,?,?,?,?,'ADMIN_PRACTICE',?
-    WHERE NOT EXISTS (SELECT 1 FROM questions WHERE exam_id IS NULL AND text=?)`);
-  for (const s of SEED) {
-    if (!String(s.concept || '').startsWith('Quantitative Aptitude / CSAT-style')) continue;
-    ins.run(s.subject, s.topic, s.difficulty, s.text, JSON.stringify(s.options),
-      s.answer, s.explanation, s.concept, s.tip, now(), s.text);
+    SELECT ?,?,?,?,?,?,?,?,?,?,'ADMIN_PRACTICE',?
+    WHERE NOT EXISTS (SELECT 1 FROM questions WHERE exam_id=? AND text=?)`);
+  for (const s of csatSeed) {
+    ins.run('UPSC_CSAT', s.subject, s.topic, s.difficulty, s.text, JSON.stringify(s.options),
+      s.answer, s.explanation, s.concept, s.tip, now(), 'UPSC_CSAT', s.text);
   }
 }
 
