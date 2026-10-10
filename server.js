@@ -677,7 +677,7 @@ route('GET', '/api/pyq/papers', ONB, (c) => {
   return { papers: papers.map(p => {
     const name = String(p.paper || '').toLowerCase();
     const expected = exam.id === 'SSC_CGL' ? 100
-      : exam.id === 'UPSC_CSE' ? (/csat|paper\\s*ii|paper-ii|aptitude/.test(name) ? 80 : 100)
+      : exam.id === 'UPSC_CSE' ? (/csat|paper\s*ii|paper-ii|aptitude/.test(name) ? 80 : 100)
       : exam.pattern.sections.reduce((a, sec) => a + sec.questions, 0);
     return { ...p, expected_questions: expected, complete: p.questions >= expected };
   }) };
