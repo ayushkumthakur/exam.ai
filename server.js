@@ -8,7 +8,7 @@ const { TOPICS, syllabusFor, NOTES } = require('./data/catalog');
 const ai = require('./ai');
 const aiMetrics = require('./ai-metrics');
 const dbBackup = require('./db-backup');
-const { allocateSectionTargets, createPaperBlueprint, filterAnswersToStartedSections } = require('./paper-blueprint');
+const { allocateSectionTargets, createPaperBlueprint, mergeBlueprintAnswers } = require('./paper-blueprint');
 
 const PORT = +process.env.PORT || 3000;
 const PROD = process.env.NODE_ENV === 'production';
@@ -332,7 +332,7 @@ async function buildTest(user, exam, b) {
   if (!qs.length) throw bad('No questions are available yet for this selection. Try another subject/topic, or generate questions with the AI Tutor.');
   if (kind !== 'full_mock' && qs.length < 20) throw bad('Every test needs at least 20 questions. Add more questions or choose a larger set.');
   minutes = realMode ? Math.max(1, Number(exam.pattern.minutes) || 60)
-    : Math.max(1, Math.min(300, +b.minutes || minutes || Math.ceil(qs.length * (exam.pattern.minutes / exam.pattern.sections.reduce((a, s) => a + s.questions, 0))));
+    : Math.max(1, Math.min(300, Number(b.minutes) || minutes || 60));
   const t = now();
   const blueprint = createPaperBlueprint({ exam, kind, mode: testMode, questions: qs, minutes, startedAt: t });
   const id = db.prepare('INSERT INTO tests (user_id,exam_id,kind,title,question_ids,minutes,marking,blueprint,remaining_sec,started_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
@@ -743,7 +743,7 @@ route('PUT', '/api/tests/:id/save', ONB, (c) => {
   const questionIds = J(t.question_ids), ids = new Set(questionIds.map(String));
   const elapsedSeconds = Math.max(0, (now() - t.started_at) / 1000);
   const blueprint = J(t.blueprint) || {};
-  const ans = filterAnswersToStartedSections(blueprint, cleanTestAnswers(questionIds, c.body.answers), elapsedSeconds);
+  const ans = mergeBlueprintAnswers(blueprint, J(t.answers), cleanTestAnswers(questionIds, c.body.answers), elapsedSeconds);
   const times = cleanTestTimes(questionIds, c.body.times);
   const startedIds = new Set((blueprint.sections || []).filter(section => section.durationSeconds == null || elapsedSeconds >= section.startsAtOffsetSeconds).flatMap(section => (section.questionIds || []).map(String)));
   const marked = [...new Set((Array.isArray(c.body.marked) ? c.body.marked : []).map(String).filter(k => ids.has(k) && (!blueprint.timedSections || startedIds.has(k))))].slice(0, 200);
@@ -760,7 +760,8 @@ route('POST', '/api/tests/:id/submit', ONB, (c) => {
   const questionIds = J(t.question_ids);
   const elapsedSeconds = Math.max(0, (now() - t.started_at) / 1000);
   const blueprint = J(t.blueprint) || {};
-  const answers = filterAnswersToStartedSections(blueprint, { ...cleanTestAnswers(questionIds, J(t.answers)), ...cleanTestAnswers(questionIds, c.body.answers) }, elapsedSeconds);
+  const timeExpired = now() >= t.started_at + t.minutes * 60000;
+  const answers = mergeBlueprintAnswers(blueprint, J(t.answers), timeExpired ? {} : cleanTestAnswers(questionIds, c.body.answers), elapsedSeconds);
   const times = cleanTestTimes(questionIds, { ...cleanTestTimes(questionIds, J(t.times)), ...cleanTestTimes(questionIds, c.body.times) });
   const res = scoreTest(t, exam, c.user, answers, times);
   // atomic claim to defeat concurrent duplicate submits
