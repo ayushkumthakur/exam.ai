@@ -550,14 +550,11 @@ route('GET', '/api/practice/questions', ONB, (c) => {
   if (['easy', 'medium', 'hard'].includes(q.difficulty)) { sql += ' AND q.difficulty=?'; p.push(q.difficulty); }
   if (['VERIFIED_PYQ', 'AI_GENERATED', 'PYQ_PATTERN', 'ADMIN_PRACTICE'].includes(q.source)) { sql += ' AND q.source_type=?'; p.push(q.source); }
   const limit = 20, offset = Math.max(+q.offset || 0, 0); // Practice always serves a 20-question set.
-  const baseSql = sql, baseParams = [...p];
-  // Show unseen questions first, falling back to attempted questions only when needed.
+  // Practice mode never repeats a question already answered by this student for this exam.
+  // If fewer than 20 unseen questions remain in this selection, return only those unseen questions.
   const unseenSql = sql + ' AND NOT EXISTS (SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id) ORDER BY RANDOM() LIMIT ? OFFSET ?';
   const unseen = db.prepare(unseenSql).all(...p, c.user.id, exam.id, limit, offset);
-  if (unseen.length >= limit || offset > 0) return { questions: unseen.map(pubQ) };
-  const seenSql = baseSql + ' AND EXISTS (SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id) ORDER BY RANDOM() LIMIT ?';
-  const seen = db.prepare(seenSql).all(...baseParams, c.user.id, exam.id, limit - unseen.length);
-  return { questions: unseen.concat(seen).map(pubQ) };
+  return { questions: unseen.map(pubQ) };
 });
 route('POST', '/api/practice/answer', ONB, (c) => {
   const exam = loadExam(c.user.exam_id), { question_id, choice, time_ms } = c.body;
