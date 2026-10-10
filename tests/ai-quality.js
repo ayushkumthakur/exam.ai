@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { validateQuestion, extractJson } = require('../ai');
+const { validateQuestion, extractJson, isValidISODate } = require('../ai');
 
 const base = {
   text: 'A sample exam question asks which value is correct?',
@@ -20,4 +20,10 @@ assert.equal(validateQuestion({ ...base, explanation: 'yes' }, allowed), null, '
 assert.equal(validateQuestion({ ...base, difficulty: 'easy' }, allowed), null, 'difficulty mismatch rejected');
 assert.equal(validateQuestion({ ...base, options: ['क', 'ख', 'ग', 'घ'] }, allowed) !== null, true, 'Unicode options accepted');
 assert.deepEqual(extractJson('prefix [ {"index":0,"valid":true} ] suffix'), [{ index: 0, valid: true }], 'JSON array extraction tolerates surrounding text');
+assert.equal(isValidISODate('2024-02-29'), true, 'valid leap day accepted');
+assert.equal(isValidISODate('2025-02-29'), false, 'invalid leap day rejected');
+assert.equal(isValidISODate('2026-13-10'), false, 'invalid month rejected');
+assert.equal(isValidISODate('2026-10-10'), true, 'current affairs ISO date accepted');
+assert.equal(isValidISODate('10-10-2026'), false, 'non-ISO date rejected');
+assert.equal(isValidISODate('2026-1-10'), false, 'non-padded date rejected');
 console.log('PASS AI question quality regression tests');
