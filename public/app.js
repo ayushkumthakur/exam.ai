@@ -863,27 +863,48 @@ const fmtClock = (s) => `${String(Math.floor(s / 3600)).padStart(2, '0')}:${Stri
 async function pgTestTake(parts) {
   const { test } = await get('/api/tests/' + parts[1]);
   if (test.status !== 'active') { location.replace('#/result/' + test.id); return h('div'); }
-  const st = { answers: { ...test.answers }, marked: new Set(test.marked.map(String)), times: { ...test.times }, idx: Math.min(test.current_idx || 0, test.questions.length - 1), dirty: false, submitting: false, paletteFilter: 'all' };
+  const blueprint = test.blueprint || {};
+  const timedSections = blueprint.timedSections ? (blueprint.sections || []).filter(s => Number(s.durationSeconds) > 0) : [];
+  const st = { answers: { ...test.answers }, marked: new Set(test.marked.map(String)), times: { ...test.times }, idx: Math.min(test.current_idx || 0, test.questions.length - 1), dirty: false, submitting: false, paletteFilter: 'all', sectionId: null };
   const skew = test.serverNow - Date.now(); // keeps the timer honest even if the device clock is off
   const remaining = () => Math.max(0, Math.round((test.deadline - (Date.now() + skew)) / 1000));
+  const elapsed = () => Math.max(0, ((Date.now() + skew) - test.started_at) / 1000);
+  const currentSection = () => timedSections.find(s => elapsed() < s.endsAtOffsetSeconds) || timedSections[timedSections.length - 1] || null;
+  const indexesFor = sec => test.questions.map((q, i) => ({ q, i })).filter(({ q }) => !sec || sec.questionIds.some(id => String(id) === String(q.id))).map(({ i }) => i);
+  if (timedSections.length) { const sec = currentSection(); const ix = indexesFor(sec); if (!ix.includes(st.idx)) st.idx = ix[0] ?? 0; st.sectionId = sec?.id || null; }
   let enteredAt = Date.now(); const root = h('div', { class: 'stack' }), body = h('div'), pal = h('div'), timerEl = h('span', { class: 'timer' }), saveEl = h('span', { class: 'small muted' });
   const payload = () => ({ answers: st.answers, marked: [...st.marked].map(Number), times: st.times, current_idx: st.idx });
   const bank = () => { const id = test.questions[st.idx].id; st.times[id] = (st.times[id] || 0) + (Date.now() - enteredAt); enteredAt = Date.now(); };
   async function save() { if (!st.dirty || st.submitting) return; bank(); try { await put('/api/tests/' + test.id + '/save', payload()); st.dirty = false; saveEl.textContent = 'Saved ✓'; } catch { saveEl.textContent = 'Offline, will retry…'; } }
-  const autosave = setInterval(save, 8000); const tk = setInterval(() => { const r = remaining(); timerEl.textContent = fmtClock(r); timerEl.classList.toggle('low', r < 300); if (r === 0 && !st.submitting) submit(true); }, 500);
+  const autosave = setInterval(save, 8000);
+  const updateClock = () => {
+    const total = remaining();
+    if (timedSections.length) {
+      const sec = currentSection();
+      if (sec && sec.id !== st.sectionId) { bank(); st.sectionId = sec.id; st.idx = Math.max(0, indexesFor(sec)[0] ?? 0); st.dirty = true; draw(); save(); }
+      const left = sec ? Math.max(0, Math.ceil(sec.endsAtOffsetSeconds - elapsed())) : total;
+      timerEl.textContent = fmtClock(left); timerEl.classList.toggle('low', left < 120);
+      overallTimerEl.textContent = fmtClock(total); overallTimerEl.classList.toggle('low', total < 300);
+    } else { timerEl.textContent = fmtClock(total); timerEl.classList.toggle('low', total < 300); }
+    if (total === 0 && !st.submitting) submit(true);
+  };
+  const tk = setInterval(updateClock, 250);
   const onHide = () => { if (document.hidden) save(); }; document.addEventListener('visibilitychange', onHide);
   onLeave(() => { clearInterval(autosave); clearInterval(tk); document.removeEventListener('visibilitychange', onHide); save(); });
   const touch = () => { st.dirty = true; saveEl.textContent = ''; };
   function draw() {
+    const sec = timedSections.length ? currentSection() : null;
+    const visibleIndexes = indexesFor(sec);
+    if (timedSections.length && !visibleIndexes.includes(st.idx)) st.idx = visibleIndexes[0] ?? 0;
     const qn = test.questions[st.idx], letters = 'ABCDEF';
-    body.replaceChildren(h('div', { class: 'card stack' }, h('div', { class: 'row between' }, h('div', { class: 'row' }, srcBadge(qn), h('span', { class: 'badge' }, qn.subject)), h('span', { class: 'muted small' }, `Question ${st.idx + 1} of ${test.questions.length}`)), h('div', { class: 'q-text' }, qn.text),
+    body.replaceChildren(h('div', { class: 'card stack' }, h('div', { class: 'row between' }, h('div', { class: 'row' }, srcBadge(qn), h('span', { class: 'badge' }, qn.subject)), h('span', { class: 'muted small' }, `Question ${st.idx + 1} of ${test.questions.length}`)), sec ? h('div', { class: 'section-progress' }, h('b', {}, `Section ${sec.index + 1}: ${sec.name}`), h('span', {}, `${visibleIndexes.filter(i => st.answers[test.questions[i].id] !== undefined).length}/${visibleIndexes.length} answered · section locks when time expires`)) : null, h('div', { class: 'q-text' }, qn.text),
       h('div', {}, qn.options.map((o, k) => h('button', { class: 'opt' + (st.answers[qn.id] === k ? ' sel' : ''), 'aria-pressed': st.answers[qn.id] === k, onclick: () => { st.answers[qn.id] = k; touch(); draw(); } }, h('span', { class: 'k' }, letters[k]), h('span', {}, o)))),
       h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { delete st.answers[qn.id]; touch(); draw(); } }, 'Clear'), h('button', { class: 'btn', onclick: () => { const k = String(qn.id); st.marked.has(k) ? st.marked.delete(k) : st.marked.add(k); touch(); draw(); } }, st.marked.has(String(qn.id)) ? '★ Unmark' : '☆ Mark for review'),
-        h('span', { class: 'grow' }), h('button', { class: 'btn', disabled: st.idx === 0, onclick: () => move(-1) }, '← Prev'), h('button', { class: 'btn primary', disabled: st.idx === test.questions.length - 1, onclick: () => move(1) }, 'Next →'))));
+        h('span', { class: 'grow' }), h('button', { class: 'btn', disabled: st.idx === (visibleIndexes[0] ?? 0), onclick: () => move(-1) }, '← Prev'), h('button', { class: 'btn primary', disabled: st.idx === (visibleIndexes[visibleIndexes.length - 1] ?? test.questions.length - 1), onclick: () => move(1) }, 'Next →'))));
     const answered = Object.keys(st.answers).length;
     const unanswered = test.questions.length - answered;
-    const filteredQuestions = test.questions.map((x, i) => ({ x, i })).filter(({ x }) =>
-      st.paletteFilter === 'all' ||
+    const filteredQuestions = test.questions.map((x, i) => ({ x, i })).filter(({ x, i }) =>
+      (!sec || visibleIndexes.includes(i)) && (st.paletteFilter === 'all' ||
       (st.paletteFilter === 'unanswered' && st.answers[x.id] === undefined) ||
       (st.paletteFilter === 'marked' && st.marked.has(String(x.id))));
     const filterButtons = [['all', 'All'], ['unanswered', 'Unanswered'], ['marked', 'Marked']].map(([v, label]) =>
@@ -899,7 +920,7 @@ async function pgTestTake(parts) {
         : h('p', { class: 'empty' }, 'No questions match this filter.'),
       h('div', { class: 'test-palette-legend' }, h('span', {}, '● Answered'), h('span', {}, '○ Unanswered'), h('span', {}, '★ Marked for review')));
   }
-  function move(d) { bank(); st.idx = Math.max(0, Math.min(test.questions.length - 1, st.idx + d)); touch(); draw(); }
+  function move(d) { bank(); const sec = timedSections.length ? currentSection() : null; const ix = indexesFor(sec); const lo = sec ? ix[0] : 0, hi = sec ? ix[ix.length - 1] : test.questions.length - 1; st.idx = Math.max(lo, Math.min(hi, st.idx + d)); touch(); draw(); }
   async function submit(auto) {
     if (st.submitting) return;
     if (!auto) {
@@ -913,8 +934,9 @@ async function pgTestTake(parts) {
     try { await post('/api/tests/' + test.id + '/submit', payload()); location.hash = '#/result/' + test.id; }
     catch (e) { st.submitting = false; if (btn) { btn.disabled = false; btn.textContent = 'Retry Submit'; } toast('Submit failed. Your answers are safe. Tap Retry Submit.'); }
   }
-  draw(); timerEl.textContent = fmtClock(remaining());
-  root.append(h('div', { class: 'card row between', style: 'position:sticky;top:60px;z-index:4' }, h('div', {}, h('b', {}, test.title), h('div', {}, saveEl)), timerEl, h('button', { class: 'btn accent', id: 'submitBtn', onclick: () => submit(false) }, 'Submit Test')),
+  const overallTimerEl = h('span', { class: 'timer overall-timer' });
+  draw(); updateClock();
+  root.append(h('div', { class: 'card row between test-sticky-header', style: 'position:sticky;top:60px;z-index:4' }, h('div', {}, h('b', {}, test.title), h('div', {}, saveEl)), timedSections.length ? h('div', { class: 'test-timers' }, h('span', { class: 'timer-caption' }, 'Section'), timerEl, h('span', { class: 'timer-caption' }, 'Overall'), overallTimerEl) : timerEl, h('button', { class: 'btn accent', id: 'submitBtn', onclick: () => submit(false) }, 'Submit Test')),
     h('div', { class: 'split' }, body, h('div', { class: 'card' }, h('h3', {}, 'Questions'), pal)));
   return root;
 }
