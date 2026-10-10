@@ -794,8 +794,14 @@ async function pgTests() {
         f('Duration (minutes, optional)', h('input', { type: 'number', min: 1, max: 300, placeholder: 'Auto', value: o.minutes, oninput: (e) => o.minutes = e.target.value }))),
       h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => { e.target.disabled = true; e.target.replaceChildren(h('span', { class: 'spin' }), ' Building…'); await startTest({ ...o, minutes: o.minutes || undefined }); e.target.disabled = false; e.target.textContent = 'Start Test'; } }, 'Start Test'));
   } draw();
-  return h('div', { class: 'stack' }, h('h1', {}, 'Tests'), form,
-    h('div', { class: 'card' }, h('h3', {}, 'Your tests'), list.tests.length ? h('div', { class: 'list' }, list.tests.map(t => h('div', { class: 'row between' }, h('span', {}, h('b', {}, t.title), h('span', { class: 'muted small' }, ` · ${fmtDate(t.started_at)}`)), t.status === 'active' ? h('a', { class: 'btn sm accent', href: '#/test/' + t.id }, 'Resume Test') : h('span', { class: 'row' }, h('span', { class: 'badge' }, `${t.score}/${t.max} · ${pct(t.accuracy)}`), h('a', { class: 'btn sm', href: '#/result/' + t.id }, 'Analysis'))))) : h('p', { class: 'muted' }, 'No tests yet.')));
+  return h('div', { class: 'stack mock-hub' },
+    h('section', { class: 'mock-brand-hero' },
+      h('div', { class: 'mock-brand-lockup' }, logo(), h('span', {}, 'COMPETITIVE EXAM AI')),
+      h('div', { class: 'mock-hero-copy' }, h('span', { class: 'mock-eyebrow' }, 'YOUR EXAM. YOUR STRATEGY.'), h('h1', {}, 'Mock Test Arena'), h('p', {}, 'Practise under pressure. Learn from every answer. Walk into exam day prepared.'),
+        h('div', { class: 'mock-promise-row' }, h('span', {}, '◷ Timed practice'), h('span', {}, '◎ Smart analysis'), h('span', {}, '↗ Track progress')))),
+    h('div', { class: 'mock-section-heading' }, h('div', {}, h('h2', {}, 'Build your next test'), h('p', { class: 'muted' }, 'Choose a format, set your challenge, and get started.')),
+      h('span', { class: 'badge' }, `${exam.name} · Personalised`)), form,
+    h('div', { class: 'card mock-history' }, h('div', { class: 'mock-section-heading' }, h('div', {}, h('h2', {}, 'Your test history'), h('p', { class: 'muted' }, 'Every attempt is a step forward.'))), list.tests.length ? h('div', { class: 'list' }, list.tests.map(t => h('div', { class: 'row between' }, h('span', {}, h('b', {}, t.title), h('span', { class: 'muted small' }, ` · ${fmtDate(t.started_at)}`)), t.status === 'active' ? h('a', { class: 'btn sm accent', href: '#/test/' + t.id }, 'Resume Test') : h('span', { class: 'row' }, h('span', { class: 'badge' }, `${t.score}/${t.max} · ${pct(t.accuracy)}`), h('a', { class: 'btn sm', href: '#/result/' + t.id }, 'Analysis'))))) : h('p', { class: 'muted' }, 'No tests yet.')));
 }
 const fmtClock = (s) => `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
