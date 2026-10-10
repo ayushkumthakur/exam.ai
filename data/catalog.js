@@ -51,7 +51,7 @@ const TOPICS = {
 
 // helper: section(subject, questions, marksPerQ, negativePerQ)
 const S = (subject, q, m, n, paper) => ({ subject, questions: q, marks: m, negative: n, ...(paper ? { paper } : {}) });
-const P = (minutes, sections, note) => ({ minutes, sections, note: note || null });
+const P = (minutes, sections, note, audit) => ({ minutes, sections, note: note || null, ...(audit ? { audit } : {}) });
 
 const EXAMS = [
   // School education — CBSE Classes IX-XII (2026-27 structures; individual school subject combinations may vary).
@@ -104,14 +104,26 @@ const EXAMS = [
   ['UPSC_CSE','UPSC CSE Prelims — Paper I (General Studies)','UPSC',P(120,[
     S('History',17,2,0.667),S('Geography',17,2,0.667),S('Polity',17,2,0.667),
     S('Economics',17,2,0.667),S('Environment',16,2,0.667),S('General Awareness',16,2,0.667)
-  ],'UPSC CSE Prelims Paper I (General Studies): 100 questions, 200 marks, 120 minutes. Practice question allocation is approximate; content is not an official PYQ unless explicitly labelled Verified PYQ.')],
+  ],'Official baseline: 100 questions, 200 marks, 120 minutes; incorrect answers attract one-third of the marks assigned to the question as negative marking. Subject-wise counts below are adjustable practice allocations, not an official UPSC subject quota. This app currently models Prelims MCQs, not UPSC Mains descriptive papers. Only label source-backed questions as Verified PYQ.', {
+    status: 'partially_verified', checkedAt: '2026-10-10', sourceName: 'UPSC Civil Services (Preliminary) Examination 2026 notice and official question papers', sourceUrl: 'https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026',
+    verifiedFields: ['totalQuestions', 'maximumMarks', 'durationMinutes', 'negativeMarking'], approximateFields: ['subjectWiseQuestionCounts'],
+    runtimeLimitations: ['UPSC Mains descriptive answer papers are not implemented as a separate workflow.']
+  })],
   ['UPSC_CSAT','UPSC CSAT — Prelims Paper II (Qualifying)','UPSC',P(120,[
     S('Quantitative Aptitude',28,2.5,0.833),S('Reasoning',26,2.5,0.833),S('English',26,2.5,0.833)
-  ],'UPSC CSE Prelims Paper II (CSAT): 80 questions, 200 marks, 120 minutes; qualifying at 33%. Subject-wise allocation is for practice, not an official fixed split. Questions are practice content unless explicitly labelled Verified PYQ.')],
+  ],'Official baseline: 80 questions, 200 marks, 120 minutes; qualifying at 33%, with one-third negative marking for wrong answers. Subject-wise allocation below is adjustable practice allocation, not an official fixed split. Questions are practice content unless explicitly labelled Verified PYQ.', {
+    status: 'partially_verified', checkedAt: '2026-10-10', sourceName: 'UPSC Civil Services (Preliminary) Examination 2026 notice and official question papers', sourceUrl: 'https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026',
+    verifiedFields: ['totalQuestions', 'maximumMarks', 'durationMinutes', 'qualifyingThreshold', 'negativeMarking'], approximateFields: ['subjectWiseQuestionCounts'],
+    runtimeLimitations: ['CSAT is an internal paper record and is not shown as a separate exam choice.']
+  })],
   ['UPSC_CAPF','UPSC CAPF','UPSC',P(120,[S('General Awareness',100,2,0.667),S('English',25,2,0.667),S('Reasoning',25,2,0.667)])],
   ['UPSC_OTHER','Other UPSC Examinations','UPSC',P(120,[S('General Awareness',50,2,0.667),S('English',25,2,0.667),S('Reasoning',25,2,0.667)])],
   // SSC
-  ['SSC_CGL','SSC CGL (Tier 1)','SSC',P(60,[S('Reasoning',25,2,0.5),S('General Awareness',25,2,0.5),S('Quantitative Aptitude',25,2,0.5),S('English',25,2,0.5)])],
+  ['SSC_CGL','SSC CGL (Tier 1)','SSC',P(60,[S('Reasoning',25,2,0.5),S('General Awareness',25,2,0.5),S('Quantitative Aptitude',25,2,0.5),S('English',25,2,0.5)], 'SSC CGL 2026 Tier-I baseline: 100 questions, 200 marks, 60 minutes, 0.50 negative marks per wrong answer. The official paper uses 15-minute sectional timers; this app currently has a single overall timer and does not enforce sectional timers. SSC CGL Tier-II has a different multi-session structure and is not represented by this Tier-I pattern.', {
+    status: 'verified_baseline_with_runtime_gap', checkedAt: '2026-10-10', sourceName: 'SSC Combined Graduate Level Examination 2026 official notice, section 13.8', sourceUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2025.pdf',
+    verifiedFields: ['totalQuestions', 'maximumMarks', 'durationMinutes', 'negativeMarking', 'sectionQuestionCounts'], approximateFields: [],
+    runtimeLimitations: ['Official 15-minute per-section timers are not enforced; only one overall timer is available.', 'SSC CGL Tier-II is not yet a separate selectable mock pattern.']
+  })],
   ['SSC_CHSL','SSC CHSL (Tier 1)','SSC',P(60,[S('English',25,2,0.5),S('Reasoning',25,2,0.5),S('Quantitative Aptitude',25,2,0.5),S('General Awareness',25,2,0.5)])],
   ['SSC_MTS','SSC MTS','SSC',P(90,[S('Reasoning',25,1,0.25),S('Quantitative Aptitude',25,1,0.25),S('English',25,1,0.25),S('General Awareness',25,1,0.25)])],
   ['SSC_GD','SSC GD','SSC',P(60,[S('Reasoning',20,2,0.5),S('General Awareness',20,2,0.5),S('Mathematics',20,2,0.5),S('English',20,2,0.5)])],
@@ -125,7 +137,11 @@ const EXAMS = [
   ['IBPS_CLERK','IBPS Clerk (Prelims)','Banking',P(60,[S('English',30,1,0.25),S('Quantitative Aptitude',35,1,0.25),S('Reasoning',35,1,0.25)])],
   ['IBPS_RRB_PO','IBPS RRB PO','Banking',P(45,[S('Reasoning',40,1,0.25),S('Quantitative Aptitude',40,1,0.25)])],
   ['IBPS_RRB_CLERK','IBPS RRB Clerk','Banking',P(45,[S('Reasoning',40,1,0.25),S('Quantitative Aptitude',40,1,0.25)])],
-  ['RBI_B','RBI Grade B (Phase 1)','Banking',P(120,[S('General Awareness',80,1,0.25),S('English',30,1,0.25),S('Quantitative Aptitude',30,1,0.25),S('Reasoning',60,1,0.25)])],
+  ['RBI_B','RBI Grade B (Phase 1)','Banking',P(120,[S('General Awareness',80,1,0.25),S('English',30,1,0.25),S('Quantitative Aptitude',30,1,0.25),S('Reasoning',60,1,0.25)], 'RBI Grade B General Cadre Phase-I baseline: 200 questions, 200 marks, 120 minutes; section allocation is GA 80, English 30, Quant 30, Reasoning 60, with one-quarter negative marking for wrong answers. Phase-II uses separate papers and descriptive answer-writing; this MCQ pattern is Phase-I only.', {
+    status: 'verified_baseline', checkedAt: '2026-10-10', sourceName: 'RBI Officers in Grade B (DR) General Cadre 2026 official notice and Phase-I handout/results', sourceUrl: 'https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=4997',
+    supportingSourceUrl: 'https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5055', verifiedFields: ['totalQuestions', 'maximumMarks', 'durationMinutes', 'negativeMarking', 'sectionQuestionCounts'], approximateFields: [],
+    runtimeLimitations: ['RBI Grade B Phase-II descriptive papers are not implemented as a separate workflow.']
+  })],
   ['RBI_ASST','RBI Assistant (Prelims)','Banking',P(60,[S('English',30,1,0.25),S('Quantitative Aptitude',35,1,0.25),S('Reasoning',35,1,0.25)])],
   ['NABARD_A','NABARD Grade A (Prelims)','Banking',P(120,[S('Reasoning',20,1,0.25),S('English',40,1,0.25),S('Quantitative Aptitude',20,1,0.25),S('General Awareness',20,1,0.25),S('Banking Awareness',60,1,0.25)])],
   // Railway
