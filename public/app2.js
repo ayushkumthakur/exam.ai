@@ -249,7 +249,7 @@ async function pgPlan() {
 
 // ---------- progress + leaderboard ----------
 async function pgProgress() {
-  const p = await get('/api/progress');
+  const [p, home] = await Promise.all([get('/api/progress'), get('/api/home')]);
   let period = 'weekly';
   const panel = h('div', { class: 'stack' });
   async function loadLeaderboard(next = period) {
@@ -282,10 +282,22 @@ async function pgProgress() {
   }
   loadLeaderboard();
   const max = Math.max(1, ...p.last7.map(d => d.n));
+  const solved = Number(home.questions_solved || 0), accuracy = Number(home.accuracy || 0);
+  const achievements = [
+    { title: 'First Step', detail: 'Solve your first question', earned: solved >= 1, icon: '🌱' },
+    { title: '10 Questions', detail: 'Solve 10 questions', earned: solved >= 10, icon: '🎯' },
+    { title: 'Half Century', detail: 'Solve 50 questions', earned: solved >= 50, icon: '🔥' },
+    { title: 'Century Club', detail: 'Solve 100 questions', earned: solved >= 100, icon: '💯' },
+    { title: 'Accuracy Ace', detail: 'Reach 80% accuracy with at least 10 answers', earned: solved >= 10 && accuracy >= 80, icon: '🏅' },
+    { title: '3-Day Streak', detail: 'Study for 3 consecutive days', earned: Number(p.streak || 0) >= 3, icon: '⚡' },
+    { title: 'Mock Finisher', detail: 'Submit your first mock test', earned: p.tests.length >= 1, icon: '🏆' }
+  ];
   return h('div', { class: 'stack' },
     h('h1', {}, 'Progress'),
     h('div', { class: 'card stack' }, panel),
     h('div', { class: 'card' }, h('h3', {}, 'AI Performance Analyst'), h('ul', {}, p.analyst.map(l => h('li', {}, l)))),
+    h('div', { class: 'card stack' }, h('div', { class: 'row between' }, h('h3', {}, 'Achievements'), h('span', { class: 'badge' }, achievements.filter(a => a.earned).length + '/' + achievements.length + ' unlocked')),
+      h('div', { class: 'grid g2' }, achievements.map(a => h('div', { class: 'card', style: 'padding:.85rem;opacity:' + (a.earned ? '1' : '.62') }, h('div', { class: 'row', style: 'align-items:center;gap:.6rem' }, h('span', { style: 'font-size:1.5rem' }, a.icon), h('div', {}, h('b', {}, a.title), h('div', { class: 'small muted' }, a.detail))), h('span', { class: 'badge ' + (a.earned ? 'ok' : '') }, a.earned ? 'Unlocked' : 'In progress'))))),
     h('div', { class: 'grid g3' }, [['This week', p.week.questions + ' questions'], ['Weekly accuracy', pct(p.week.accuracy)], ['Streak', p.streak + ' days']].map(([l, v]) => h('div', { class: 'card stat' }, h('span', { class: 'muted small' }, l), h('b', {}, v)))),
     h('div', { class: 'card' }, h('h3', {}, 'Last 7 days'), h('div', { class: 'cols', role: 'img', 'aria-label': 'Questions per day, last 7 days' }, p.last7.map(d => h('div', { title: `${d.day}: ${d.n}`, style: `height:${Math.round(100 * d.n / max)}%` }))), h('div', { class: 'cols small muted', style: 'height:auto;margin-top:4px' }, p.last7.map(d => h('span', { style: 'text-align:center' }, d.day.slice(8))))),
     h('div', { class: 'grid g2' },
