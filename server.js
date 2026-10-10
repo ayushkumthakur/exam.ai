@@ -60,10 +60,22 @@ const fullQ = r => ({ ...pubQ(r), answer: r.answer, explanation: r.explanation, 
 
 // ---------- auth ----------
 const mem = { sendLog: new Map(), inflight: new Set() };
+// Behind a reverse proxy (Railway) the socket address is the proxy, so every visitor would share one
+// rate-limit bucket. In production (or TRUST_PROXY=1) use the first valid address in X-Forwarded-For.
+const TRUST_PROXY = PROD || process.env.TRUST_PROXY === '1';
+const IP_RE = /^[0-9a-fA-F:.]{3,45}$/;
+function clientIp(req) {
+  if (TRUST_PROXY) {
+    const first = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    if (IP_RE.test(first)) return first;
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
 function rateLimit(key, max, windowMs) {
   const t = now(); const arr = (mem.sendLog.get(key) || []).filter(x => t - x < windowMs);
   if (arr.length >= max) throw new HttpError(429, 'Too many attempts. Please try again later.');
   arr.push(t); mem.sendLog.set(key, arr);
+  if (mem.sendLog.size > 20000) for (const [k, v] of mem.sendLog) { if (!v.length || t - v[v.length - 1] > 3600000) mem.sendLog.delete(k); }
 }
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
 function validatePassword(password, confirm) {
@@ -1008,7 +1020,7 @@ function readBody(req, limit = 2e6) {
 function send(res, status, obj) { const body = JSON.stringify(obj); res.writeHead(status, { ...responseHeaders(), 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(body); }
 
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, 'http://x'); const ip = req.socket.remoteAddress;
+  const url = new URL(req.url, 'http://x'); const ip = clientIp(req);
   try {
     if (url.pathname.startsWith('/api/')) {
       const method = req.method; let matched = null, params = {};
