@@ -258,6 +258,9 @@ async function buildTest(user, exam, b) {
       qs.push(...got.slice(0, target));
       if (got.length < target) notices.push(String(s.subject) + ': only ' + got.length + ' question(s) available after AI fill.');
     }
+    if (notices.length) {
+      throw bad(`Cannot create a complete ${kind === 'full_mock' ? 'full mock' : 'sectional test'} yet. ${notices.join(' ')} Add verified/admin practice questions for the missing sections or enable AI question generation, then try again.`);
+    }
     if (!qs.length) throw bad('No questions are available yet for this selection.');
     title = kind === 'full_mock' ? exam.name + ' Full Mock' : exam.name + ' ' + b.subject + ' Sectional';
     minutes = b.minutes ? +b.minutes : Math.max(5, Math.round((exam.pattern.minutes || 60) * qs.length / Math.max(patternTotal, 1)));
