@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration } = require('../ai');
+const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions } = require('../ai');
 
 const base = {
   text: 'A sample exam question asks which value is correct?',
@@ -43,3 +43,8 @@ assert.match(nonUpscDifficultyCalibration('SBI PO (Prelims)', 'hard', 'Reasoning
 assert.match(nonUpscDifficultyCalibration('CBSE Class XII — Science', 'hard', 'Physics'), /board-appropriate competency-based/i, 'CBSE hard level remains board-syllabus appropriate');
 
 console.log('PASS AI question quality regression tests');
+
+assert.equal(areDuplicateQuestions(base, [{ ...base, text: 'A sample exam question asks which value is correct?' }]), true, 'exact duplicate question detected');
+assert.equal(areDuplicateQuestions({ text: 'A train travels 120 kilometres in 2 hours. What is its average speed in kilometres per hour?' }, [{ text: 'A train travels 150 kilometres in 3 hours. What is its average speed in kilometres per hour?' }]), true, 'numeric variants of the same question template are detected');
+assert.equal(areDuplicateQuestions({ text: 'A train travels 120 kilometres in 2 hours. What is its average speed in kilometres per hour?' }, [{ text: 'A shopkeeper sells 12 pens at a profit of 15 percent. Calculate the selling price of one pen.' }]), false, 'different questions from the same subject are retained');
+assert.equal(areDuplicateQuestions('Which planet is known as the Red Planet?', ['Which planet is known as the Red Planet?']), true, 'short exact duplicates are detected');
