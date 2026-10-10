@@ -268,12 +268,18 @@ async function buildTest(user, exam, b) {
     qs = qs.slice(0, count); title = 'Weak Topic Test';
   } else if (kind === 'pyq') {
     const year = b.year ? +b.year : null;
-    let sql = "SELECT * FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=?"; const p = [exam.id];
-    if (year) { sql += ' AND pyq_year=?'; p.push(year); } if (b.paper) { sql += ' AND pyq_paper=?'; p.push(b.paper); } if (b.shift) { sql += ' AND pyq_shift=?'; p.push(b.shift); }
+    if (!year || !b.paper) throw bad('Choose a specific year and paper from Verified Papers. Mixing papers from different years is not allowed.');
+    let sql = "SELECT * FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=? AND pyq_year=? AND pyq_paper=?"; const p = [exam.id, year, String(b.paper)];
+    if (b.shift) { sql += ' AND pyq_shift=?'; p.push(String(b.shift)); }
+    else sql += " AND (pyq_shift IS NULL OR pyq_shift='')";
     qs = db.prepare(sql + ' ORDER BY id').all(...p);
-    if (!qs.length) throw bad('No verified previous-year questions have been added for your exam yet.');
-    if (qs.length < 20) throw bad('This verified PYQ selection has fewer than 20 questions. Add the complete paper before starting a PYQ test.');
-    title = `${exam.name} PYQ ${b.year || ''} ${b.paper || ''}`.trim();
+    if (!qs.length) throw bad('No verified questions were found for this exact year and paper.');
+    const paperName = String(b.paper).toLowerCase();
+    const expected = exam.id === 'SSC_CGL' ? 100
+      : exam.id === 'UPSC_CSE' ? (/csat|paper\s*ii|paper-ii|aptitude/.test(paperName) ? 80 : 100)
+      : exam.pattern.sections.reduce((a, sec) => a + sec.questions, 0);
+    if (qs.length < expected) throw bad(`This paper has ${qs.length} verified questions, but a complete ${exam.name} paper is expected to have about ${expected}. Import and verify the remaining questions before taking it as a real PYQ paper. You can still use PYQ-pattern mocks for practice.`);
+    title = `${exam.name} ${year} PYQ · ${b.paper}`.trim();
   } else if (kind === 'pyq_pattern') {
     qs = pickQuestions(user, exam, { source: 'PYQ_PATTERN', limit: count });
     if (!qs.length) throw bad('No PYQ-pattern questions are available yet for your exam.');
@@ -665,7 +671,17 @@ route('POST', '/api/tests/:id/submit', ONB, (c) => {
 });
 
 // PYQs
-route('GET', '/api/pyq/papers', ONB, (c) => ({ papers: db.prepare("SELECT pyq_year year, pyq_paper paper, pyq_shift shift, COUNT(*) questions FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=? GROUP BY 1,2,3 ORDER BY 1 DESC").all(c.user.exam_id) }));
+route('GET', '/api/pyq/papers', ONB, (c) => {
+  const exam = loadExam(c.user.exam_id);
+  const papers = db.prepare("SELECT pyq_year year, pyq_paper paper, pyq_shift shift, COUNT(*) questions FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=? GROUP BY 1,2,3 ORDER BY 1 DESC").all(c.user.exam_id);
+  return { papers: papers.map(p => {
+    const name = String(p.paper || '').toLowerCase();
+    const expected = exam.id === 'SSC_CGL' ? 100
+      : exam.id === 'UPSC_CSE' ? (/csat|paper\\s*ii|paper-ii|aptitude/.test(name) ? 80 : 100)
+      : exam.pattern.sections.reduce((a, sec) => a + sec.questions, 0);
+    return { ...p, expected_questions: expected, complete: p.questions >= expected };
+  }) };
+});
 route('GET', '/api/pyq/analysis', ONB, (c) => {
   const total = db.prepare("SELECT COUNT(*) c FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=?").get(c.user.exam_id).c;
   if (total < 30) return { sufficient: false, total, message: `Only ${total} verified PYQ(s) are available for your exam. Trend analysis needs at least 30, so no trends are shown.` };
