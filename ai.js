@@ -180,7 +180,8 @@ function extractJson(text) {
 function validateQuestion(x, allowed) {
   if (!x || typeof x !== 'object') return null;
   const text = String(x.text || x.question || '').trim();
-  const options = Array.isArray(x.options) ? x.options.map(o => String(o).trim()).filter(Boolean) : [];
+  const options = Array.isArray(x.options) ? x.options.map(o => String(o).trim()) : [];
+  const normalizeChoice = value => String(value || '').normalize('NFKC').toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
   const answer = Number.isInteger(x.answer) ? x.answer : parseInt(x.answer, 10);
   const explanation = String(x.explanation || '').trim();
   const subject = String(x.subject || allowed.subject || '').trim();
@@ -189,7 +190,9 @@ function validateQuestion(x, allowed) {
   if (text.length < 10) return null;
   // Exam MCQs in this platform use four options; reject malformed output instead of
   // quietly accepting two-option questions that make a mock easier than the real paper.
-  if (options.length !== 4 || new Set(options.map(o => o.toLocaleLowerCase())) .size !== 4) return null;
+  if (options.length !== 4 || options.some(o => !o) || new Set(options.map(normalizeChoice)).size !== 4) return null;
+  // Reject options that differ only by punctuation/case/spacing; those are not meaningful distractors.
+  if (options.some(o => normalizeChoice(o).length < 1)) return null;
   if (!Number.isInteger(answer) || answer < 0 || answer >= options.length) return null;
   if (explanation.length < 15) return null;
   if (!subject || !topic) return null;
