@@ -382,7 +382,38 @@ async function pgSearch(parts, params) {
 
 // ---------- admin ----------
 async function pgAdmin() {
-  const st = await get('/api/admin/stats'); const out = h('div'); const reports = h('div');
+  const st = await get('/api/admin/stats'); const out = h('div'); const reports = h('div'); const health = h('div', { class: 'stack' });
+  async function loadAiHealth() {
+    try {
+      const d = await get('/api/admin/ai-health');
+      const t = d.totals || {}, ps = d.providers || {};
+      const metric = (label, value) => h('div', { class: 'card' }, h('div', { class: 'small muted' }, label), h('h2', {}, String(value ?? 0)));
+      const keyCards = (d.geminiKeys || []).map(k => h('div', { class: 'row between' },
+        h('b', {}, 'Gemini key slot ' + k.slot),
+        h('span', { class: 'badge ' + (k.configured ? 'ok' : '') }, k.configured ? 'Configured · secret hidden' : 'Not configured')));
+      const providerCards = Object.entries(ps).map(([name, p]) => h('div', { class: 'card stack' },
+        h('h3', {}, name.toUpperCase()),
+        h('div', { class: 'grid g3' }, metric('Requests', p.requests), metric('Successes', p.successes), metric('Failures', p.failures)),
+        h('p', { class: 'small muted' }, 'Token counts · prompt: ' + (p.promptTokens || 0) + ' · output: ' + (p.outputTokens || 0) + ' · total: ' + (p.totalTokens || 0)),
+        Object.keys(p.errors || {}).length ? h('p', { class: 'small' }, 'Errors: ' + Object.entries(p.errors).map(([k,v]) => k + ' × ' + v).join(' · ')) : h('p', { class: 'small muted' }, 'No recorded errors')));
+      const recent = (d.recent || []).slice(0, 25);
+      const logTable = recent.length ? h('div', { class: 'list' }, recent.map(e => h('div', { class: 'row between', style: 'border-bottom:1px solid var(--line);padding:.55rem 0' },
+        h('div', { class: 'stack', style: 'gap:.1rem' },
+          h('b', {}, String(e.type || 'event').toUpperCase() + ' · ' + String(e.provider || 'unknown')),
+          h('span', { class: 'small muted' }, new Date(e.at).toLocaleString() + ' · ' + (e.model || 'model unknown')),
+          h('span', { class: 'small' }, e.type === 'rotation' ? ('Key slot ' + e.fromSlot + ' → ' + e.toSlot + ' · ' + e.reason) : (e.error || (e.keySlot ? 'Key slot ' + e.keySlot : '')))),
+        h('span', { class: 'badge ' + (e.type === 'success' ? 'ok' : e.type === 'error' ? 'bad' : e.type === 'rotation' ? 'warn' : '') }, e.type)))) : h('p', { class: 'muted' }, 'No AI requests recorded since this server process started.');
+      health.replaceChildren(
+        h('div', { class: 'grid g3' }, metric('AI requests', t.requests), metric('Successful', t.successes), metric('Failed', t.failures), metric('Key rotations', t.rotations), metric('Uptime', Math.floor((d.uptimeSeconds || 0) / 60) + ' min'), metric('Total tokens', t.totalTokens || 0)),
+        h('div', { class: 'card stack' }, h('h3', {}, 'Gemini key status'), h('p', { class: 'small muted' }, 'Only configured/not-configured status is shown. API key values are never displayed.'), ...keyCards),
+        ...providerCards,
+        h('div', { class: 'card stack' }, h('div', { class: 'row between' }, h('h3', {}, 'Recent AI events'), h('button', { class: 'btn sm', onclick: loadAiHealth }, 'Refresh')), h('p', { class: 'small muted' }, 'Latest 25 events; key-rotation records show slot numbers only, never secret values.'), logTable)
+      );
+    } catch (e) { health.replaceChildren(errBox(e, loadAiHealth)); }
+  }
+  loadAiHealth();
+  const healthTimer = setInterval(loadAiHealth, 30000);
+  onLeave(() => clearInterval(healthTimer));
   const area = (v, rows = 9) => h('textarea', { rows, style: 'font-family:ui-monospace,monospace;font-size:.85rem' }, v);
   const qa = area(JSON.stringify({ source_type: 'ADMIN_PRACTICE', exam_id: null, questions: [{ subject: 'Mathematics', topic: 'Trigonometry', difficulty: 'easy', text: 'Question text…', options: ['A', 'B', 'C', 'D'], answer: 0, explanation: 'Why…', concept: 'Concept…', tip: 'Tip…' }] }, null, 2), 14);
   const pyqNote = 'Use VERIFIED_PYQ only after manually checking every question and answer against the official exam authority/paper. Include exam_id, pyq_year, pyq_paper and a public HTTPS source_ref URL. The app validates URL format but cannot independently certify that a source is official. AI-written questions must remain PYQ_PATTERN or ADMIN_PRACTICE. A full paper uploaded together becomes a PYQ test automatically.';
