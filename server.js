@@ -258,6 +258,9 @@ async function buildTest(user, exam, b) {
       qs.push(...got.slice(0, target));
       if (got.length < target) notices.push(String(s.subject) + ': only ' + got.length + ' question(s) available after AI fill.');
     }
+    if (notices.length) {
+      throw bad(`Cannot create a complete ${kind === 'full_mock' ? 'full mock' : 'sectional test'} yet. ${notices.join(' ')} Add verified/admin practice questions for the missing sections or enable AI question generation, then try again.`);
+    }
     if (!qs.length) throw bad('No questions are available yet for this selection.');
     title = kind === 'full_mock' ? exam.name + ' Full Mock' : exam.name + ' ' + b.subject + ' Sectional';
     minutes = b.minutes ? +b.minutes : Math.max(5, Math.round((exam.pattern.minutes || 60) * qs.length / Math.max(patternTotal, 1)));
@@ -549,7 +552,8 @@ route('POST', '/api/auth/claim-admin', A, (c) => {
   return { user: meJson(u) };
 });
 route('POST', '/api/auth/logout', {}, (c) => {
-  const m = /(?:^|;\s*)sid=([^;]+)/.exec(req.headers.cookie || '');
+  const m = /(?:^|;\s*)sid=([^;]+)/.exec(c.req.headers.cookie || '');
+  if (m) db.prepare('DELETE FROM sessions WHERE token_hash=?').run(sha(m[1]));
   c.res.setHeader('Set-Cookie', `sid=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${PROD ? '; Secure' : ''}`); return { ok: true };
 });
 route('GET', '/api/me', {}, (c) => ({ user: c.user ? meJson(c.user) : null }));
@@ -613,6 +617,20 @@ route('GET', '/api/home', ONB, (c) => {
 });
 
 // Practice
+route('GET', '/api/practice/smart', ONB, (c) => {
+  const exam = loadExam(c.user.exam_id);
+  const queue = revisionQueue(c.user, exam);
+  const weak = weakTopics(c.user, exam, 5);
+  const target = queue[0] || weak[0] || null;
+  const subject = target?.subject || exam.subjects[0];
+  const topic = target?.topic || null;
+  const accuracy = target?.accuracy;
+  const difficulty = accuracy == null ? 'medium' : accuracy < 40 ? 'easy' : accuracy < 70 ? 'medium' : 'hard';
+  const reason = target
+    ? (target.reason || `Your accuracy in ${topic} is ${accuracy}%.`)
+    : 'Starting with a balanced set to learn your strengths; future sets will adapt to your results.';
+  return { exam_id: exam.id, subject, topic, difficulty, reason, strategy: target ? 'adaptive' : 'baseline' };
+});
 route('GET', '/api/practice/questions', ONB, (c) => {
   const exam = loadExam(c.user.exam_id), q = c.query; const v = visible(c.user, exam);
   let sql = `SELECT q.* FROM questions q WHERE ${v.sql}`; const p = [...v.params];

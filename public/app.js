@@ -646,13 +646,23 @@ function bookmarkBtn(kind, ref, title, body) {
 async function pgPractice(parts, params) {
   const ex = (await get('/api/exams/' + S.user.exam_id)).exam; const box = h('div', { class: 'stack' });
   const sel = { subject: params.get('subject') || '', topic: params.get('topic') || '', difficulty: '', source: '' };
-  async function start(src) {
+  async function start(src, titleOverride) {
     box.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Preparing questions…'));
     try {
       const r = await get('/api/practice/questions' + q({ ...sel, source: src ?? sel.source, limit: 20 }));
       if (!r.questions.length) { setup(h('div', { class: 'note' }, 'No questions found for this selection yet. Try another topic, or generate questions with the AI Tutor.')); return; }
-      box.replaceChildren(runSession(r.questions, { mode: 'practice', title: sel.topic || sel.subject || 'Mixed practice', onFinish: () => setup() }));
-    } catch (e) { setup(errBox(e, () => start(src))); }
+      box.replaceChildren(runSession(r.questions, { mode: 'practice', title: titleOverride || sel.topic || sel.subject || 'Mixed practice', onFinish: () => setup() }));
+    } catch (e) { setup(errBox(e, () => start(src, titleOverride))); }
+  }
+  async function startSmart() {
+    try {
+      const plan = await get('/api/practice/smart');
+      sel.subject = plan.subject || '';
+      sel.topic = plan.topic || '';
+      sel.difficulty = plan.difficulty || 'medium';
+      sel.source = '';
+      await start(undefined, 'Smart Practice');
+    } catch (e) { setup(errBox(e, startSmart)); }
   }
   function setup(extra) {
     const subj = h('select', { 'aria-label': 'Subject', onchange: (e) => { sel.subject = e.target.value; sel.topic = ''; setup(); } }, h('option', { value: '' }, 'All subjects'), ex.syllabus.map(s => h('option', { value: s.subject, selected: s.subject === sel.subject }, s.subject)));
@@ -661,7 +671,7 @@ async function pgPractice(parts, params) {
     const dif = h('select', { 'aria-label': 'Difficulty', onchange: (e) => sel.difficulty = e.target.value }, [['', 'Any difficulty'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === sel.difficulty }, l)));
     box.replaceChildren(h('h1', {}, 'Practice'), h('p', { class: 'muted' }, `Questions for ${ex.name} only. Every question shows where it came from.`), extra || null,
       h('div', { class: 'card stack' }, h('div', { class: 'grid g3' }, h('div', {}, h('label', {}, 'Subject'), subj), h('div', {}, h('label', {}, 'Topic'), top), h('div', {}, h('label', {}, 'Difficulty'), dif)),
-        h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => start() }, 'Practice Now'), h('a', { class: 'btn', href: '#/revision?mistakes=1' }, 'Revise My Mistakes'), S.config.ai_enabled ? h('button', { class: 'btn', onclick: () => genPanel() }, '✨ Generate AI questions') : null)));
+        h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => start() }, 'Practice Now'), h('button', { class: 'btn', onclick: () => startSmart() }, '✨ Smart Practice'), h('a', { class: 'btn', href: '#/revision?mistakes=1' }, 'Revise My Mistakes'), S.config.ai_enabled ? h('button', { class: 'btn', onclick: () => genPanel() }, '✨ Generate AI questions') : null)));
   }
   function genPanel() {
     if (!sel.subject || !sel.topic) { toast('Pick a subject and topic first.'); return; }

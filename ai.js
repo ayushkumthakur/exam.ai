@@ -16,6 +16,11 @@ const aiEnabled = () => !!activeProvider();
 const aiProvider = () => activeProvider() || PROVIDER();
 const aiModel = () => activeProvider() === 'anthropic' ? ANTHROPIC_MODEL() : GEMINI_MODEL();
 
+function isValidISODate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value + 'T00:00:00Z');
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
 function groundingSources(j) {
   const out = [];
   for (const g of (j?.candidates || []).flatMap(c => c?.groundingMetadata?.groundingChunks || [])) {
@@ -127,7 +132,7 @@ Do not invent facts, dates, awards, numbers or URLs. Do not include rumours or u
     const title = String(x.title || '').trim(), summary = String(x.summary || '').trim(), date = String(x.event_date || '').trim();
     const category = String(x.category || '').trim(), source_url = String(x.source_url || '').trim();
     const exams = Array.isArray(x.exams) ? x.exams.map(String).filter(v => allowed.has(v)) : [];
-    if (title.length < 8 || summary.length < 30 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date) || !allowedCats.includes(category) || !source_url || !sourceSet.has(source_url) || !exams.length) return null;
+    if (title.length < 8 || summary.length < 30 || !isValidISODate(date) || !allowedCats.includes(category) || !source_url || !sourceSet.has(source_url) || !exams.length) return null;
     try { const u = new URL(source_url); if (!['http:','https:'].includes(u.protocol)) return null; } catch { return null; }
     return { title, summary, category, event_date: date, exams: [...new Set(exams)], source_url };
   }).filter(Boolean);
@@ -313,4 +318,4 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
   return { ok: true, questions: good, dropped: arr.length - good.length, verification: 'single-pass' };
 }
 
-module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion };
+module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate };

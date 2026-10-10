@@ -10,6 +10,14 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
 (async () => {
   const email = `s${Date.now()}@test.com`;
   ok((await api('GET', '/api/home')).status === 401, 'unauthenticated home blocked');
+  const headerCheck = await fetch(BASE + '/api/config');
+  ok(headerCheck.headers.get('x-content-type-options') === 'nosniff' && headerCheck.headers.get('x-frame-options') === 'DENY',
+    'security headers protect API responses');
+  ok(Boolean(headerCheck.headers.get('content-security-policy')), 'content security policy present');
+  const malformedPath = await fetch(BASE + '/%E0%A4%A');
+  ok(malformedPath.status === 400, 'malformed URL encoding rejected safely');
+  const sourceProbe = await fetch(BASE + '/server.js');
+  ok(sourceProbe.status === 404, 'server source file is not publicly served');
   // Seed enough admin questions: every test needs at least 20 questions.
   const pw0 = process.env.SMOKE_ADMIN_PASSWORD || 'Test@12345', adminEmail = 'admin@x.com';
   let ar = await api('POST', '/api/auth/signup', { email: adminEmail, password: pw0, confirm_password: pw0 });
@@ -31,9 +39,20 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   ok(csrf.status === 403, 'cross-site signup request rejected before session creation');
   r = await api('POST', '/api/auth/signup', { email, password: pw, confirm_password: pw }); ok(r.status === 200 && r.data.user && r.data.user.email === email, 'signup creates account + session');
   r = await api('POST', '/api/auth/signup', { email, password: pw, confirm_password: pw }, { nocookie: true }); ok(r.status === 409, 'duplicate signup rejected');
-  await api('POST', '/api/auth/logout', {}); ok((await api('GET', '/api/me')).data.user === null, 'logout clears session');
+  const oldSessionCookie = cookie;
+  await api('POST', '/api/auth/logout', {});
+  ok((await api('GET', '/api/me')).data.user === null, 'logout clears session cookie');
+  cookie = oldSessionCookie;
+  ok((await api('GET', '/api/me')).data.user === null, 'logout revokes server-side session token');
+  cookie = '';
   r = await api('POST', '/api/auth/login', { email, password: 'Wrong@12345' }); ok(r.status === 401, 'wrong password rejected');
   r = await api('POST', '/api/auth/login', { email, password: pw }); ok(r.status === 200 && r.data.user, 'login with correct password');
+  const missingOrigin = await fetch(BASE + '/api/me', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', cookie },
+    body: JSON.stringify({ name: 'Should be blocked' })
+  });
+  ok(missingOrigin.status === 403, 'authenticated mutation without origin is rejected');
   ok((await api('GET', '/api/home')).status === 409, 'home blocked until onboarding');
   ok((await api('GET', '/api/admin/stats')).status === 403, 'student cannot reach admin');
   const fut = new Date(Date.now() + 120 * 864e5).toISOString().slice(0, 10);
@@ -47,12 +66,32 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   let wrong; for (const q of qs) { const a = await api('POST', '/api/practice/answer', { question_id: q.id, choice: 3 }); if (!a.data.correct) { wrong = a.data; break; } }
   ok(wrong && wrong.mistake && wrong.mistake.how_to_avoid, 'mistake analysis present');
   r = await api('GET', '/api/mistakes'); ok(r.data.total >= 1, 'mistake stored');
+  r = await api('GET', '/api/practice/smart');
+  ok(r.status === 200 && r.data.exam_id === 'SSC_CHSL' && ['easy', 'medium', 'hard'].includes(r.data.difficulty) &&
+    ['adaptive', 'baseline'].includes(r.data.strategy) && r.data.subject, 'Smart Practice selects exam-safe adaptive plan');
+  const smartQs = await api('GET', '/api/practice/questions' + '?' + new URLSearchParams({
+    subject: r.data.subject, ...(r.data.topic ? { topic: r.data.topic } : {}), difficulty: r.data.difficulty, limit: '20'
+  }).toString());
+  ok(smartQs.status === 200 && smartQs.data.questions.every(q => q.subject === r.data.subject &&
+    (!r.data.topic || q.topic === r.data.topic)), 'Smart Practice questions match the recommended topic');
   // NDA user must never see SSC-only content: switch exam, history preserved
   r = await api('PUT', '/api/me', { exam_id: 'NDA' }); ok(r.data.user.exam_id === 'NDA', 'change exam');
   r = await api('GET', '/api/mistakes'); ok(r.data.total === 0, 'exams do not mix: SSC mistakes not shown under NDA');
   r = await api('PUT', '/api/me', { exam_id: 'SSC_CHSL' }); r = await api('GET', '/api/mistakes'); ok(r.data.total >= 1, 'history preserved after switching back');
   // test flow
   r = await api('POST', '/api/tests/create', { kind: 'pyq' }); ok(r.status === 400, 'PYQ test refused when no verified PYQs exist (no mislabelling)');
+  const fullMock = await api('POST', '/api/tests/create', { kind: 'full_mock' });
+  if (fullMock.status === 200 && Number.isInteger(fullMock.data.id)) {
+    const fullMockTest = await api('GET', '/api/tests/' + fullMock.data.id);
+    const pattern = (await api('GET', '/api/exams/SSC_CHSL')).data.exam.pattern;
+    const expectedCount = pattern.sections.reduce((n, s) => n + s.questions, 0);
+    ok(fullMockTest.status === 200 && fullMockTest.data.test.questions.length === expectedCount,
+      'full mock contains the complete exam pattern');
+    await api('POST', '/api/tests/' + fullMock.data.id + '/submit', { answers: {} });
+  } else {
+    ok(fullMock.status === 400 && /complete/i.test(fullMock.data.error || ''),
+      'incomplete full mock is rejected instead of being mislabeled');
+  }
   r = await api('POST', '/api/tests/create', { kind: 'topic', subject: 'Quantitative Aptitude', topic: 'Percentage', count: 20 });
   ok(r.status === 200 && Number.isInteger(r.data.id), `create topic test (HTTP ${r.status}${r.data.error ? `: ${r.data.error}` : ''})`);
   if (r.status !== 200 || !Number.isInteger(r.data.id)) {

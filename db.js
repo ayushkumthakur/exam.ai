@@ -43,12 +43,16 @@ CREATE TABLE IF NOT EXISTS answers (
   time_ms INTEGER, mode TEXT NOT NULL, created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS a_user ON answers(user_id, exam_id, created_at);
+-- Practice feeds repeatedly check whether a student has answered a question and fetch the latest attempt.
+CREATE INDEX IF NOT EXISTS a_user_exam_question_id ON answers(user_id, exam_id, question_id, id);
 CREATE TABLE IF NOT EXISTS mistakes (
   user_id INTEGER NOT NULL, question_id INTEGER NOT NULL, exam_id TEXT NOT NULL,
   last_choice INTEGER, wrong_count INTEGER NOT NULL DEFAULT 1, weakness REAL NOT NULL DEFAULT 1,
   resolved INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL,
   PRIMARY KEY (user_id, question_id)
 );
+-- Accelerate the unresolved Mistake Book and revision-queue queries on existing databases.
+CREATE INDEX IF NOT EXISTS m_user_exam_resolved ON mistakes(user_id, exam_id, resolved, weakness DESC, updated_at DESC);
 CREATE TABLE IF NOT EXISTS topic_stats (
   user_id INTEGER NOT NULL, exam_id TEXT NOT NULL, subject TEXT NOT NULL, topic TEXT NOT NULL,
   attempted INTEGER NOT NULL DEFAULT 0, correct INTEGER NOT NULL DEFAULT 0, wrong_streak INTEGER NOT NULL DEFAULT 0,
