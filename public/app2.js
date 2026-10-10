@@ -283,6 +283,13 @@ async function pgProgress() {
   loadLeaderboard();
   const max = Math.max(1, ...p.last7.map(d => d.n));
   const solved = Number(home.questions_solved || 0), accuracy = Number(home.accuracy || 0);
+  const weekDelta = Number(p.week.questions || 0) - Number(p.prev_week.questions || 0);
+  const accuracyDelta = p.week.accuracy != null && p.prev_week.accuracy != null ? Number(p.week.accuracy) - Number(p.prev_week.accuracy) : null;
+  const recommendations = [];
+  if (p.weakest && p.weakest.length && p.weakest[0].accuracy < 70) recommendations.push({ title: 'Revise ' + p.weakest[0].topic, detail: p.weakest[0].subject + ' · ' + p.weakest[0].accuracy + '% accuracy', action: () => go('#/revision' + q({ subject: p.weakest[0].subject, topic: p.weakest[0].topic })) });
+  if (p.week.accuracy != null && p.week.accuracy < 65) recommendations.push({ title: 'Accuracy-first practice', detail: 'Try a short set and review every incorrect answer.', action: () => go('#/practice') });
+  if (p.week.questions < 20) recommendations.push({ title: 'Build a steady routine', detail: 'Aim for a manageable daily set, then review mistakes.', action: () => go('#/practice') });
+  if (!recommendations.length) recommendations.push({ title: 'Keep your momentum', detail: 'Take a timed sectional test and compare the next result.', action: () => go('#/tests') });
   const achievements = [
     { title: 'First Step', detail: 'Solve your first question', earned: solved >= 1, icon: '🌱' },
     { title: '10 Questions', detail: 'Solve 10 questions', earned: solved >= 10, icon: '🎯' },
@@ -299,6 +306,14 @@ async function pgProgress() {
     h('div', { class: 'card stack' }, h('div', { class: 'row between' }, h('h3', {}, 'Achievements'), h('span', { class: 'badge' }, achievements.filter(a => a.earned).length + '/' + achievements.length + ' unlocked')),
       h('div', { class: 'grid g2' }, achievements.map(a => h('div', { class: 'card', style: 'padding:.85rem;opacity:' + (a.earned ? '1' : '.62') }, h('div', { class: 'row', style: 'align-items:center;gap:.6rem' }, h('span', { style: 'font-size:1.5rem' }, a.icon), h('div', {}, h('b', {}, a.title), h('div', { class: 'small muted' }, a.detail))), h('span', { class: 'badge ' + (a.earned ? 'ok' : '') }, a.earned ? 'Unlocked' : 'In progress'))))),
     h('div', { class: 'grid g3' }, [['This week', p.week.questions + ' questions'], ['Weekly accuracy', pct(p.week.accuracy)], ['Streak', p.streak + ' days']].map(([l, v]) => h('div', { class: 'card stat' }, h('span', { class: 'muted small' }, l), h('b', {}, v)))),
+    h('div', { class: 'grid g2' },
+      h('div', { class: 'card stack' }, h('h3', {}, 'Week-over-week trend'),
+        h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Questions solved'), h('b', { class: weekDelta > 0 ? 'good' : weekDelta < 0 ? 'bad' : '' }, (weekDelta > 0 ? '+' : '') + weekDelta)),
+        h('div', { class: 'small muted' }, `This week ${p.week.questions} · Previous week ${p.prev_week.questions}`),
+        h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Accuracy change'), h('b', { class: accuracyDelta == null ? '' : accuracyDelta > 0 ? 'good' : accuracyDelta < 0 ? 'bad' : '' }, accuracyDelta == null ? 'Need more data' : (accuracyDelta > 0 ? '+' : '') + accuracyDelta + ' pp')),
+        h('div', { class: 'small muted' }, p.prev_week.accuracy == null ? 'Keep practising to establish a baseline.' : `Previous week accuracy ${p.prev_week.accuracy}% · Current ${p.week.accuracy}%`)),
+      h('div', { class: 'card stack' }, h('h3', {}, 'Your next best moves'),
+        recommendations.map(r => h('button', { class: 'recommendation-row', onclick: r.action }, h('span', {}, h('b', {}, r.title), h('span', { class: 'small muted' }, r.detail)), h('span', { class: 'recommendation-arrow' }, '→'))))),
     h('div', { class: 'card' }, h('h3', {}, 'Last 7 days'), h('div', { class: 'cols', role: 'img', 'aria-label': 'Questions per day, last 7 days' }, p.last7.map(d => h('div', { title: `${d.day}: ${d.n}`, style: `height:${Math.round(100 * d.n / max)}%` }))), h('div', { class: 'cols small muted', style: 'height:auto;margin-top:4px' }, p.last7.map(d => h('span', { style: 'text-align:center' }, d.day.slice(8))))),
     h('div', { class: 'grid g2' },
       h('div', { class: 'card' }, h('h3', {}, 'Strongest topics'), p.strongest.length ? p.strongest.map(t => h('div', { class: 'row between' }, t.topic, h('span', { class: 'badge ok' }, t.accuracy + '%'))) : h('p', { class: 'muted' }, 'Needs 3+ answers per topic.')),
