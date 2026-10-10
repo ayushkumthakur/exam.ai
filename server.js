@@ -11,19 +11,8 @@ const PORT = +process.env.PORT || 3000;
 const PROD = process.env.NODE_ENV === 'production';
 const TZ_MIN = +(process.env.TZ_OFFSET_MIN ?? 330); // IST
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-// One-time admin bootstrap: promotes an existing account and sets a temporary password when explicitly configured.
-const BOOTSTRAP_ADMIN_EMAIL = String(process.env.BOOTSTRAP_ADMIN_EMAIL || '').trim().toLowerCase();
-const BOOTSTRAP_ADMIN_PASSWORD = String(process.env.BOOTSTRAP_ADMIN_PASSWORD || '');
-if (BOOTSTRAP_ADMIN_EMAIL && BOOTSTRAP_ADMIN_PASSWORD.length >= 12) {
-  const existing = db.prepare('SELECT id FROM users WHERE lower(email)=?').get(BOOTSTRAP_ADMIN_EMAIL);
-  if (existing) {
-    db.prepare("UPDATE users SET role='admin', password_hash=? WHERE id=?")
-      .run(hashPassword(BOOTSTRAP_ADMIN_PASSWORD), existing.id);
-    console.log('[admin-bootstrap] existing account promoted and temporary password configured');
-  } else {
-    console.log('[admin-bootstrap] target account not found; no account created');
-  }
-}
+// Administrator privileges must be provisioned explicitly in the database or through a reviewed migration.
+// Do not promote accounts or reset passwords automatically from environment variables at startup.
 const DAY = 86400000;
 const REV_DAYS = [0, 1, 3, 7, 14];
 
@@ -518,8 +507,19 @@ route('POST', '/api/auth/login', {}, (c) => {
   return { user: meJson(u) };
 });
 route('POST', '/api/auth/set-password', A, (c) => {
-  validatePassword(String(c.body.password || ''), String(c.body.confirm_password || ''));
-  db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hashPassword(String(c.body.password)), c.user.id);
+  const password = String(c.body.password || '');
+  validatePassword(password, String(c.body.confirm_password || ''));
+  db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hashPassword(password), c.user.id);
+
+  // Password changes invalidate every other device/session. Keep only the session
+  // that made this request so the user does not get unexpectedly logged out here.
+  const m = /(?:^|;\\s*)sid=([^;]+)/.exec(c.req.headers.cookie || '');
+  const currentHash = m ? sha(m[1]) : null;
+  if (currentHash) {
+    db.prepare('DELETE FROM sessions WHERE user_id=? AND token_hash<>?').run(c.user.id, currentHash);
+  } else {
+    db.prepare('DELETE FROM sessions WHERE user_id=?').run(c.user.id);
+  }
   const u = db.prepare('SELECT * FROM users WHERE id=?').get(c.user.id);
   return { user: meJson(u) };
 });
