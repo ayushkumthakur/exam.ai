@@ -1,5 +1,5 @@
 const CACHE = 'cea-shell-v1';
-const SHELL = ['/', '/style.css?v=6', '/dashboard-theme.css?v=8', '/app2.js?v=7', '/app.js?v=15', '/icon.svg'];
+const SHELL = ['/', '/style.css?v=7', '/dashboard-theme.css?v=8', '/app2.js?v=8', '/app.js?v=15', '/icon.svg'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
 });
