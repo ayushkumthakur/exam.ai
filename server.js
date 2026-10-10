@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const { TOPICS, syllabusFor, NOTES } = require('./data/catalog');
 const ai = require('./ai');
+const aiMetrics = require('./ai-metrics');
 
 const PORT = +process.env.PORT || 3000;
 const PROD = process.env.NODE_ENV === 'production';
@@ -935,6 +936,7 @@ route('POST', '/api/ai/feedback', ONB, (c) => {
 });
 
 // ---------- admin ----------
+route('GET', '/api/admin/ai-health', ADM, () => aiMetrics.snapshot());
 route('GET', '/api/admin/stats', ADM, () => ({ users: db.prepare('SELECT COUNT(*) c FROM users').get().c, questions: db.prepare('SELECT source_type, COUNT(*) c FROM questions GROUP BY 1').all(), exams: db.prepare('SELECT COUNT(*) c FROM exams').get().c, open_reports: db.prepare("SELECT COUNT(*) c FROM ai_feedback WHERE kind='report' AND status='open'").get().c }));
 route('POST', '/api/admin/exams', ADM, (c) => {
   const b = c.body, id = String(b.id || '').toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 30);
