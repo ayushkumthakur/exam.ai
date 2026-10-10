@@ -287,6 +287,68 @@ function areDuplicateQuestions(candidate, others, threshold = 0.84) {
   return false;
 }
 
+// Higher-fidelity calibration for the three priority exams. These prompts shape
+// question construction; the exam catalog remains the source of mock size, timing,
+// subject allocation and marking rules.
+function priorityExamCalibration(examName, subject, topic) {
+  const name = String(examName || '').toLowerCase();
+  const s = String(subject || '').toLowerCase();
+  const t = String(topic || '').toLowerCase();
+  if (/upsc|civil services/.test(name)) {
+    if (/csat|paper\s*ii|paper-ii/.test(name) || (/aptitude|reasoning|comprehension/.test(s) && !/paper\s*i\b|general studies/.test(name))) {
+      return 'PRIORITY EXAM — UPSC CSE PRELIMS CSAT: match the actual qualifying Paper II style. Use comprehension passages with inference/main-idea/assumption questions; quantitative aptitude with percentages, ratios, averages, time-work, speed-distance, probability, number systems and data interpretation; and logical reasoning/analytical ability. Questions should need careful reading or a few clean steps, not coaching-trick puzzles or advanced mathematics. Keep all items within the CSAT syllabus and do not make it a generic reasoning quiz. The real paper has 80 questions, 200 marks, 120 minutes and a 33% qualifying threshold; mock configuration should follow the catalog pattern.';
+    }
+    return 'PRIORITY EXAM — UPSC CSE PRELIMS GENERAL STUDIES PAPER I: mirror the official UPSC objective-paper construction, not generic GK. Prefer nuanced conceptual questions, two/three-statement questions, correct-combination questions, match-the-following, chronology, geography/map logic, constitutional/economic/environmental application and static-current-affairs connections. Use close but fair distractors and elimination logic; vary formats instead of making every item a direct fact recall. For History, test chronology/context/source-aware facts; Geography, physical processes, mapping and cause-effect; Polity, constitutional provisions and institutional application; Economy, conceptual mechanisms and policy effects; Environment, ecology/conventions/species/habitat concepts. Never invent current-affairs facts, data, reports, rankings or dates. Avoid obscure trivia masquerading as difficulty. Official paper structure is 100 questions, 200 marks, 120 minutes with one-third negative marking; retain the configured exam pattern.';
+  }
+  if (/ssc\s*cgl/.test(name)) {
+    let style = 'Use SSC CGL Tier-I objective style: short, unambiguous stems, four plausible options, fast solving and standard SSC distractors. Avoid UPSC-style statement-heavy essays and avoid banking-style long puzzles.';
+    if (/quant|mathemat/.test(s)) style += ' Quantitative Aptitude: favour SSC-style arithmetic, percentage, ratio, average, profit-loss, interest, time-work, speed-distance, algebra, geometry, mensuration, trigonometry and concise DI. Calculations should be efficient and syllabus-standard; hard means a clever or multi-step SSC calculation, not lengthy CAT/JEE mathematics.';
+    else if (/reason/.test(s)) style += ' Reasoning: use SSC patterns such as analogy, classification, number/alphabet series, coding-decoding, word/number relations, syllogism, Venn diagrams, directions, ranking, clock/calendar and non-verbal reasoning where relevant. Keep logic crisp and solvable quickly.';
+    else if (/english|language/.test(s)) style += ' English: use SSC formats such as error spotting, sentence improvement, fill in the blanks, synonyms/antonyms, idioms, one-word substitution, spelling, active/passive, narration, cloze and short comprehension. Test standard grammar/vocabulary, not literary essays.';
+    else if (/general awareness|general knowledge|\bgk\b/.test(s)) style += ' General Awareness: balance static history, polity, geography, science, economy and culture with relevant current affairs. Use precise fact/concept questions and plausible distractors; do not invent recent events or volatile figures.';
+    style += ' Tier-I full mock target: 100 questions, 25 per section (Reasoning, General Awareness, Quantitative Aptitude, English), 60 minutes, 2 marks per correct answer and 0.50 negative marking per wrong answer. Preserve the app catalog distribution and timer.';
+    if (/tier\s*ii|tier-ii/.test(name)) style = 'PRIORITY EXAM — SSC CGL TIER-II: follow the current official notification for the selected paper/module; distinguish Mathematical Abilities, Reasoning and General Intelligence, English Language and Comprehension, General Awareness, Computer Knowledge and any post-specific Statistics/Finance-Economics paper. Do not reuse Tier-I section counts or assume all candidates take specialist papers. Match the selected subject and paper, keep SSC-style concise objective questions, and flag that DEST is a skill test rather than an MCQ section.';
+    return 'PRIORITY EXAM — SSC CGL: ' + style;
+  }
+  if (/rbi.*grade\s*b|grade\s*b.*rbi/.test(name)) {
+    if (/phase\s*ii|phase-ii|paper\s*(i|ii|iii)|finance and management|economic and social issues|descriptive/.test(name + ' ' + s + ' ' + t)) {
+      return 'PRIORITY EXAM — RBI GRADE B PHASE II: this phase is not a generic four-option MCQ paper. ESI and Finance & Management require subject-specific, analytical answers; English Writing Skills is descriptive and tests clear, structured writing. Use RBI/economy/finance context, policy reasoning, relevant evidence and balanced analysis. Do not fabricate statistics or claim an essay is an official question. IMPORTANT: the current question-generation endpoint validates four-option MCQs; do not silently present MCQs as a full authentic Phase-II simulation. For this endpoint, generate only clearly labelled objective practice for the selected topic until a descriptive-answer flow is available.';
+    }
+    let style = 'Use RBI Grade B General Cadre Phase-I objective-paper style. It is a fast, high-competition screening paper with 200 questions for 200 marks in 120 minutes and 0.25 negative marking per wrong answer. Follow the catalog subject distribution and do not mix the four sections.';
+    if (/general awareness|banking awareness|economy|finance|current affairs|\bga\b/.test(s + ' ' + t)) style += ' General Awareness is the largest section: prioritise RBI and monetary policy, inflation, banking/financial regulation, financial inclusion, Indian economy, fiscal policy, government schemes, reports and indices, international institutions, and recent economy/banking/current-affairs developments. Ask context-based factual-conceptual questions with exact terminology; never invent current figures, report rankings, policy rates, dates or schemes.';
+    else if (/english|language/.test(s)) style += ' English Language: exam-style reading comprehension, inference, cloze test, sentence rearrangement, error detection, phrase replacement and vocabulary in context. Include plausible grammar/usage distractors and avoid school literature questions.';
+    else if (/quant|numerical/.test(s)) style += ' Quantitative Aptitude: timed banking-level arithmetic, approximation/simplification, number series where appropriate, quadratic equations where appropriate, and especially table/line/bar/pie/caselet data interpretation. Use realistic multi-step data but ensure all data needed to solve is present and arithmetic is checked.';
+    else if (/reason/.test(s)) style += ' Reasoning: banking-style seating arrangements and puzzles, syllogism, inequality, direction, blood relation, coding-decoding, alphanumeric series, input-output and logical deduction. Multi-condition puzzles should be internally consistent and solvable; hard questions may require layered deduction but not ambiguous assumptions.';
+    return 'PRIORITY EXAM — RBI GRADE B: ' + style;
+  }
+  return null;
+}
+
+function priorityDifficultyCalibration(examName, subject, difficulty) {
+  const name = String(examName || '').toLowerCase();
+  const s = String(subject || '').toLowerCase();
+  if (!/upsc|civil services|ssc\s*cgl|rbi.*grade\s*b|grade\s*b.*rbi/.test(name)) return '';
+  if (difficulty === 'easy') {
+    if (/upsc|civil services/.test(name)) return 'Priority-exam Easy: still UPSC-relevant and syllabus-based, but test one core concept or a straightforward elimination; do not reduce it to trivial one-line trivia.';
+    if (/ssc\s*cgl/.test(name)) return 'Priority-exam Easy: direct SSC-pattern question solvable quickly with one standard rule or calculation; keep SSC language and plausible options.';
+    return 'Priority-exam Easy: a direct, syllabus-valid RBI Grade B Phase-I question; keep banking/economy relevance where appropriate and do not confuse it with basic clerical-exam trivia.';
+  }
+  if (difficulty === 'medium') {
+    if (/upsc|civil services/.test(name)) return 'Priority-exam Moderate: representative UPSC difficulty, conceptual understanding plus statement elimination or a meaningful application; distractors should be close but defensible.';
+    if (/ssc\s*cgl/.test(name)) return 'Priority-exam Moderate: representative SSC CGL speed-and-accuracy level, usually one or two steps or a standard grammar/reasoning trap.';
+    return 'Priority-exam Moderate: representative RBI Grade B Phase-I level; apply banking/economy concepts or use a standard aptitude/DI/puzzle pattern within realistic time.';
+  }
+  if (difficulty === 'hard') {
+    if (/upsc|civil services/.test(name)) return 'Priority-exam Hard: UPSC-like conceptual nuance, statement combinations and close elimination; use multiple linked concepts when natural, but never obscure facts, ambiguity or invented current affairs.';
+    if (/ssc\s*cgl/.test(name)) return 'Priority-exam Hard: upper-end SSC CGL difficulty with a clever but standard multi-step calculation, a subtle grammar/vocabulary choice, or a compact reasoning pattern; still solvable under SSC time pressure, never UPSC-style.';
+    if (/rbi.*grade\s*b|grade\s*b.*rbi/.test(name)) {
+      if (/general awareness|banking awareness|economy|finance|current affairs|\bga\b/.test(s)) return 'Priority-exam Hard: RBI Grade B-level economy/banking depth, policy implications, carefully distinguished concepts and well-grounded current-affairs context. No invented figures or ambiguous multiple-correct options.';
+      return 'Priority-exam Hard: RBI Grade B Phase-I upper-end difficulty; use layered DI, a consistent multi-condition reasoning puzzle, or nuanced English inference, while remaining solvable in timed conditions.';
+    }
+  }
+  return 'Priority-exam Mixed: create a balanced, realistic spread for this exam and label each item honestly; do not let every question collapse to the same difficulty.';
+}
+
 // Exam-specific calibration for non-UPSC exams. UPSC prompt behavior is deliberately left unchanged.
 function nonUpscExamCalibration(examName) {
   const name = String(examName || '').toLowerCase();
@@ -337,13 +399,14 @@ function nonUpscDifficultyCalibration(examName, difficulty, subject) {
 
 async function generateQuestions({ examName, subject, topic, difficulty, count, weakNote, level }) {
   const exam = String(examName || '').toLowerCase();
-  const calibration = /upsc.*civil|civil services.*prelims/.test(exam)
+  const priorityCalibration = priorityExamCalibration(examName, subject, topic);
+  const calibration = priorityCalibration || (/upsc.*civil|civil services.*prelims/.test(exam)
     ? 'UPSC CSE Prelims calibration: favour statement-based and multi-statement elimination, conceptual depth, close but fair distractors, links between static concepts and application; hard means genuinely nuanced, not obscure trivia.'
     : /ssc cgl/.test(exam)
       ? 'SSC CGL calibration: match Tier-I speed and accuracy; use short-to-medium arithmetic/reasoning steps, standard vocabulary/grammar and plausible traps; hard means a multi-step or less-obvious but syllabus-valid question, not lengthy UPSC-style analysis.'
       : /nda/.test(exam)
         ? 'NDA calibration: match NDA-level school mathematics and general ability; test concepts and application with competitive-exam distractors, not university-level content.'
-        : (nonUpscExamCalibration(examName) || 'Use the named exam’s actual syllabus, level, common question style and expected solving time; do not import the difficulty or style of another exam.');
+        : (nonUpscExamCalibration(examName) || 'Use the named exam’s actual syllabus, level, common question style and expected solving time; do not import the difficulty or style of another exam.'));
   const levelGuide = difficulty === 'easy'
     ? 'Easy: foundational, direct, one main idea; still exam-relevant.'
     : difficulty === 'hard'
@@ -351,7 +414,7 @@ async function generateQuestions({ examName, subject, topic, difficulty, count, 
       : difficulty === 'medium'
         ? 'Moderate: representative exam-level application, typically one or two reasoning steps, with plausible distractors.'
         : 'Mixed exam-realistic set: choose a natural spread of easy, moderate and hard questions appropriate to this exam, and label each question honestly.';
-  const difficultyCalibration = nonUpscDifficultyCalibration(examName, difficulty, subject);
+  const difficultyCalibration = priorityDifficultyCalibration(examName, subject, difficulty) || nonUpscDifficultyCalibration(examName, difficulty, subject);
   const system = `You are an experienced paper setter for ${examName} (India). Produce original exam-standard MCQs, not generic school quiz questions. Output ONLY a JSON array, no prose.
 Each item: {"text":string,"options":[4 distinct strings],"answer":index 0-3,"explanation":string (step-by-step, verified),"concept":string,"tip":string,"subject":"${subject}","topic":"${topic}","difficulty":"easy|medium|hard"}.
 Exam-style calibration: ${calibration}
@@ -401,4 +464,4 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
   return { ok: true, questions: good, dropped: arr.length - good.length, verification: 'single-pass' };
 }
 
-module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, questionTextKey, areDuplicateQuestions };
+module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, questionTextKey, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration };
