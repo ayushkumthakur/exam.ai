@@ -53,7 +53,7 @@ Set variables in your deployment environment or local shell. Never commit API ke
 | `NODE_ENV` | Set to `production` for production cookie/security behavior. |
 | `DATA_DIR` | Directory for persistent app data and the application secret. Back this directory up. |
 | `AI_PROVIDER` | Primary provider: `gemini` (default) or `anthropic`. If it is unavailable, the other configured provider is used for timeouts, network errors, HTTP 429, and HTTP 5xx responses. |
-| `GEMINI_API_KEY` | Secret API key for Gemini; required if Gemini is the primary or backup provider. |
+| `GEMINI_API_KEY` | First secret API key for Gemini; required if Gemini is the primary or backup provider. |\n| `GEMINI_API_KEY_2` | Optional second Gemini key, used if the first hits quota/authentication or transient errors. |\n| `GEMINI_API_KEY_3` | Optional third Gemini key, used if earlier configured keys fail with retryable errors. |
 | `GEMINI_MODEL` | Optional Gemini model override; defaults to `gemini-2.5-flash`. |
 | `ANTHROPIC_API_KEY` | Secret API key for Anthropic; required if Anthropic is the primary or backup provider. |
 | `ANTHROPIC_MODEL` | Optional Anthropic model override; defaults to the model configured in `ai.js`. |
@@ -67,7 +67,7 @@ Production checklist:
 - Do not leave temporary admin-bootstrap variables configured after a one-time recovery.
 - Configure email delivery if real email OTPs are required.
 - Back up the SQLite data and test restoring the backup before a production handover.
-- Review provider quotas and costs before enabling AI generation for public users.
+- Review provider quotas and costs before enabling AI generation for public users. Admins can inspect in-memory AI usage, token counts, API errors and Gemini key-slot rotations from the Admin dashboard; counters reset on server restart and are not a billing ledger.
 
 ## Tests
 
