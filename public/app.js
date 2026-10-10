@@ -672,6 +672,16 @@ async function pgPyqs() {
   const box = h('div', { class: 'stack' });
 
   const official = [];
+  if (S.user.exam_id === 'UPSC_CSE') {
+    official.push(
+      ['UPSC previous question papers', 'Official UPSC archive for Civil Services Prelims and other examinations', 'https://upsc.gov.in/examinations/previous-question-papers'],
+      ['UPSC examination notifications', 'Check official notices and examination updates before relying on any paper or pattern', 'https://upsc.gov.in/']
+    );
+  } else if (S.user.exam_id === 'SSC_CGL') {
+    official.push(
+      ['SSC official examination portal', 'Official SSC notices, answer-key announcements and candidate login links for CGL', 'https://ssc.gov.in/']
+    );
+  }
   if (S.user.exam_id === 'SSC_CHSL') {
     official.push(
       ['SSC CHSL 2025 Tier-I', 'Official SSC final answer key / response-sheet access (candidate login)', 'https://sscexams.cbexams.com/chsl2025finalkeylandingpagedh/LoginNew.aspx'],
