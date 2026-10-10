@@ -201,7 +201,9 @@ function renderOnboarding() {
         class: 'chip' + (c === cat ? ' on' : ''),
         onclick: () => { cat = c; draw(); }
       }, c)));
-      const list = S.exams.filter(e => inCat(e) && e.name.toLowerCase().includes(filter));
+      const priority = e => e.id === 'UPSC_CSE' ? 0 : e.id === 'SSC_CGL' ? 1 : 2;
+      const list = S.exams.filter(e => inCat(e) && e.name.toLowerCase().includes(filter))
+        .sort((a, b) => priority(a) - priority(b) || a.name.localeCompare(b.name));
       grid.replaceChildren(...(list.length ? list.map(e => h('button', {
         class: 'exam' + (e.id === d.exam_id ? ' on' : ''),
         role: 'option',
