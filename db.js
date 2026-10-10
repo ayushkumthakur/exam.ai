@@ -104,6 +104,11 @@ if (examCount === 0) {
   const ins = db.prepare('INSERT INTO exams (id,name,category,pattern,verified) VALUES (?,?,?,?,?)');
   for (const e of EXAMS) ins.run(e.id, e.name, e.category, JSON.stringify(e.pattern), 0);
 }
+// Add newly introduced catalog entries to existing databases without overwriting admin edits.
+{
+  const ins = db.prepare('INSERT OR IGNORE INTO exams (id,name,category,pattern,verified) VALUES (?,?,?,?,?)');
+  for (const e of EXAMS) ins.run(e.id, e.name, e.category, JSON.stringify(e.pattern), 0);
+}
 const qCount = db.prepare('SELECT COUNT(*) c FROM questions').get().c;
 if (qCount === 0) {
   const ins = db.prepare(`INSERT INTO questions (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,created_at)
