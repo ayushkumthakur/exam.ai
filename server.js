@@ -369,7 +369,8 @@ function scoreTest(t, exam, user, answers, times) {
   const attempted = correct + wrong;
   const topics = Object.values(topic).map(x => ({ ...x, accuracy: acc(x.correct, x.attempted) }));
   const strong = topics.filter(x => x.attempted >= 2 && x.accuracy >= 75).map(x => x.topic);
-  const weak = topics.filter(x => x.attempted >= 1 && x.accuracy < 50).sort((a, b) => a.accuracy - b.accuracy);
+  // Avoid labelling a topic as weak from a single question; keep low-sample topics provisional.
+  const weak = topics.filter(x => x.attempted >= 2 && x.accuracy < 50).sort((a, b) => a.accuracy - b.accuracy);
   const total = ids.length, accuracy = acc(correct, attempted);
   const wentWell = [], wentWrong = [];
   if (accuracy !== null && accuracy >= 75) wentWell.push(`Strong accuracy: ${accuracy}% of attempted questions were correct.`);
