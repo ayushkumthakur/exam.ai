@@ -8,6 +8,7 @@ const { TOPICS, syllabusFor, NOTES } = require('./data/catalog');
 const ai = require('./ai');
 const aiMetrics = require('./ai-metrics');
 const dbBackup = require('./db-backup');
+const { allocateSectionTargets, createPaperBlueprint, mergeBlueprintAnswers } = require('./paper-blueprint');
 
 const PORT = +process.env.PORT || 3000;
 const PROD = process.env.NODE_ENV === 'production';
@@ -246,8 +247,11 @@ function pickQuestions(user, exam, { subject, topic, difficulty, source, ids, li
 
 async function buildTest(user, exam, b) {
   const kind = b.kind, per = marking(exam); let qs = [], title = '', minutes, notices = [];
+  const requestedMode = ['real', 'practice'].includes(b.mode) ? b.mode : 'real';
+  const realMode = kind === 'full_mock' && requestedMode === 'real';
+  const testMode = kind === 'full_mock' ? requestedMode : 'practice';
   const count = Math.min(Math.max(+b.count || 20, 20), 100);
-  const diff = ['easy', 'medium', 'hard'].includes(b.difficulty) ? b.difficulty : 'any';
+  const diff = realMode ? 'any' : (['easy', 'medium', 'hard'].includes(b.difficulty) ? b.difficulty : 'any');
   const needSubject = () => { if (!exam.subjects.includes(b.subject)) throw bad('Please choose a subject from your exam.'); };
   const needTopic = () => { needSubject(); const s = exam.syllabus.find(x => x.subject === b.subject); if (!s.topics.includes(b.topic)) throw bad('Please choose a topic from your exam syllabus.'); };
   const practiceOnly = ['ADMIN_PRACTICE', 'AI_GENERATED', 'PYQ_PATTERN'];
@@ -258,7 +262,9 @@ async function buildTest(user, exam, b) {
       : exam.pattern.sections;
     const patternTotal = secs.reduce((a, s) => a + s.questions, 0);
     const requestedTotal = kind === 'sectional' ? Math.max(20, patternTotal) : patternTotal;
-    const targets = secs.map((s, i) => Math.max(1, Math.floor(requestedTotal * s.questions / patternTotal) + (i < (requestedTotal % secs.length) ? 1 : 0)));
+    const targets = kind === 'full_mock' && realMode
+      ? secs.map(s => s.questions)
+      : allocateSectionTargets(secs, requestedTotal);
     for (let i = 0; i < secs.length; i++) {
       const s = secs[i], target = targets[i];
       let got = pickQuestions(user, exam, { subject: s.subject, difficulty: diff, excludeSources: ['VERIFIED_PYQ'], limit: target });
@@ -274,7 +280,8 @@ async function buildTest(user, exam, b) {
     }
     if (!qs.length) throw bad('No questions are available yet for this selection.');
     title = kind === 'full_mock' ? exam.name + ' Full Mock' : exam.name + ' ' + b.subject + ' Sectional';
-    minutes = b.minutes ? +b.minutes : Math.max(5, Math.round((exam.pattern.minutes || 60) * qs.length / Math.max(patternTotal, 1)));
+    minutes = realMode ? Math.max(1, Number(exam.pattern.minutes) || 60)
+      : b.minutes ? +b.minutes : Math.max(5, Math.round((exam.pattern.minutes || 60) * qs.length / Math.max(patternTotal, 1)));
   } else if (kind === 'subject') {
     needSubject(); qs = pickQuestions(user, exam, { subject: b.subject, difficulty: diff, limit: count });
     if (qs.length < count) qs = qs.concat(await aiFillQuestions(user, exam, b.subject, null, diff, count - qs.length)).slice(0, count);
@@ -324,11 +331,13 @@ async function buildTest(user, exam, b) {
 
   if (!qs.length) throw bad('No questions are available yet for this selection. Try another subject/topic, or generate questions with the AI Tutor.');
   if (kind !== 'full_mock' && qs.length < 20) throw bad('Every test needs at least 20 questions. Add more questions or choose a larger set.');
-  minutes = Math.max(1, Math.min(300, +b.minutes || minutes || Math.ceil(qs.length * (exam.pattern.minutes / exam.pattern.sections.reduce((a, s) => a + s.questions, 0)))));
+  minutes = realMode ? Math.max(1, Number(exam.pattern.minutes) || 60)
+    : Math.max(1, Math.min(300, Number(b.minutes) || minutes || 60));
   const t = now();
-  const id = db.prepare('INSERT INTO tests (user_id,exam_id,kind,title,question_ids,minutes,marking,remaining_sec,started_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-    .run(user.id, exam.id, kind, title, JSON.stringify(qs.map(q => q.id)), minutes, JSON.stringify(per), minutes * 60, t, t).lastInsertRowid;
-  return { id: Number(id), notices };
+  const blueprint = createPaperBlueprint({ exam, kind, mode: testMode, questions: qs, minutes, startedAt: t });
+  const id = db.prepare('INSERT INTO tests (user_id,exam_id,kind,title,question_ids,minutes,marking,blueprint,remaining_sec,started_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+    .run(user.id, exam.id, kind, title, JSON.stringify(qs.map(q => q.id)), minutes, JSON.stringify(per), JSON.stringify(blueprint), minutes * 60, t, t).lastInsertRowid;
+  return { id: Number(id), notices, blueprint };
 }
 async function aiFillQuestions(user, exam, subject, topic, difficulty, count) {
   if (count <= 0 || !ai.aiEnabled()) return [];
@@ -382,8 +391,9 @@ function testView(t, user) {
   const rows = db.prepare(`SELECT * FROM questions WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids);
   const byId = new Map(rows.map(r => [r.id, r]));
   const deadline = t.started_at + t.minutes * 60000;
+  const blueprint = J(t.blueprint) || {};
   const base = { id: t.id, kind: t.kind, title: t.title, status: t.status, minutes: t.minutes, started_at: t.started_at, deadline, remaining_sec: Math.max(0, Math.round((deadline - now()) / 1000)),
-    answers: J(t.answers), marked: J(t.marked), times: J(t.times), current_idx: t.current_idx, marking: J(t.marking) };
+    answers: J(t.answers), marked: J(t.marked), times: J(t.times), current_idx: t.current_idx, marking: J(t.marking), blueprint };
   if (t.status === 'active') return { ...base, questions: ids.map(i => byId.get(i)).filter(Boolean).map(pubQ), serverNow: now() };
   return { ...base, result: J(t.result), questions: ids.map(i => byId.get(i)).filter(Boolean).map(fullQ) };
 }
@@ -731,8 +741,12 @@ route('PUT', '/api/tests/:id/save', ONB, (c) => {
   const t = db.prepare('SELECT * FROM tests WHERE id=? AND user_id=?').get(+c.params.id, c.user.id);
   if (!t) throw new HttpError(404, 'Test not found.'); if (t.status !== 'active') return { ok: true, status: t.status };
   const questionIds = J(t.question_ids), ids = new Set(questionIds.map(String));
-  const ans = cleanTestAnswers(questionIds, c.body.answers), times = cleanTestTimes(questionIds, c.body.times);
-  const marked = [...new Set((Array.isArray(c.body.marked) ? c.body.marked : []).map(String).filter(k => ids.has(k)))].slice(0, 200);
+  const elapsedSeconds = Math.max(0, (now() - t.started_at) / 1000);
+  const blueprint = J(t.blueprint) || {};
+  const ans = mergeBlueprintAnswers(blueprint, J(t.answers), cleanTestAnswers(questionIds, c.body.answers), elapsedSeconds);
+  const times = cleanTestTimes(questionIds, c.body.times);
+  const startedIds = new Set((blueprint.sections || []).filter(section => section.durationSeconds == null || elapsedSeconds >= section.startsAtOffsetSeconds).flatMap(section => (section.questionIds || []).map(String)));
+  const marked = [...new Set((Array.isArray(c.body.marked) ? c.body.marked : []).map(String).filter(k => ids.has(k) && (!blueprint.timedSections || startedIds.has(k))))].slice(0, 200);
   const currentIdx = Math.min(questionIds.length - 1, Math.max(0, Math.floor(Number(c.body.current_idx) || 0)));
   db.prepare('UPDATE tests SET answers=?, marked=?, times=?, current_idx=?, updated_at=? WHERE id=?')
     .run(JSON.stringify(ans), JSON.stringify(marked), JSON.stringify(times), currentIdx, now(), t.id);
@@ -744,8 +758,11 @@ route('POST', '/api/tests/:id/submit', ONB, (c) => {
   if (t.status === 'submitted') return { test: testView(t, c.user), duplicate: true }; // idempotent: no double submission
   const exam = loadExam(t.exam_id) || loadExam(c.user.exam_id);
   const questionIds = J(t.question_ids);
-  const answers = { ...cleanTestAnswers(questionIds, J(t.answers)), ...cleanTestAnswers(questionIds, c.body.answers) };
-  const times = { ...cleanTestTimes(questionIds, J(t.times)), ...cleanTestTimes(questionIds, c.body.times) };
+  const elapsedSeconds = Math.max(0, (now() - t.started_at) / 1000);
+  const blueprint = J(t.blueprint) || {};
+  const timeExpired = now() >= t.started_at + t.minutes * 60000;
+  const answers = mergeBlueprintAnswers(blueprint, J(t.answers), timeExpired ? {} : cleanTestAnswers(questionIds, c.body.answers), elapsedSeconds);
+  const times = cleanTestTimes(questionIds, { ...cleanTestTimes(questionIds, J(t.times)), ...cleanTestTimes(questionIds, c.body.times) });
   const res = scoreTest(t, exam, c.user, answers, times);
   // atomic claim to defeat concurrent duplicate submits
   const claim = db.prepare("UPDATE tests SET status='submitted', answers=?, times=?, result=?, submitted_at=?, updated_at=? WHERE id=? AND status='active'")

@@ -80,13 +80,18 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   r = await api('PUT', '/api/me', { exam_id: 'SSC_CHSL' }); r = await api('GET', '/api/mistakes'); ok(r.data.total >= 1, 'history preserved after switching back');
   // test flow
   r = await api('POST', '/api/tests/create', { kind: 'pyq' }); ok(r.status === 400, 'PYQ test refused when no verified PYQs exist (no mislabelling)');
-  const fullMock = await api('POST', '/api/tests/create', { kind: 'full_mock' });
+  const fullMock = await api('POST', '/api/tests/create', { kind: 'full_mock', mode: 'real', difficulty: 'hard', minutes: 5 });
   if (fullMock.status === 200 && Number.isInteger(fullMock.data.id)) {
     const fullMockTest = await api('GET', '/api/tests/' + fullMock.data.id);
     const pattern = (await api('GET', '/api/exams/SSC_CHSL')).data.exam.pattern;
     const expectedCount = pattern.sections.reduce((n, s) => n + s.questions, 0);
     ok(fullMockTest.status === 200 && fullMockTest.data.test.questions.length === expectedCount,
       'full mock contains the complete exam pattern');
+    ok(fullMockTest.data.test.blueprint?.questionCount === expectedCount && fullMockTest.data.test.blueprint.sections.length === pattern.sections.length,
+      'full mock returns a persisted section-by-section paper blueprint');
+    ok(fullMockTest.data.test.blueprint.mode === 'real' && fullMockTest.data.test.blueprint.timedSections === false,
+      'real mock defaults to fixed difficulty and only uses verified sectional timers');
+    ok(fullMockTest.data.test.minutes === pattern.minutes, 'real mock ignores custom duration and keeps the official paper duration');
     await api('POST', '/api/tests/' + fullMock.data.id + '/submit', { answers: {} });
   } else {
     ok(fullMock.status === 400 && /complete/i.test(fullMock.data.error || ''),
