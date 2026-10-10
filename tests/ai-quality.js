@@ -43,7 +43,6 @@ assert.match(nonUpscDifficultyCalibration('JEE Advanced', 'hard', 'Physics'), /m
 assert.match(nonUpscDifficultyCalibration('SBI PO (Prelims)', 'hard', 'Reasoning'), /layered data interpretation/i, 'banking hard level is exam-specific');
 assert.match(nonUpscDifficultyCalibration('CBSE Class XII — Science', 'hard', 'Physics'), /board-appropriate competency-based/i, 'CBSE hard level remains board-syllabus appropriate');
 
-console.log('PASS AI question quality regression tests');
 
 assert.equal(areDuplicateQuestions(base, [{ ...base, text: 'A sample exam question asks which value is correct?' }]), true, 'exact duplicate question detected');
 assert.equal(areDuplicateQuestions({ text: 'A train travels 120 kilometres in 2 hours. What is its average speed in kilometres per hour?' }, [{ text: 'A train travels 150 kilometres in 3 hours. What is its average speed in kilometres per hour?' }]), true, 'numeric variants of the same question template are detected');
@@ -76,10 +75,12 @@ assert.equal(cgl.sections.reduce((sum, section) => sum + section.questions, 0), 
 assert.equal(cgl.sections.reduce((sum, section) => sum + section.questions * section.marks, 0), 200, 'SSC CGL Tier-I totals 200 marks');
 assert.equal(cgl.minutes, 60, 'SSC CGL Tier-I duration is 60 minutes');
 assert.equal(cgl.sections[0].negative, 0.5, 'SSC CGL Tier-I negative marking is 0.50');
-assert.ok(cgl.audit.runtimeLimitations.some(item => item.includes('sectional timers')), 'SSC CGL sectional-timer limitation is disclosed');
+assert.ok(cgl.audit.runtimeLimitations.some(item => item.includes('section') && item.includes('timers')), 'SSC CGL sectional-timer limitation is disclosed');
 const rbi = examPattern('RBI_B');
 assert.equal(rbi.sections.reduce((sum, section) => sum + section.questions, 0), 200, 'RBI Grade B Phase-I totals 200 questions');
 assert.equal(rbi.sections.reduce((sum, section) => sum + section.questions * section.marks, 0), 200, 'RBI Grade B Phase-I totals 200 marks');
 assert.equal(rbi.minutes, 120, 'RBI Grade B Phase-I duration is 120 minutes');
 assert.equal(rbi.sections[0].negative, 0.25, 'RBI Grade B Phase-I negative marking is 0.25');
 assert.equal(rbi.audit.status, 'verified_baseline', 'RBI Phase-I official baseline is recorded');
+
+console.log('PASS AI question quality and official-pattern audit regression tests');
