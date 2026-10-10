@@ -120,10 +120,15 @@ function newSession(res, userId) {
   res.setHeader('Set-Cookie', `sid=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${30 * 86400}${PROD ? '; Secure' : ''}`);
 }
 function getUser(req) {
-  const m = /(?:^|;\s*)sid=([^;]+)/.exec(req.headers.cookie || '');
+  const m = /(?:^|;\\s*)sid=([^;]+)/.exec(req.headers.cookie || '');
   if (!m) return null;
-  const session = db.prepare('SELECT user_id,expires_at FROM sessions WHERE token_hash=?').get(sha(m[1]));
-  if (!session || session.expires_at < now()) return null;
+  const tokenHash = sha(m[1]);
+  const session = db.prepare('SELECT user_id,expires_at FROM sessions WHERE token_hash=?').get(tokenHash);
+  if (!session) return null;
+  if (session.expires_at < now()) {
+    db.prepare('DELETE FROM sessions WHERE token_hash=?').run(tokenHash);
+    return null;
+  }
   return db.prepare('SELECT * FROM users WHERE id=?').get(session.user_id);
 }
 const meJson = u => ({ id: u.id, email: u.email, name: u.name, role: u.role, exam_id: u.exam_id, level: u.level, target_date: u.target_date,
@@ -545,7 +550,7 @@ route('POST', '/api/auth/claim-admin', A, (c) => {
 });
 route('POST', '/api/auth/logout', {}, (c) => {
   const m = /(?:^|;\s*)sid=([^;]+)/.exec(c.req.headers.cookie || ''); if (m) db.prepare('DELETE FROM sessions WHERE token_hash=?').run(sha(m[1]));
-  c.res.setHeader('Set-Cookie', 'sid=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax'); return { ok: true };
+  c.res.setHeader('Set-Cookie', `sid=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${PROD ? '; Secure' : ''}`); return { ok: true };
 });
 route('GET', '/api/me', {}, (c) => ({ user: c.user ? meJson(c.user) : null }));
 
@@ -1112,7 +1117,8 @@ function requestOrigin(req) {
   return host ? proto + '://' + host : null;
 }
 function enforceSameOrigin(req, userPresent) {
-  if (!userPresent || !MUTATING.has(req.method)) return;
+  if (!MUTATING.has(req.method)) return;
+  // Reject explicit cross-site browser requests even for unauthenticated login/signup/logout.
   if (String(req.headers['sec-fetch-site'] || '').toLowerCase() === 'cross-site') throw new HttpError(403, 'Cross-site request blocked.');
   const target = requestOrigin(req);
   const origin = String(req.headers.origin || '').trim();
@@ -1126,7 +1132,7 @@ function enforceSameOrigin(req, userPresent) {
     catch (e) { if (e instanceof HttpError) throw e; throw new HttpError(403, 'Request origin could not be verified.'); }
     return;
   }
-  throw new HttpError(403, 'Request origin could not be verified.');
+  if (userPresent) throw new HttpError(403, 'Request origin could not be verified.');
 }
 function validFileSignature(mediaType, data) {
   try {
@@ -1196,7 +1202,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, out);
     }
     // static
-    let p = decodeURIComponent(url.pathname); if (p === '/' || !path.extname(p)) p = '/index.html';
+    let p; try { p = decodeURIComponent(url.pathname); } catch { res.writeHead(400, SEC); return res.end('Bad request'); } if (p === '/' || !path.extname(p)) p = '/index.html';
     const file = path.join(PUB, path.normalize(p));
     if (!file.startsWith(PUB + path.sep)) { res.writeHead(403); return res.end(); }
     fs.readFile(file, (err, data) => {
