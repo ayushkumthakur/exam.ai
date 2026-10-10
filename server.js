@@ -311,7 +311,7 @@ async function aiFillQuestions(user, exam, subject, topic, difficulty, count) {
   const max = Math.min(10, count);
   for (let i = 0; i < max; i += 6) {
     const n = Math.min(6, max - i), tp = topics[Math.floor(i / 6) % topics.length];
-    const rr = await ai.generateQuestions({ examName: exam.name, subject, topic: tp, difficulty: difficulty === 'any' ? 'medium' : difficulty, count: n, level: user.level });
+    const rr = await ai.generateQuestions({ examName: exam.name, subject, topic: tp, difficulty: difficulty || 'any', count: n, level: user.level });
     if (rr.ok) out.push(...storeAiQuestions(user, exam, rr.questions));
   }
   return out;
