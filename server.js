@@ -11,6 +11,13 @@ const PORT = +process.env.PORT || 3000;
 const PROD = process.env.NODE_ENV === 'production';
 const TZ_MIN = +(process.env.TZ_OFFSET_MIN ?? 330); // IST
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+// One-time admin bootstrap: promotes an EXISTING account only. Remove BOOTSTRAP_ADMIN_EMAIL after this deploy.
+const BOOTSTRAP_ADMIN_EMAIL = String(process.env.BOOTSTRAP_ADMIN_EMAIL || '').trim().toLowerCase();
+if (BOOTSTRAP_ADMIN_EMAIL) {
+  const result = db.prepare("UPDATE users SET role='admin' WHERE lower(email)=? AND role!='admin'").run(BOOTSTRAP_ADMIN_EMAIL);
+  const exists = db.prepare('SELECT id, role FROM users WHERE lower(email)=?').get(BOOTSTRAP_ADMIN_EMAIL);
+  console.log('[admin-bootstrap]', exists ? (exists.role === 'admin' ? 'target account is admin' : 'target account found; promotion not applied') : 'target account not found');
+}
 const DAY = 86400000;
 const REV_DAYS = [0, 1, 3, 7, 14];
 
