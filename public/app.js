@@ -802,7 +802,7 @@ const fmtClock = (s) => `${String(Math.floor(s / 3600)).padStart(2, '0')}:${Stri
 async function pgTestTake(parts) {
   const { test } = await get('/api/tests/' + parts[1]);
   if (test.status !== 'active') { location.replace('#/result/' + test.id); return h('div'); }
-  const st = { answers: { ...test.answers }, marked: new Set(test.marked.map(String)), times: { ...test.times }, idx: Math.min(test.current_idx || 0, test.questions.length - 1), dirty: false, submitting: false };
+  const st = { answers: { ...test.answers }, marked: new Set(test.marked.map(String)), times: { ...test.times }, idx: Math.min(test.current_idx || 0, test.questions.length - 1), dirty: false, submitting: false, paletteFilter: 'all' };
   const skew = test.serverNow - Date.now(); // keeps the timer honest even if the device clock is off
   const remaining = () => Math.max(0, Math.round((test.deadline - (Date.now() + skew)) / 1000));
   let enteredAt = Date.now(); const root = h('div', { class: 'stack' }), body = h('div'), pal = h('div'), timerEl = h('span', { class: 'timer' }), saveEl = h('span', { class: 'small muted' });
@@ -819,12 +819,35 @@ async function pgTestTake(parts) {
       h('div', {}, qn.options.map((o, k) => h('button', { class: 'opt' + (st.answers[qn.id] === k ? ' sel' : ''), 'aria-pressed': st.answers[qn.id] === k, onclick: () => { st.answers[qn.id] = k; touch(); draw(); } }, h('span', { class: 'k' }, letters[k]), h('span', {}, o)))),
       h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { delete st.answers[qn.id]; touch(); draw(); } }, 'Clear'), h('button', { class: 'btn', onclick: () => { const k = String(qn.id); st.marked.has(k) ? st.marked.delete(k) : st.marked.add(k); touch(); draw(); } }, st.marked.has(String(qn.id)) ? '★ Unmark' : '☆ Mark for review'),
         h('span', { class: 'grow' }), h('button', { class: 'btn', disabled: st.idx === 0, onclick: () => move(-1) }, '← Prev'), h('button', { class: 'btn primary', disabled: st.idx === test.questions.length - 1, onclick: () => move(1) }, 'Next →'))));
-    pal.replaceChildren(h('div', { class: 'pal' }, test.questions.map((x, i) => h('button', { class: (st.answers[x.id] !== undefined ? 'ans ' : '') + (st.marked.has(String(x.id)) ? 'mk ' : '') + (i === st.idx ? 'cur' : ''), 'aria-label': `Question ${i + 1}`, onclick: () => { bank(); st.idx = i; touch(); draw(); } }, i + 1))),
-      h('p', { class: 'small muted', style: 'margin-top:.6rem' }, `${Object.keys(st.answers).length} answered · ${st.marked.size} marked`));
+    const answered = Object.keys(st.answers).length;
+    const unanswered = test.questions.length - answered;
+    const filteredQuestions = test.questions.map((x, i) => ({ x, i })).filter(({ x }) =>
+      st.paletteFilter === 'all' ||
+      (st.paletteFilter === 'unanswered' && st.answers[x.id] === undefined) ||
+      (st.paletteFilter === 'marked' && st.marked.has(String(x.id))));
+    const filterButtons = [['all', 'All'], ['unanswered', 'Unanswered'], ['marked', 'Marked']].map(([v, label]) =>
+      h('button', { class: 'chip' + (st.paletteFilter === v ? ' on' : ''), onclick: () => { st.paletteFilter = v; draw(); } }, label));
+    pal.replaceChildren(
+      h('div', { class: 'test-palette-summary' },
+        h('div', {}, h('b', {}, answered + '/' + test.questions.length), h('span', {}, 'Answered')),
+        h('div', {}, h('b', {}, unanswered), h('span', {}, 'Unanswered')),
+        h('div', {}, h('b', {}, st.marked.size), h('span', {}, 'Marked for review'))),
+      h('div', { class: 'chips test-palette-filters' }, filterButtons),
+      filteredQuestions.length
+        ? h('div', { class: 'pal' }, filteredQuestions.map(({ x, i }) => h('button', { class: (st.answers[x.id] !== undefined ? 'ans ' : '') + (st.marked.has(String(x.id)) ? 'mk ' : '') + (i === st.idx ? 'cur ' : '') + (st.answers[x.id] === undefined ? 'unanswered ' : ''), 'aria-label': `Question ${i + 1}`, title: `Question ${i + 1}${st.answers[x.id] !== undefined ? ' · Answered' : ' · Unanswered'}${st.marked.has(String(x.id)) ? ' · Marked for review' : ''}`, onclick: () => { bank(); st.idx = i; touch(); draw(); } }, i + 1)))
+        : h('p', { class: 'empty' }, 'No questions match this filter.'),
+      h('div', { class: 'test-palette-legend' }, h('span', {}, '● Answered'), h('span', {}, '○ Unanswered'), h('span', {}, '★ Marked for review')));
   }
-  function move(d) { bank(); st.idx += d; touch(); draw(); }
+  function move(d) { bank(); st.idx = Math.max(0, Math.min(test.questions.length - 1, st.idx + d)); touch(); draw(); }
   async function submit(auto) {
-    if (st.submitting) return; if (!auto && !confirm(`Submit now? ${test.questions.length - Object.keys(st.answers).length} question(s) are unanswered.`)) return;
+    if (st.submitting) return;
+    if (!auto) {
+      const unanswered = test.questions.length - Object.keys(st.answers).length;
+      const markedUnanswered = test.questions.filter(x => st.marked.has(String(x.id)) && st.answers[x.id] === undefined).length;
+      const warning = unanswered ? `\\n\\n⚠ ${unanswered} question(s) are unanswered.` : '';
+      const markedNote = st.marked.size ? `\\n${st.marked.size} marked for review (${markedUnanswered} unanswered).` : '';
+      if (!confirm(`Submit ${test.title}?\\n\\nAnswered: ${Object.keys(st.answers).length}/${test.questions.length}${warning}${markedNote}\\n\\nYou cannot change answers after submission.`)) return;
+    }
     st.submitting = true; bank(); const btn = $('#submitBtn'); if (btn) { btn.disabled = true; btn.replaceChildren(h('span', { class: 'spin' }), ' Submitting…'); }
     try { await post('/api/tests/' + test.id + '/submit', payload()); location.hash = '#/result/' + test.id; }
     catch (e) { st.submitting = false; if (btn) { btn.disabled = false; btn.textContent = 'Retry Submit'; } toast('Submit failed. Your answers are safe. Tap Retry Submit.'); }
