@@ -247,10 +247,25 @@ async function pgPlan() {
     h('div', { class: 'info' }, 'The plan adapts to your weak topics, open mistakes, preparation stage and exam date, and avoids overloading you.'));
 }
 
-// ---------- progress ----------
+// ---------- progress + leaderboard ----------
 async function pgProgress() {
-  const p = await get('/api/progress'); const max = Math.max(1, ...p.last7.map(d => d.n));
-  return h('div', { class: 'stack' }, h('h1', {}, 'Progress'),
+  const p = await get('/api/progress');
+  let period = 'weekly', lb = null, lbError = null;
+  const panel = h('div', { class: 'stack' });
+  async function loadLeaderboard(next = period) {
+    period = next; panel.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Loading leaderboard…'));
+    try {
+      lb = await get('/api/leaderboard' + q({ period }));
+      panel.replaceChildren(
+        h('div', { class: 'row between' }, h('div', {}, h('h3', {}, '🏆 Leaderboard'), h('p', { class: 'small muted' }, lb.exam + ' · minimum 5 answered questions')),
+          h('span', { class: 'badge' }, lb.my_rank ? 'Your rank: #' + lb.my_rank : 'Not ranked yet')),
+        h('div', { class: 'chips' }, [['daily','Today'],['weekly','7 days'],['monthly','30 days'],['overall','Overall']].map(([v,l]) => h('button', { class: 'chip' + (period===v?' on':''), onclick: () => loadLeaderboard(v) }, l))),
+        lb.leaderboard.length ? h('div', { class: 'table-wrap' }, h('table', {}, h('thead', {}, h('tr', {}, ['Rank','Student','Accuracy','Correct','Attempted'].map(x => h('th', {}, x)))), h('tbody', {}, lb.leaderboard.map(x => h('tr', { style: x.is_me ? 'background:var(--info-soft);font-weight:700' : '' }, h('td', {}, x.rank <= 3 ? ['🥇','🥈','🥉'][x.rank-1] : '#' + x.rank), h('td', {}, x.name + (x.is_me ? ' (You)' : '')), h('td', {}, x.accuracy + '%'), h('td', {}, x.correct), h('td', {}, x.attempted))))) : h('div', { class: 'empty' }, 'No ranked students yet for this period. Answer at least 5 questions to qualify.'));
+    } catch (e) { panel.replaceChildren(errBox(e, () => loadLeaderboard(period))); }
+  }
+  loadLeaderboard();
+  const max = Math.max(1, ...p.last7.map(d => d.n));
+  return h('div', { class: 'stack' }, h('h1', {}, 'Progress'), h('div', { class: 'card stack' }, panel),
     h('div', { class: 'card' }, h('h3', {}, 'AI Performance Analyst'), h('ul', {}, p.analyst.map(l => h('li', {}, l)))),
     h('div', { class: 'grid g3' }, [['This week', p.week.questions + ' questions'], ['Weekly accuracy', pct(p.week.accuracy)], ['Streak', p.streak + ' days']].map(([l, v]) => h('div', { class: 'card stat' }, h('span', { class: 'muted small' }, l), h('b', {}, v)))),
     h('div', { class: 'card' }, h('h3', {}, 'Last 7 days'), h('div', { class: 'cols', role: 'img', 'aria-label': 'Questions per day, last 7 days' }, p.last7.map(d => h('div', { title: `${d.day}: ${d.n}`, style: `height:${Math.round(100 * d.n / max)}%` }))), h('div', { class: 'cols small muted', style: 'height:auto;margin-top:4px' }, p.last7.map(d => h('span', { style: 'text-align:center' }, d.day.slice(8))))),
