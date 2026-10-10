@@ -669,6 +669,34 @@ route('GET', '/api/ca', ONB, async (c) => {
 const CA_CATS = ['National', 'International', 'Defence', 'Economy', 'Science & Technology', 'Environment', 'Sports', 'Awards', 'Appointments', 'Government Schemes', 'Important Days', 'Reports & Indexes', 'Books & Authors', 'Important Persons', 'Defence Exercises'];
 
 // Progress & analyst
+// Exam-specific leaderboard. Only students with activity in the selected period are listed.
+route('GET', '/api/leaderboard', ONB, (c) => {
+  const exam = loadExam(c.user.exam_id);
+  const period = ['daily', 'weekly', 'monthly', 'overall'].includes(c.query.period) ? c.query.period : 'weekly';
+  let from = 0;
+  if (period !== 'overall') {
+    const today = dayStr();
+    const start = new Date(today + 'T00:00:00Z').getTime();
+    const days = period === 'daily' ? 1 : period === 'weekly' ? 7 : 30;
+    from = start - (days - 1) * DAY - TZ_MIN * 60000;
+  }
+  const rows = db.prepare(`
+    SELECT u.id, COALESCE(NULLIF(TRIM(u.name),''),'Student') AS name,
+      COUNT(a.id) AS attempted,
+      SUM(a.correct) AS correct,
+      ROUND(100.0 * SUM(a.correct) / COUNT(a.id), 1) AS accuracy,
+      COUNT(DISTINCT date((a.created_at + ?) / 1000, 'unixepoch')) AS active_days
+    FROM users u JOIN answers a ON a.user_id=u.id AND a.exam_id=?
+    WHERE u.onboarded=1 AND u.role='student' AND a.created_at>=?
+    GROUP BY u.id
+    HAVING COUNT(a.id)>=5
+    ORDER BY accuracy DESC, correct DESC, active_days DESC, attempted DESC, name COLLATE NOCASE ASC
+    LIMIT 100
+  `).all(TZ_MIN * 60000, exam.id, from);
+  const leaderboard = rows.map((r, i) => ({ rank: i + 1, name: r.name, attempted: r.attempted, correct: r.correct, accuracy: r.accuracy, active_days: r.active_days, is_me: r.id === c.user.id }));
+  return { period, exam: exam.name, leaderboard, my_rank: leaderboard.find(x => x.is_me)?.rank ?? null, minimum_attempts: 5 };
+});
+
 route('GET', '/api/progress', ONB, (c) => {
   const u = c.user, exam = loadExam(u.exam_id), t = now();
   const wk = (from, to) => db.prepare('SELECT COUNT(*) n, COALESCE(SUM(correct),0) c, COALESCE(SUM(time_ms),0) ms FROM answers WHERE user_id=? AND exam_id=? AND created_at>=? AND created_at<?').get(u.id, exam.id, from, to);
