@@ -120,7 +120,7 @@ const EXAMS = [
   ['UPSC_OTHER','Other UPSC Examinations','UPSC',P(120,[S('General Awareness',50,2,0.667),S('English',25,2,0.667),S('Reasoning',25,2,0.667)])],
   // SSC
   ['SSC_CGL','SSC CGL (Tier 1)','SSC',P(60,[S('Reasoning',25,2,0.5),S('General Awareness',25,2,0.5),S('Quantitative Aptitude',25,2,0.5),S('English',25,2,0.5)], 'SSC CGL 2026 Tier-I baseline: 100 questions, 200 marks, 60 minutes, 0.50 negative marks per wrong answer. The official paper uses 15-minute sectional timers; this app currently has a single overall timer and does not enforce sectional timers. SSC CGL Tier-II has a different multi-session structure and is not represented by this Tier-I pattern.', {
-    status: 'verified_baseline_with_runtime_gap', checkedAt: '2026-10-10', sourceName: 'SSC Combined Graduate Level Examination 2026 official notice, section 13.8', sourceUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2025.pdf',
+    status: 'verified_baseline_with_runtime_gap', checkedAt: '2026-10-10', sourceName: 'SSC Combined Graduate Level Examination 2026 official notice, section 13.8', sourceUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
     verifiedFields: ['totalQuestions', 'maximumMarks', 'durationMinutes', 'negativeMarking', 'sectionQuestionCounts'], approximateFields: [],
     runtimeLimitations: ['Official 15-minute per-section timers are not enforced; only one overall timer is available.', 'SSC CGL Tier-II is not yet a separate selectable mock pattern.']
   })],
