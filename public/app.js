@@ -906,7 +906,7 @@ async function pgTestTake(parts) {
     const filteredQuestions = test.questions.map((x, i) => ({ x, i })).filter(({ x, i }) =>
       (!sec || visibleIndexes.includes(i)) && (st.paletteFilter === 'all' ||
       (st.paletteFilter === 'unanswered' && st.answers[x.id] === undefined) ||
-      (st.paletteFilter === 'marked' && st.marked.has(String(x.id))));
+      (st.paletteFilter === 'marked' && st.marked.has(String(x.id)))));
     const filterButtons = [['all', 'All'], ['unanswered', 'Unanswered'], ['marked', 'Marked']].map(([v, label]) =>
       h('button', { class: 'chip' + (st.paletteFilter === v ? ' on' : ''), onclick: () => { st.paletteFilter = v; draw(); } }, label));
     pal.replaceChildren(
