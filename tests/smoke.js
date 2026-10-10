@@ -11,7 +11,7 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   const email = `s${Date.now()}@test.com`;
   ok((await api('GET', '/api/home')).status === 401, 'unauthenticated home blocked');
   // Seed enough admin questions: every test needs at least 20 questions.
-  const pw0 = 'Test@12345', adminEmail = 'admin@x.com';
+  const pw0 = process.env.SMOKE_ADMIN_PASSWORD || 'Test@12345', adminEmail = 'admin@x.com';
   let ar = await api('POST', '/api/auth/signup', { email: adminEmail, password: pw0, confirm_password: pw0 });
   if (ar.status === 409) ar = await api('POST', '/api/auth/login', { email: adminEmail, password: pw0 });
   let seeded = 0;
@@ -71,7 +71,7 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   }
   r = await api('POST', '/api/auth/logout', {}); r = await api('GET', '/api/me'); ok(r.data.user === null, 'logout');
   // admin
-  cookie = ''; const ae = 'admin@x.com'; r = await api('POST', '/api/auth/login', { email: ae, password: pw });
+  cookie = ''; const ae = 'admin@x.com'; r = await api('POST', '/api/auth/login', { email: ae, password: process.env.SMOKE_ADMIN_PASSWORD || pw });
   ok(r.data.user && r.data.user.role === 'admin', 'admin role via ADMIN_EMAILS');
   r = await api('POST', '/api/admin/questions', { exam_id: 'SSC_CHSL', subject: 'English', topic: 'Grammar', difficulty: 'easy', text: 'Pick the correct spelling:', options: ['Recieve', 'Receive'], answer: 1, explanation: 'i before e except after c.', source_type: 'VERIFIED_PYQ' }); ok(r.data.errors.length === 1, 'VERIFIED_PYQ without source metadata rejected');
   r = await api('POST', '/api/admin/questions', { exam_id: 'SSC_CHSL', subject: 'English', topic: 'Grammar', difficulty: 'easy', text: 'Pick the correct spelling:', options: ['Recieve', 'Receive'], answer: 1, explanation: 'i before e except after c.', source_type: 'VERIFIED_PYQ', pyq_year: 2024, pyq_paper: 'Tier-I', source_ref: 'javascript:alert(1)' }); ok(r.data.errors.length === 1 && /HTTPS URL/.test(r.data.errors[0].error), 'verified PYQ rejects non-HTTPS source links');
