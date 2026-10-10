@@ -16,33 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Start isolated app
-        env:
-          NODE_ENV: test
-          DATA_DIR: /tmp/competitive-exam-ai-smoke
-          ADMIN_EMAILS: admin@x.com
-          PORT: 3111
-        run: |
-          mkdir -p "$DATA_DIR"
-          node server.js > /tmp/competitive-exam-ai.log 2>&1 &
-          echo $! > /tmp/competitive-exam-ai.pid
-          for i in $(seq 1 30); do
-            if curl --silent --fail http://127.0.0.1:3111/api/config >/dev/null; then
-              exit 0
-            fi
-            sleep 1
-          done
-          cat /tmp/competitive-exam-ai.log
-          exit 1
-      - name: Run API end-to-end smoke tests
-        env:
-          BASE: http://127.0.0.1:3111
-          NODE_ENV: test
-          DATA_DIR: /tmp/competitive-exam-ai-smoke
-          ADMIN_EMAILS: admin@x.com
-          PORT: 3111
-        run: node tests/smoke.js
-      - name: Stop app
-        if: always()
-        run: |
-          if [ -f /tmp/competitive-exam-ai.pid ]; then kill "$(cat /tmp/competitive-exam-ai.pid)" || true; fi
+      - name: Run AI quality tests
+        run: node tests/ai-quality.js
+      - name: Run isolated end-to-end smoke tests
+        run: node tests/run-smoke.js
