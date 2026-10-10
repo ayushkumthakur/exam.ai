@@ -244,7 +244,11 @@ async function buildTest(user, exam, b) {
   const practiceOnly = ['ADMIN_PRACTICE', 'AI_GENERATED', 'PYQ_PATTERN'];
 
   if (kind === 'full_mock' || kind === 'sectional') {
-    const secs = kind === 'sectional' ? (needSubject(), exam.pattern.sections.filter(s => s.subject === b.subject)) : exam.pattern.sections;
+    const secs = kind === 'sectional'
+      ? (needSubject(), exam.pattern.sections.filter(s => s.subject === b.subject))
+      : (exam.id === 'UPSC_CSE' && ['Paper I', 'Paper II'].includes(b.paper)
+          ? exam.pattern.sections.filter(s => s.paper === b.paper)
+          : exam.pattern.sections);
     const patternTotal = secs.reduce((a, s) => a + s.questions, 0);
     const requestedTotal = kind === 'sectional' ? Math.max(20, patternTotal) : patternTotal;
     const targets = secs.map((s, i) => Math.max(1, Math.floor(requestedTotal * s.questions / patternTotal) + (i < (requestedTotal % secs.length) ? 1 : 0)));
@@ -262,8 +266,12 @@ async function buildTest(user, exam, b) {
       throw bad(`Cannot create a complete ${kind === 'full_mock' ? 'full mock' : 'sectional test'} yet. ${notices.join(' ')} Add verified/admin practice questions for the missing sections or enable AI question generation, then try again.`);
     }
     if (!qs.length) throw bad('No questions are available yet for this selection.');
-    title = kind === 'full_mock' ? exam.name + ' Full Mock' : exam.name + ' ' + b.subject + ' Sectional';
-    minutes = b.minutes ? +b.minutes : Math.max(5, Math.round((exam.pattern.minutes || 60) * qs.length / Math.max(patternTotal, 1)));
+    title = kind === 'full_mock'
+      ? exam.name + (exam.id === 'UPSC_CSE' && ['Paper I', 'Paper II'].includes(b.paper) ? ' · ' + b.paper + (b.paper === 'Paper I' ? ' (GS)' : ' (CSAT)') : '') + ' Full Mock'
+      : exam.name + ' ' + b.subject + ' Sectional';
+    minutes = b.minutes ? +b.minutes : (exam.id === 'UPSC_CSE' && ['Paper I', 'Paper II'].includes(b.paper)
+      ? 120
+      : Math.max(5, Math.round((exam.pattern.minutes || 60) * qs.length / Math.max(patternTotal, 1)));
   } else if (kind === 'subject') {
     needSubject(); qs = pickQuestions(user, exam, { subject: b.subject, difficulty: diff, limit: count });
     if (qs.length < count) qs = qs.concat(await aiFillQuestions(user, exam, b.subject, null, diff, count - qs.length)).slice(0, count);
