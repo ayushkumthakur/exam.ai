@@ -14,6 +14,10 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   ok(headerCheck.headers.get('x-content-type-options') === 'nosniff' && headerCheck.headers.get('x-frame-options') === 'DENY',
     'security headers protect API responses');
   ok(Boolean(headerCheck.headers.get('content-security-policy')), 'content security policy present');
+  const malformedPath = await fetch(BASE + '/%E0%A4%A');
+  ok(malformedPath.status === 400, 'malformed URL encoding rejected safely');
+  const sourceProbe = await fetch(BASE + '/server.js');
+  ok(sourceProbe.status === 404, 'server source file is not publicly served');
   // Seed enough admin questions: every test needs at least 20 questions.
   const pw0 = process.env.SMOKE_ADMIN_PASSWORD || 'Test@12345', adminEmail = 'admin@x.com';
   let ar = await api('POST', '/api/auth/signup', { email: adminEmail, password: pw0, confirm_password: pw0 });
@@ -43,6 +47,12 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   cookie = '';
   r = await api('POST', '/api/auth/login', { email, password: 'Wrong@12345' }); ok(r.status === 401, 'wrong password rejected');
   r = await api('POST', '/api/auth/login', { email, password: pw }); ok(r.status === 200 && r.data.user, 'login with correct password');
+  const missingOrigin = await fetch(BASE + '/api/me', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', cookie },
+    body: JSON.stringify({ name: 'Should be blocked' })
+  });
+  ok(missingOrigin.status === 403, 'authenticated mutation without origin is rejected');
   ok((await api('GET', '/api/home')).status === 409, 'home blocked until onboarding');
   ok((await api('GET', '/api/admin/stats')).status === 403, 'student cannot reach admin');
   const fut = new Date(Date.now() + 120 * 864e5).toISOString().slice(0, 10);
