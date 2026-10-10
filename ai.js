@@ -1,7 +1,7 @@
 // AI layer: Gemini Developer API first, with Anthropic fallback.
 // API keys are server-side only.
 const PROVIDER = () => (process.env.AI_PROVIDER || 'gemini').toLowerCase();
-const GEMINI_KEY = () => process.env.GEMINI_API_KEY;
+const GEMINI_KEY = () => GEMINI_KEYS()[0];
 const GEMINI_MODEL = () => process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const ANTHROPIC_KEY = () => process.env.ANTHROPIC_API_KEY;
 const ANTHROPIC_MODEL = () => process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
@@ -25,45 +25,72 @@ function groundingSources(j) {
   return out;
 }
 
+function GEMINI_KEYS() {
+  // Keep the original variable first for backwards compatibility, then optional backups.
+  return [...new Set([
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+    process.env.GEMINI_API_KEY_3
+  ].map(key => typeof key === 'string' ? key.trim() : '').filter(Boolean))];
+}
+
 async function callGemini({ system, messages, maxTokens = 1500, timeoutMs = 45000, grounded = false }) {
-  const opts = { grounded };
-  if (!GEMINI_KEY()) return { ok: false, error: 'AI_NOT_CONFIGURED' };
-  const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), timeoutMs);
-  try {
-    const contents = (messages || []).map(m => {
-      const role = m.role === 'assistant' || m.role === 'model' ? 'model' : 'user';
-      const raw = Array.isArray(m.content) ? m.content : [{ type: 'text', text: String(m.content ?? '') }];
-      const parts = [];
-      for (const b of raw) {
-        if (!b) continue;
-        if (b.type === 'text') parts.push({ text: String(b.text || '') });
-        else if ((b.type === 'image' || b.type === 'document') && b.source?.type === 'base64') {
-          parts.push({ inline_data: { mime_type: b.source.media_type, data: b.source.data } });
-        }
+  const keys = GEMINI_KEYS();
+  if (!keys.length) return { ok: false, error: 'AI_NOT_CONFIGURED' };
+
+  const contents = (messages || []).map(m => {
+    const role = m.role === 'assistant' || m.role === 'model' ? 'model' : 'user';
+    const raw = Array.isArray(m.content) ? m.content : [{ type: 'text', text: String(m.content ?? '') }];
+    const parts = [];
+    for (const b of raw) {
+      if (!b) continue;
+      if (b.type === 'text') parts.push({ text: String(b.text || '') });
+      else if ((b.type === 'image' || b.type === 'document') && b.source?.type === 'base64') {
+        parts.push({ inline_data: { mime_type: b.source.media_type, data: b.source.data } });
       }
-      return { role, parts: parts.length ? parts : [{ text: '' }] };
-    });
-    const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
-      encodeURIComponent(GEMINI_MODEL()) + ':generateContent';
-    const response = await fetch(url, {
-      method: 'POST', signal: ctl.signal,
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': GEMINI_KEY() },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: String(system || '') }] },
-        contents,
-        generationConfig: { maxOutputTokens: Math.min(12000, Math.max(256, +maxTokens || 1500)), temperature: 0.15, responseMimeType: 'text/plain' },
-        ...(opts?.grounded ? { tools: [{ google_search: {} }] } : {})
-      })
-    });
-    if (!response.ok) return { ok: false, error: 'AI_HTTP_' + response.status };
-    const j = await response.json();
-    const text = (j.candidates || []).flatMap(x => x.content?.parts || []).map(x => x.text || '').join('\n').trim();
-    if (!text) return { ok: false, error: 'AI_EMPTY' };
-    return { ok: true, text, provider: 'gemini', model: GEMINI_MODEL(), sources: groundingSources(j) };
-  } catch (e) {
-    return { ok: false, error: e.name === 'AbortError' ? 'AI_TIMEOUT' : 'AI_NETWORK' };
-  } finally { clearTimeout(t); }
+    }
+    return { role, parts: parts.length ? parts : [{ text: '' }] };
+  });
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+    encodeURIComponent(GEMINI_MODEL()) + ':generateContent';
+  let last = { ok: false, error: 'AI_NOT_CONFIGURED' };
+
+  for (let i = 0; i < keys.length; i++) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, {
+        method: 'POST', signal: ctl.signal,
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': keys[i] },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: String(system || '') }] },
+          contents,
+          generationConfig: { maxOutputTokens: Math.min(12000, Math.max(256, +maxTokens || 1500)), temperature: 0.15, responseMimeType: 'text/plain' },
+          ...(grounded ? { tools: [{ google_search: {} }] } : {})
+        })
+      });
+      if (!response.ok) {
+        last = { ok: false, error: 'AI_HTTP_' + response.status };
+        // Rotate on per-key auth/quota errors and transient provider/network failures.
+        const retryable = [401, 403, 429].includes(response.status) || response.status >= 500;
+        if (retryable && i < keys.length - 1) continue;
+        return last;
+      }
+      const j = await response.json();
+      const text = (j.candidates || []).flatMap(x => x.content?.parts || []).map(x => x.text || '').join('\\n').trim();
+      if (!text) {
+        last = { ok: false, error: 'AI_EMPTY' };
+        if (i < keys.length - 1) continue;
+        return last;
+      }
+      return { ok: true, text, provider: 'gemini', model: GEMINI_MODEL(), sources: groundingSources(j) };
+    } catch (e) {
+      last = { ok: false, error: e.name === 'AbortError' ? 'AI_TIMEOUT' : 'AI_NETWORK' };
+      if (i < keys.length - 1) continue;
+      return last;
+    } finally { clearTimeout(t); }
+  }
+  return last;
 }
 
 async function generateCurrentAffairs({ today, days = 7, examList, maxItems = 12 }) {
