@@ -345,27 +345,25 @@ async function aiFillQuestions(user, exam, subject, topic, difficulty, count) {
   return out;
 }
 
-function questionDedupKey(value) {
-  return String(value || '').normalize('NFKC').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-}
 function storeAiQuestions(user, exam, list) {
   const ins = db.prepare(`INSERT INTO questions (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,owner_user_id,created_at)
     VALUES (?,?,?,?,?,?,?,?,?,?, 'AI_GENERATED', ?, ?)`);
-  const seen = new Set(), stored = [];
+  const stored = [];
+  const first = list[0];
+  const existingTexts = first ? db.prepare('SELECT text FROM questions WHERE exam_id=? AND subject=? AND topic=?').all(exam.id, first.subject, first.topic).map(row => row.text) : [];
+  const seen = [];
   for (const q of list) {
-    const key = questionDedupKey(q.text);
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    // Avoid adding an already-existing question again for the same exam/topic.
-    const existing = db.prepare('SELECT id,text FROM questions WHERE exam_id=? AND subject=? AND topic=?').all(exam.id, q.subject, q.topic)
-      .some(row => questionDedupKey(row.text) === key);
-    if (existing) continue;
+    // Compare against prior items in this batch and the existing bank for this exam/subject/topic.
+    if (ai.areDuplicateQuestions(q, seen) || ai.areDuplicateQuestions(q, existingTexts)) continue;
+    seen.push(q);
+    existingTexts.push(q.text);
     const id = Number(ins.run(exam.id, q.subject, q.topic, q.difficulty, q.text, JSON.stringify(q.options), q.answer, q.explanation, q.concept, q.tip, user.id, now()).lastInsertRowid);
     const row = db.prepare('SELECT * FROM questions WHERE id=?').get(id);
     if (row) stored.push(row);
   }
   return stored;
 }
+
 function cleanTestAnswers(ids, input) {
   const list = [...ids].map(Number).filter(Number.isInteger);
   if (!list.length) return {};
