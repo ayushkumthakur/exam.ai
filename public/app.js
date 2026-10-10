@@ -601,7 +601,7 @@ async function pgHome() {
 }
 
 // ---------- question session runner (practice / mistakes / PYQ) ----------
-function runSession(questions, { mode = 'practice', onFinish, title } = {}) {
+function runSession(questions, { mode = 'practice', onFinish, title, examId } = {}) {
   let i = 0, correct = 0, startedAt = 0; const box = h('div', { class: 'stack' });
   function show() {
     if (i >= questions.length) return finish();
@@ -612,7 +612,7 @@ function runSession(questions, { mode = 'practice', onFinish, title } = {}) {
     submit.onclick = async () => {
       locked = true; submit.disabled = true; submit.replaceChildren(h('span', { class: 'spin' }));
       try {
-        const r = await post('/api/practice/answer', { question_id: qn.id, choice: chosen, time_ms: Date.now() - startedAt, mode }); if (r.correct) correct++;
+        const r = await post('/api/practice/answer', { question_id: qn.id, choice: chosen, time_ms: Date.now() - startedAt, mode, exam_id: examId }); if (r.correct) correct++;
         drawOpts(r); submit.remove(); fb.replaceChildren(feedback(r, qn, qn.options)); fb.append(h('div', { class: 'row', style: 'margin-top:1rem' },
           h('button', { class: 'btn primary', onclick: () => { i++; show(); } }, i + 1 < questions.length ? 'Next Question →' : 'Finish'),
           bookmarkBtn('question', qn.id, qn.text), h('button', { class: 'btn', onclick: () => go('#/tutor' + q({ ask: 'Explain this question in detail: ' + qn.text })) }, 'Ask AI')));
@@ -644,19 +644,36 @@ function bookmarkBtn(kind, ref, title, body) {
 
 // ---------- practice ----------
 async function pgPractice(parts, params) {
-  const ex = (await get('/api/exams/' + S.user.exam_id)).exam; const box = h('div', { class: 'stack' });
+  const paperId = params.get('paper') || '';
+  if (S.user.exam_id === 'UPSC_CSE' && !paperId) {
+    const choose = (id) => go('#/practice' + q({ paper: id }));
+    return h('div', { class: 'stack' },
+      h('h1', {}, 'UPSC CSE Practice'),
+      h('p', { class: 'muted' }, 'Choose which Prelims paper you want to practise. Your main exam remains UPSC CSE.'),
+      h('div', { class: 'grid g2' },
+        h('button', { class: 'card stack', style: 'text-align:left;cursor:pointer', onclick: () => choose('UPSC_CSE') },
+          h('span', { class: 'badge' }, 'Paper I'), h('h2', {}, 'General Studies'),
+          h('p', { class: 'muted' }, 'History, Geography, Polity, Economy, Environment and General Awareness'),
+          h('b', {}, '100 questions · 120 minutes'), h('span', { class: 'btn primary' }, 'Practise Paper I →')),
+        h('button', { class: 'card stack', style: 'text-align:left;cursor:pointer', onclick: () => choose('UPSC_CSAT') },
+          h('span', { class: 'badge' }, 'Paper II · Qualifying'), h('h2', {}, 'CSAT'),
+          h('p', { class: 'muted' }, 'Quantitative Aptitude, Reasoning and English Comprehension'),
+          h('b', {}, '80 questions · 120 minutes'), h('span', { class: 'btn primary' }, 'Practise CSAT →'))));
+  }
+  const examId = S.user.exam_id === 'UPSC_CSE' && ['UPSC_CSE','UPSC_CSAT'].includes(paperId) ? paperId : S.user.exam_id;
+  const ex = (await get('/api/exams/' + examId)).exam; const box = h('div', { class: 'stack' });
   const sel = { subject: params.get('subject') || '', topic: params.get('topic') || '', difficulty: '', source: '' };
   async function start(src, titleOverride) {
     box.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Preparing questions…'));
     try {
-      const r = await get('/api/practice/questions' + q({ ...sel, source: src ?? sel.source, limit: 20 }));
+      const r = await get('/api/practice/questions' + q({ ...sel, source: src ?? sel.source, limit: 20, exam_id: examId }));
       if (!r.questions.length) { setup(h('div', { class: 'note' }, 'No questions found for this selection yet. Try another topic, or generate questions with the AI Tutor.')); return; }
-      box.replaceChildren(runSession(r.questions, { mode: 'practice', title: titleOverride || sel.topic || sel.subject || 'Mixed practice', onFinish: () => setup() }));
+      box.replaceChildren(runSession(r.questions, { mode: 'practice', title: titleOverride || sel.topic || sel.subject || 'Mixed practice', examId, onFinish: () => setup() }));
     } catch (e) { setup(errBox(e, () => start(src, titleOverride))); }
   }
   async function startSmart() {
     try {
-      const plan = await get('/api/practice/smart');
+      const plan = await get('/api/practice/smart' + q({ exam_id: examId }));
       sel.subject = plan.subject || '';
       sel.topic = plan.topic || '';
       sel.difficulty = plan.difficulty || 'medium';
@@ -669,14 +686,14 @@ async function pgPractice(parts, params) {
     const topics = ex.syllabus.find(s => s.subject === sel.subject)?.topics || [];
     const top = h('select', { 'aria-label': 'Topic', disabled: !sel.subject, onchange: (e) => sel.topic = e.target.value }, h('option', { value: '' }, 'All topics'), topics.map(t => h('option', { value: t, selected: t === sel.topic }, t)));
     const dif = h('select', { 'aria-label': 'Difficulty', onchange: (e) => sel.difficulty = e.target.value }, [['', 'Any difficulty'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === sel.difficulty }, l)));
-    box.replaceChildren(h('h1', {}, 'Practice'), h('p', { class: 'muted' }, `Questions for ${ex.name} only. Every question shows where it came from.`), extra || null,
+    box.replaceChildren(h('div', { class: 'row between' }, h('h1', {}, 'Practice'), S.user.exam_id === 'UPSC_CSE' ? h('a', { class: 'btn ghost sm', href: '#/practice' }, '← Choose paper') : null), h('p', { class: 'muted' }, `Questions for ${ex.name} only. Every question shows where it came from.`), examId === 'UPSC_CSAT' ? h('div', { class: 'info' }, 'CSAT is a qualifying paper. You need at least 33% to qualify.') : null, extra || null,
       h('div', { class: 'card stack' }, h('div', { class: 'grid g3' }, h('div', {}, h('label', {}, 'Subject'), subj), h('div', {}, h('label', {}, 'Topic'), top), h('div', {}, h('label', {}, 'Difficulty'), dif)),
         h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => start() }, 'Practice Now'), h('button', { class: 'btn', onclick: () => startSmart() }, '✨ Smart Practice'), h('a', { class: 'btn', href: '#/revision?mistakes=1' }, 'Revise My Mistakes'), S.config.ai_enabled ? h('button', { class: 'btn', onclick: () => genPanel() }, '✨ Generate AI questions') : null)));
   }
   function genPanel() {
     if (!sel.subject || !sel.topic) { toast('Pick a subject and topic first.'); return; }
     box.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Generating and validating questions…'));
-    post('/api/ai/generate', { subject: sel.subject, topic: sel.topic, difficulty: sel.difficulty || 'medium', count: 5 }).then(r => box.replaceChildren(runSession(r.questions, { mode: 'practice', title: 'AI Generated Practice', onFinish: () => setup() }))).catch(e => setup(errBox(e, genPanel)));
+    post('/api/ai/generate', { subject: sel.subject, topic: sel.topic, difficulty: sel.difficulty || 'medium', count: 5, exam_id: examId }).then(r => box.replaceChildren(runSession(r.questions, { mode: 'practice', title: 'AI Generated Practice', examId, onFinish: () => setup() }))).catch(e => setup(errBox(e, genPanel)));
   }
   if (params.get('start')) start(); else setup();
   return box;
@@ -792,8 +809,25 @@ async function revMistakes() {
 }
 
 // ---------- tests ----------
-async function pgTests() {
-  const [list, ex] = await Promise.all([get('/api/tests'), get('/api/exams/' + S.user.exam_id)]); const exam = ex.exam;
+async function pgTests(parts, params) {
+  const paperId = params.get('paper') || '';
+  if (S.user.exam_id === 'UPSC_CSE' && !paperId) {
+    const choose = (id) => go('#/tests' + q({ paper: id }));
+    return h('div', { class: 'stack' },
+      h('h1', {}, 'UPSC CSE Mock Tests'),
+      h('p', { class: 'muted' }, 'Choose a paper to build a mock test. Both papers remain under your UPSC CSE account.'),
+      h('div', { class: 'grid g2' },
+        h('button', { class: 'card stack', style: 'text-align:left;cursor:pointer', onclick: () => choose('UPSC_CSE') },
+          h('span', { class: 'badge' }, 'Paper I'), h('h2', {}, 'General Studies'),
+          h('p', { class: 'muted' }, 'Full-length Prelims Paper I mock'),
+          h('b', {}, '100 questions · 120 minutes'), h('span', { class: 'btn primary' }, 'Create Paper I Mock →')),
+        h('button', { class: 'card stack', style: 'text-align:left;cursor:pointer', onclick: () => choose('UPSC_CSAT') },
+          h('span', { class: 'badge' }, 'Paper II · Qualifying'), h('h2', {}, 'CSAT'),
+          h('p', { class: 'muted' }, 'Full-length aptitude, reasoning and comprehension mock'),
+          h('b', {}, '80 questions · 120 minutes'), h('span', { class: 'btn primary' }, 'Create CSAT Mock →'))));
+  }
+  const examId = S.user.exam_id === 'UPSC_CSE' && ['UPSC_CSE','UPSC_CSAT'].includes(paperId) ? paperId : S.user.exam_id;
+  const [list, ex] = await Promise.all([get('/api/tests' + q({ exam_id: examId })), get('/api/exams/' + examId)]); const exam = ex.exam;
   const availableSubjects = Array.isArray(S.user.selected_subjects) && S.user.selected_subjects.length ? S.user.selected_subjects : exam.subjects;
   const o = { kind: 'full_mock', subject: availableSubjects[0], topic: '', count: 20, difficulty: 'any', minutes: '' }; const form = h('div', { class: 'card stack' });
   const KINDS = [['full_mock', 'Full Mock'], ['sectional', 'Sectional Mock'], ['subject', 'Subject Test'], ['topic', 'Topic Test'], ['pyq', 'PYQ Test'], ['pyq_pattern', 'PYQ Pattern Mock'], ['ai_mock', 'AI Generated Mock'], ['weak_topic', 'Weak Topic Test']];
@@ -801,14 +835,14 @@ async function pgTests() {
     const needS = ['sectional', 'subject', 'topic'].includes(o.kind), needT = o.kind === 'topic', needN = ['subject', 'topic', 'weak_topic', 'pyq_pattern', 'ai_mock'].includes(o.kind), needD = ['subject', 'topic', 'full_mock', 'sectional', 'ai_mock'].includes(o.kind);
     const topics = exam.syllabus.find(s => s.subject === o.subject)?.topics || []; if (needT && !topics.includes(o.topic)) o.topic = topics[0];
     const f = (l, el) => h('div', {}, h('label', {}, l), el);
-    form.replaceChildren(h('h2', {}, 'Create My Test'), h('div', { class: 'chips' }, KINDS.map(([k, l]) => h('button', { class: 'chip' + (o.kind === k ? ' on' : ''), onclick: () => { o.kind = k; draw(); } }, l))),
+    form.replaceChildren(h('div', { class: 'row between' }, h('h2', {}, 'Create My Test'), S.user.exam_id === 'UPSC_CSE' ? h('a', { class: 'btn ghost sm', href: '#/tests' }, '← Choose paper') : null), h('div', { class: 'chips' }, KINDS.map(([k, l]) => h('button', { class: 'chip' + (o.kind === k ? ' on' : ''), onclick: () => { o.kind = k; draw(); } }, l))),
       o.kind === 'full_mock' ? h('div', { class: 'info' }, `${exam.name} pattern: ${exam.pattern.sections.map(s => `${s.subject} ${s.questions}`).join(' · ')} · ${exam.pattern.minutes} min · negative marking per section.` + (exam.id === 'UPSC_CSAT' ? ' CSAT is qualifying (33% minimum).' : '') + (exam.verified ? '' : ' (Pattern is an approximate default. Confirm with the official notification.)')) : null,
       h('div', { class: 'grid g3' }, needS ? f('Subject', h('select', { onchange: (e) => { o.subject = e.target.value; draw(); } }, exam.syllabus.filter(s => availableSubjects.includes(s.subject)).map(s => h('option', { value: s.subject, selected: s.subject === o.subject }, s.subject)))) : null,
         needT ? f('Topic', h('select', { onchange: (e) => o.topic = e.target.value }, topics.map(t => h('option', { value: t, selected: t === o.topic }, t)))) : null,
         needN ? f('Number of questions', h('input', { type: 'number', min: 1, max: 100, value: o.count, oninput: (e) => o.count = +e.target.value })) : null,
         needD ? f('Difficulty', h('select', { onchange: (e) => o.difficulty = e.target.value }, [['any', 'Any'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === o.difficulty }, l)))) : null,
         f('Duration (minutes, optional)', h('input', { type: 'number', min: 1, max: 300, placeholder: 'Auto', value: o.minutes, oninput: (e) => o.minutes = e.target.value }))),
-      h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => { e.target.disabled = true; e.target.replaceChildren(h('span', { class: 'spin' }), ' Building…'); await startTest({ ...o, minutes: o.minutes || undefined }); e.target.disabled = false; e.target.textContent = 'Start Test'; } }, 'Start Test'));
+      h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => { e.target.disabled = true; e.target.replaceChildren(h('span', { class: 'spin' }), ' Building…'); await startTest({ ...o, exam_id: examId, minutes: o.minutes || undefined }); e.target.disabled = false; e.target.textContent = 'Start Test'; } }, 'Start Test'));
   } draw();
   return h('div', { class: 'stack mock-hub' },
     h('section', { class: 'mock-brand-hero' },
