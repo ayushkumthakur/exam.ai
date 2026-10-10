@@ -323,11 +323,27 @@ async function aiFillQuestions(user, exam, subject, topic, difficulty, count) {
   return out;
 }
 
+function questionDedupKey(value) {
+  return String(value || '').normalize('NFKC').toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+}
 function storeAiQuestions(user, exam, list) {
   const ins = db.prepare(`INSERT INTO questions (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,owner_user_id,created_at)
     VALUES (?,?,?,?,?,?,?,?,?,?, 'AI_GENERATED', ?, ?)`);
-  return list.map(q => { const id = Number(ins.run(exam.id, q.subject, q.topic, q.difficulty, q.text, JSON.stringify(q.options), q.answer, q.explanation, q.concept, q.tip, user.id, now()).lastInsertRowid);
-    return db.prepare('SELECT * FROM questions WHERE id=?').get(id); });
+  const find = db.prepare('SELECT id FROM questions WHERE exam_id=? AND subject=? AND topic=? AND lower(text)=lower(?) LIMIT 1');
+  const seen = new Set(), stored = [];
+  for (const q of list) {
+    const key = questionDedupKey(q.text);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    // Avoid adding an already-existing question again for the same exam/topic.
+    const existing = db.prepare('SELECT id,text FROM questions WHERE exam_id=? AND subject=? AND topic=?').all(exam.id, q.subject, q.topic)
+      .some(row => questionDedupKey(row.text) === key);
+    if (existing) continue;
+    const id = Number(ins.run(exam.id, q.subject, q.topic, q.difficulty, q.text, JSON.stringify(q.options), q.answer, q.explanation, q.concept, q.tip, user.id, now()).lastInsertRowid);
+    const row = db.prepare('SELECT * FROM questions WHERE id=?').get(id);
+    if (row) stored.push(row);
+  }
+  return stored;
 }
 function cleanTestAnswers(ids, input) {
   const list = [...ids].map(Number).filter(Number.isInteger);
