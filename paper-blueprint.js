@@ -18,7 +18,7 @@ function createPaperBlueprint({ exam, kind, mode = 'practice', questions, minute
     ? Number(exam.pattern.audit.sectionTimingMinutes) : null;
   let offset = 0;
   const blueprintSections = sections.map((section, index) => {
-    const ids = questions.filter(question => question.subject === section.subject).map(question => Number(question.id));
+    const ids = questions.filter(question => question.subject === section.subject).map(question => question.id);
     if (!ids.length) return null;
     const durationSeconds = officialSectionMinutes ? officialSectionMinutes * 60 : null;
     const startsAtOffsetSeconds = durationSeconds === null ? null : offset;
