@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { EXAMS } = require('../data/catalog');
 const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration } = require('../ai');
 
 const base = {
@@ -59,3 +60,26 @@ assert.match(priorityDifficultyCalibration('UPSC CSE Prelims — Paper I (Genera
 assert.match(priorityDifficultyCalibration('SSC CGL (Tier 1)', 'Quantitative Aptitude', 'hard'), /SSC CGL difficulty.*time pressure/i, 'SSC CGL hard difficulty remains time-pressured');
 assert.match(priorityDifficultyCalibration('RBI Grade B (Phase 1)', 'General Awareness', 'hard'), /economy\/banking depth/i, 'RBI Grade B hard GA adds specialist depth');
 assert.equal(priorityExamCalibration('JEE Main', 'Physics', 'Mechanics'), null, 'priority calibration leaves other exam calibration to existing logic');
+
+// Official-pattern audit regression checks: distinguish verified totals from approximate subject splits.
+const examPattern = id => EXAMS.find(exam => exam.id === id).pattern;
+const upscGs = examPattern('UPSC_CSE');
+assert.equal(upscGs.sections.reduce((sum, section) => sum + section.questions, 0), 100, 'UPSC GS practice allocation totals 100 questions');
+assert.equal(upscGs.minutes, 120, 'UPSC GS baseline is 120 minutes');
+assert.equal(upscGs.audit.status, 'partially_verified', 'UPSC subject distribution is explicitly marked approximate');
+assert.ok(upscGs.audit.approximateFields.includes('subjectWiseQuestionCounts'), 'UPSC subject-wise counts are not falsely claimed as official quotas');
+const csat = examPattern('UPSC_CSAT');
+assert.equal(csat.sections.reduce((sum, section) => sum + section.questions, 0), 80, 'CSAT practice allocation totals 80 questions');
+assert.equal(csat.audit.status, 'partially_verified', 'CSAT subject split is marked approximate');
+const cgl = examPattern('SSC_CGL');
+assert.equal(cgl.sections.reduce((sum, section) => sum + section.questions, 0), 100, 'SSC CGL Tier-I totals 100 questions');
+assert.equal(cgl.sections.reduce((sum, section) => sum + section.questions * section.marks, 0), 200, 'SSC CGL Tier-I totals 200 marks');
+assert.equal(cgl.minutes, 60, 'SSC CGL Tier-I duration is 60 minutes');
+assert.equal(cgl.sections[0].negative, 0.5, 'SSC CGL Tier-I negative marking is 0.50');
+assert.ok(cgl.audit.runtimeLimitations.some(item => item.includes('sectional timers')), 'SSC CGL sectional-timer limitation is disclosed');
+const rbi = examPattern('RBI_B');
+assert.equal(rbi.sections.reduce((sum, section) => sum + section.questions, 0), 200, 'RBI Grade B Phase-I totals 200 questions');
+assert.equal(rbi.sections.reduce((sum, section) => sum + section.questions * section.marks, 0), 200, 'RBI Grade B Phase-I totals 200 marks');
+assert.equal(rbi.minutes, 120, 'RBI Grade B Phase-I duration is 120 minutes');
+assert.equal(rbi.sections[0].negative, 0.25, 'RBI Grade B Phase-I negative marking is 0.25');
+assert.equal(rbi.audit.status, 'verified_baseline', 'RBI Phase-I official baseline is recorded');
