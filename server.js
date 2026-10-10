@@ -1188,6 +1188,14 @@ const server = http.createServer(async (req, res) => {
     send(res, 500, { error: 'Something went wrong. Please try again.', retry: true }); // never leak internals; app stays up
   }
 });
+// Bound slow headers/bodies and oversized header collections to reduce resource-exhaustion risk.
+// Edge/WAF protection is still recommended; these limits are application-level safeguards.
+server.headersTimeout = 15_000;
+server.requestTimeout = 60_000;
+server.keepAliveTimeout = 5_000;
+server.maxHeadersCount = 100;
+server.maxRequestsPerSocket = 1000;
+
 process.on('uncaughtException', e => console.error('[uncaught]', e));
 process.on('unhandledRejection', e => console.error('[unhandled]', e));
 server.listen(PORT, () => { console.log(`Competitive Exam AI running on http://localhost:${PORT}  (AI ${ai.aiEnabled() ? 'enabled' : 'NOT configured'})`); startCurrentAffairsAutoRefresh(); });
