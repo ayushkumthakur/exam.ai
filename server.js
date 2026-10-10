@@ -576,12 +576,28 @@ route('GET', '/api/practice/questions', ONB, (c) => {
   if (q.topic) { sql += ' AND q.topic=?'; p.push(q.topic); }
   if (['easy', 'medium', 'hard'].includes(q.difficulty)) { sql += ' AND q.difficulty=?'; p.push(q.difficulty); }
   if (['VERIFIED_PYQ', 'AI_GENERATED', 'PYQ_PATTERN', 'ADMIN_PRACTICE'].includes(q.source)) { sql += ' AND q.source_type=?'; p.push(q.source); }
-  const limit = 20, offset = Math.max(+q.offset || 0, 0); // Practice always serves a 20-question set.
-  // Practice mode never repeats a question already answered by this student for this exam.
-  // If fewer than 20 unseen questions remain in this selection, return only those unseen questions.
-  const unseenSql = sql + ' AND NOT EXISTS (SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id) ORDER BY RANDOM() LIMIT ? OFFSET ?';
-  const unseen = db.prepare(unseenSql).all(...p, c.user.id, exam.id, limit, offset);
-  return { questions: unseen.map(pubQ) };
+  const limit = 20, offset = Math.max(+q.offset || 0, 0); // Practice serves unseen questions first.
+  // Never repeat a question the student has already answered correctly. Once unseen questions
+  // are exhausted, only questions whose latest answer was wrong are eligible for a retry.
+  const unseenWhere = ' AND NOT EXISTS (SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id)';
+  const unseenCount = db.prepare('SELECT COUNT(*) c FROM questions q WHERE ' + sql.slice(sql.indexOf('WHERE ') + 6) + unseenWhere).get(...p, c.user.id, exam.id).c;
+  const unseenSql = sql + unseenWhere + ' ORDER BY q.id LIMIT ? OFFSET ?';
+  const unseen = offset < unseenCount
+    ? db.prepare(unseenSql).all(...p, c.user.id, exam.id, limit, offset)
+    : [];
+  let questions = unseen;
+  if (questions.length < limit && offset + questions.length >= unseenCount) {
+    const wrongLimit = limit - questions.length;
+    const wrongOffset = Math.max(0, offset - unseenCount);
+    const wrongSql = sql + ` AND EXISTS (
+      SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id
+      AND a.id=(SELECT MAX(a2.id) FROM answers a2 WHERE a2.user_id=a.user_id AND a2.exam_id=a.exam_id AND a2.question_id=a.question_id)
+      AND a.correct=0
+    ) ORDER BY q.id LIMIT ? OFFSET ?`;
+    const wrong = db.prepare(wrongSql).all(...p, c.user.id, exam.id, wrongLimit, wrongOffset);
+    questions = questions.concat(wrong);
+  }
+  return { questions: questions.map(pubQ), unseen_remaining: Math.max(0, unseenCount - offset - unseen.length), retrying_wrong_answers: offset + unseen.length >= unseenCount };
 });
 route('POST', '/api/practice/answer', ONB, (c) => {
   const exam = loadExam(c.user.exam_id), { question_id, choice, time_ms } = c.body;
