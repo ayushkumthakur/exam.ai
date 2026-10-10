@@ -101,11 +101,13 @@ const EXAMS = [
   ['AFCAT','AFCAT','Defence',P(120,[S('General Awareness',25,3,1),S('English',30,3,1),S('Quantitative Aptitude',18,3,1),S('Reasoning',27,3,1)])],
   ['AGNIVEER','Agniveer / Defence Recruitment','Defence',P(60,[S('General Awareness',25,1,0.25),S('Mathematics',25,1,0.25),S('Reasoning',25,1,0.25),S('English',25,1,0.25)])],
   // UPSC
-  ['UPSC_CSE','UPSC Civil Services Examination — Prelims','UPSC',P(240,[
-    S('History',17,2,0.667,'Paper I'),S('Geography',17,2,0.667,'Paper I'),S('Polity',17,2,0.667,'Paper I'),
-    S('Economics',17,2,0.667,'Paper I'),S('Environment',16,2,0.667,'Paper I'),S('General Awareness',16,2,0.667,'Paper I'),
-    S('Quantitative Aptitude',28,2.5,0.833,'Paper II'),S('Reasoning',26,2.5,0.833,'Paper II'),S('English',26,2.5,0.833,'Paper II')
-  ],'UPSC CSE Prelims has two separate papers: Paper I (General Studies) has 100 questions, 200 marks and 120 minutes; Paper II (CSAT) has 80 questions, 200 marks and 120 minutes, and is qualifying at 33%. Both papers are available within this single UPSC CSE exam section. The 28/26/26 CSAT subject split is a practice allocation, not an official fixed split. Questions are practice content unless explicitly labelled Verified PYQ.')],
+  ['UPSC_CSE','UPSC CSE Prelims — Paper I (General Studies)','UPSC',P(120,[
+    S('History',17,2,0.667),S('Geography',17,2,0.667),S('Polity',17,2,0.667),
+    S('Economics',17,2,0.667),S('Environment',16,2,0.667),S('General Awareness',16,2,0.667)
+  ],'UPSC CSE Prelims Paper I (General Studies): 100 questions, 200 marks, 120 minutes. Practice question allocation is approximate; content is not an official PYQ unless explicitly labelled Verified PYQ.')],
+  ['UPSC_CSAT','UPSC CSAT — Prelims Paper II (Qualifying)','UPSC',P(120,[
+    S('Quantitative Aptitude',28,2.5,0.833),S('Reasoning',26,2.5,0.833),S('English',26,2.5,0.833)
+  ],'UPSC CSE Prelims Paper II (CSAT): 80 questions, 200 marks, 120 minutes; qualifying at 33%. Subject-wise allocation is for practice, not an official fixed split. Questions are practice content unless explicitly labelled Verified PYQ.')],
   ['UPSC_CAPF','UPSC CAPF','UPSC',P(120,[S('General Awareness',100,2,0.667),S('English',25,2,0.667),S('Reasoning',25,2,0.667)])],
   ['UPSC_OTHER','Other UPSC Examinations','UPSC',P(120,[S('General Awareness',50,2,0.667),S('English',25,2,0.667),S('Reasoning',25,2,0.667)])],
   // SSC
