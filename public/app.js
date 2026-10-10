@@ -709,8 +709,8 @@ async function pgPyqs() {
       ? h('div', { class: 'list' }, p.papers.map(x => h('div', { class: 'row between' },
           h('span', {}, h('b', {}, `${x.year} · ${x.paper}`), x.shift ? ` · ${x.shift}` : '',
             h('span', { class: 'muted small' }, ` · ${x.questions}/${x.expected_questions} questions`),
-            h('span', { class: 'badge ${x.complete ? 'good' : 'warn'}' }, x.complete ? 'Complete paper' : 'Incomplete · practice only')),
-          h('button', { class: 'btn sm ${x.complete ? 'primary' : ''}', disabled: !x.complete, title: x.complete ? 'Start verified paper' : 'Complete this paper before using real PYQ mode', onclick: () => startTest({ kind: 'pyq', year: x.year, paper: x.paper, shift: x.shift }) }, x.complete ? 'Take as test' : 'Not complete')
+            h('span', { class: `badge ${x.complete ? 'good' : 'warn'}` }, x.complete ? 'Complete paper' : 'Incomplete · practice only')),
+          h('button', { class: `btn sm ${x.complete ? 'primary' : ''}`, disabled: !x.complete, title: x.complete ? 'Start verified paper' : 'Complete this paper before using real PYQ mode', onclick: () => startTest({ kind: 'pyq', year: x.year, paper: x.paper, shift: x.shift }) }, x.complete ? 'Take as test' : 'Not complete')
         )))
       : h('div', { class: 'empty' }, 'No verified PYQ papers have been imported for this exam yet. Official-source links are provided above.'));
 
