@@ -202,7 +202,16 @@ function pickQuestions(user, exam, { subject, topic, difficulty, source, ids, li
   if (source) { sql += ' AND q.source_type=?'; p.push(source); }
   if (excludeSources) { sql += ` AND q.source_type NOT IN (${excludeSources.map(() => '?').join(',')})`; p.push(...excludeSources); }
   if (ids) { sql += ` AND q.id IN (${ids.map(() => '?').join(',')})`; p.push(...ids); }
-  return shuffle(db.prepare(sql).all(...p)).slice(0, limit || 1000);
+  const baseSql = sql;
+  const baseParams = [...p];
+  // Prefer questions the student has never answered for this exam.
+  // If the unseen pool is too small, use it first and let callers decide whether to top up.
+  sql += ' AND NOT EXISTS (SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id)';
+  p.push(user.id, exam.id);
+  const unseen = shuffle(db.prepare(sql).all(...p));
+  if (unseen.length >= (limit || 1000)) return unseen.slice(0, limit || 1000);
+  const seen = shuffle(db.prepare(baseSql).all(...baseParams)).filter(q => !unseen.some(u => u.id === q.id));
+  return unseen.concat(seen).slice(0, limit || 1000);
 }
 
 async function buildTest(user, exam, b) {
@@ -541,8 +550,14 @@ route('GET', '/api/practice/questions', ONB, (c) => {
   if (['easy', 'medium', 'hard'].includes(q.difficulty)) { sql += ' AND q.difficulty=?'; p.push(q.difficulty); }
   if (['VERIFIED_PYQ', 'AI_GENERATED', 'PYQ_PATTERN', 'ADMIN_PRACTICE'].includes(q.source)) { sql += ' AND q.source_type=?'; p.push(q.source); }
   const limit = Math.min(Math.max(+q.limit || 10, 1), 20), offset = Math.max(+q.offset || 0, 0);
-  sql += ' ORDER BY (SELECT COUNT(*) FROM answers a WHERE a.user_id=? AND a.question_id=q.id), RANDOM() LIMIT ? OFFSET ?'; p.push(c.user.id, limit, offset);
-  return { questions: db.prepare(sql).all(...p).map(pubQ) };
+  const baseSql = sql, baseParams = [...p];
+  // Show unseen questions first, falling back to attempted questions only when needed.
+  const unseenSql = sql + ' AND NOT EXISTS (SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id) ORDER BY RANDOM() LIMIT ? OFFSET ?';
+  const unseen = db.prepare(unseenSql).all(...p, c.user.id, exam.id, limit, offset);
+  if (unseen.length >= limit || offset > 0) return { questions: unseen.map(pubQ) };
+  const seenSql = baseSql + ' AND EXISTS (SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id) ORDER BY RANDOM() LIMIT ?';
+  const seen = db.prepare(seenSql).all(...baseParams, c.user.id, exam.id, limit - unseen.length);
+  return { questions: unseen.concat(seen).map(pubQ) };
 });
 route('POST', '/api/practice/answer', ONB, (c) => {
   const exam = loadExam(c.user.exam_id), { question_id, choice, time_ms } = c.body;
