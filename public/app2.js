@@ -250,28 +250,48 @@ async function pgPlan() {
 // ---------- progress + leaderboard ----------
 async function pgProgress() {
   const p = await get('/api/progress');
-  let period = 'weekly', lb = null, lbError = null;
+  let period = 'weekly';
   const panel = h('div', { class: 'stack' });
   async function loadLeaderboard(next = period) {
-    period = next; panel.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Loading leaderboard…'));
+    period = next;
+    panel.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Loading leaderboard…'));
     try {
-      lb = await get('/api/leaderboard' + q({ period }));
+      const lb = await get('/api/leaderboard' + q({ period }));
+      const tabs = h('div', { class: 'chips' }, [['daily','Today'],['weekly','7 days'],['monthly','30 days'],['overall','Overall']].map(([v,l]) =>
+        h('button', { class: 'chip' + (period === v ? ' on' : ''), onclick: () => loadLeaderboard(v) }, l)));
+      const rows = (lb.leaderboard || []).map(x =>
+        h('tr', { style: x.is_me ? 'background:var(--info-soft);font-weight:700' : '' },
+          h('td', {}, x.rank <= 3 ? ['🥇','🥈','🥉'][x.rank - 1] : '#' + x.rank),
+          h('td', {}, x.name + (x.is_me ? ' (You)' : '')),
+          h('td', {}, x.accuracy + '%'),
+          h('td', {}, x.correct),
+          h('td', {}, x.attempted)));
+      const table = rows.length
+        ? h('div', { class: 'table-wrap' }, h('table', {},
+            h('thead', {}, h('tr', {}, ['Rank','Student','Accuracy','Correct','Attempted'].map(x => h('th', {}, x)))),
+            h('tbody', {}, rows)))
+        : h('div', { class: 'empty' }, 'No ranked students yet for this period. Answer at least 5 questions to qualify.');
       panel.replaceChildren(
-        h('div', { class: 'row between' }, h('div', {}, h('h3', {}, '🏆 Leaderboard'), h('p', { class: 'small muted' }, lb.exam + ' · minimum 5 answered questions')),
+        h('div', { class: 'row between' },
+          h('div', {}, h('h3', {}, '🏆 Leaderboard'), h('p', { class: 'small muted' }, (lb.exam || 'Your exam') + ' · minimum 5 answered questions')),
           h('span', { class: 'badge' }, lb.my_rank ? 'Your rank: #' + lb.my_rank : 'Not ranked yet')),
-        h('div', { class: 'chips' }, [['daily','Today'],['weekly','7 days'],['monthly','30 days'],['overall','Overall']].map(([v,l]) => h('button', { class: 'chip' + (period===v?' on':''), onclick: () => loadLeaderboard(v) }, l))),
-        lb.leaderboard.length ? h('div', { class: 'table-wrap' }, h('table', {}, h('thead', {}, h('tr', {}, ['Rank','Student','Accuracy','Correct','Attempted'].map(x => h('th', {}, x)))), h('tbody', {}, lb.leaderboard.map(x => h('tr', { style: x.is_me ? 'background:var(--info-soft);font-weight:700' : '' }, h('td', {}, x.rank <= 3 ? ['🥇','🥈','🥉'][x.rank-1] : '#' + x.rank), h('td', {}, x.name + (x.is_me ? ' (You)' : '')), h('td', {}, x.accuracy + '%'), h('td', {}, x.correct), h('td', {}, x.attempted))))) : h('div', { class: 'empty' }, 'No ranked students yet for this period. Answer at least 5 questions to qualify.'));
-    } catch (e) { panel.replaceChildren(errBox(e, () => loadLeaderboard(period))); }
+        tabs, table);
+    } catch (e) {
+      panel.replaceChildren(errBox(e, () => loadLeaderboard(period)));
+    }
   }
   loadLeaderboard();
   const max = Math.max(1, ...p.last7.map(d => d.n));
-  return h('div', { class: 'stack' }, h('h1', {}, 'Progress'), h('div', { class: 'card stack' }, panel),
+  return h('div', { class: 'stack' },
+    h('h1', {}, 'Progress'),
+    h('div', { class: 'card stack' }, panel),
     h('div', { class: 'card' }, h('h3', {}, 'AI Performance Analyst'), h('ul', {}, p.analyst.map(l => h('li', {}, l)))),
     h('div', { class: 'grid g3' }, [['This week', p.week.questions + ' questions'], ['Weekly accuracy', pct(p.week.accuracy)], ['Streak', p.streak + ' days']].map(([l, v]) => h('div', { class: 'card stat' }, h('span', { class: 'muted small' }, l), h('b', {}, v)))),
     h('div', { class: 'card' }, h('h3', {}, 'Last 7 days'), h('div', { class: 'cols', role: 'img', 'aria-label': 'Questions per day, last 7 days' }, p.last7.map(d => h('div', { title: `${d.day}: ${d.n}`, style: `height:${Math.round(100 * d.n / max)}%` }))), h('div', { class: 'cols small muted', style: 'height:auto;margin-top:4px' }, p.last7.map(d => h('span', { style: 'text-align:center' }, d.day.slice(8))))),
-    h('div', { class: 'grid g2' }, h('div', { class: 'card' }, h('h3', {}, 'Strongest topics'), p.strongest.length ? p.strongest.map(t => h('div', { class: 'row between' }, t.topic, h('span', { class: 'badge ok' }, t.accuracy + '%'))) : h('p', { class: 'muted' }, 'Needs 3+ answers per topic.')),
+    h('div', { class: 'grid g2' },
+      h('div', { class: 'card' }, h('h3', {}, 'Strongest topics'), p.strongest.length ? p.strongest.map(t => h('div', { class: 'row between' }, t.topic, h('span', { class: 'badge ok' }, t.accuracy + '%'))) : h('p', { class: 'muted' }, 'Needs 3+ answers per topic.')),
       h('div', { class: 'card' }, h('h3', {}, 'Weakest topics'), p.weakest.length ? p.weakest.map(t => h('div', { class: 'row between' }, t.topic, h('span', { class: 'badge ' + (t.accuracy < 50 ? 'bad' : 'warn') }, t.accuracy + '%'))) : h('p', { class: 'muted' }, 'Needs 3+ answers per topic.'))),
-    h('div', { class: 'card' }, h('h3', {}, 'Accuracy by subject'), p.by_subject.length ? h('div', { class: 'stack' }, p.by_subject.map(s => h('div', {}, h('div', { class: 'row between small' }, s.subject, h('span', {}, `${pct(s.accuracy)} · ${s.attempted} answered`)), h('div', { class: 'bar ' + (s.accuracy >= 70 ? 'ok' : s.accuracy >= 50 ? 'warn' : 'bad') }, h('i', { style: `width:${s.accuracy}%` }))))) : h('p', { class: 'muted' }, 'No data yet.')),
+    h('div', { class: 'card' }, h('h3', {}, 'Accuracy by subject'), p.by_subject.length ? h('div', { class: 'stack' }, p.by_subject.map(x => h('div', {}, h('div', { class: 'row between small' }, x.subject, h('span', {}, `${pct(x.accuracy)} · ${x.attempted} answered`)), h('div', { class: 'bar ' + (x.accuracy >= 70 ? 'ok' : x.accuracy >= 50 ? 'warn' : 'bad') }, h('i', { style: `width:${x.accuracy}%` }))))) : h('p', { class: 'muted' }, 'No data yet.')),
     h('div', { class: 'card' }, h('h3', {}, 'Test history'), p.tests.length ? h('table', {}, h('tbody', {}, p.tests.map(t => h('tr', {}, h('td', {}, t.title), h('td', {}, `${t.score}/${t.max}`), h('td', {}, pct(t.accuracy)), h('td', {}, h('a', { href: '#/result/' + t.id }, 'View')))))) : h('p', { class: 'muted' }, 'No tests yet.')));
 }
 
