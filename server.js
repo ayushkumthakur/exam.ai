@@ -7,6 +7,7 @@ const db = require('./db');
 const { TOPICS, syllabusFor, NOTES } = require('./data/catalog');
 const ai = require('./ai');
 const aiMetrics = require('./ai-metrics');
+const dbBackup = require('./db-backup');
 
 const PORT = +process.env.PORT || 3000;
 const PROD = process.env.NODE_ENV === 'production';
@@ -970,6 +971,7 @@ route('POST', '/api/ai/feedback', ONB, (c) => {
 
 // ---------- admin ----------
 route('GET', '/api/admin/ai-health', ADM, () => aiMetrics.snapshot());
+route('GET', '/api/admin/backups', ADM, () => ({ backups: dbBackup.listBackups(), policy: { intervalHours: 24, retention: Math.max(1, Math.min(30, Number(process.env.DB_BACKUP_KEEP) || 7)), storage: 'persistent DATA_DIR volume; off-site copy not configured' } }));
 route('GET', '/api/admin/stats', ADM, () => ({ users: db.prepare('SELECT COUNT(*) c FROM users').get().c, questions: db.prepare('SELECT source_type, COUNT(*) c FROM questions GROUP BY 1').all(), exams: db.prepare('SELECT COUNT(*) c FROM exams').get().c, open_reports: db.prepare("SELECT COUNT(*) c FROM ai_feedback WHERE kind='report' AND status='open'").get().c }));
 route('POST', '/api/admin/exams', ADM, (c) => {
   const b = c.body, id = String(b.id || '').toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 30);
@@ -1253,5 +1255,5 @@ server.maxRequestsPerSocket = 1000;
 
 process.on('uncaughtException', e => console.error('[uncaught]', e));
 process.on('unhandledRejection', e => console.error('[unhandled]', e));
-server.listen(PORT, () => { console.log(`Competitive Exam AI running on http://localhost:${PORT}  (AI ${ai.aiEnabled() ? 'enabled' : 'NOT configured'})`); startCurrentAffairsAutoRefresh(); });
+server.listen(PORT, () => { console.log(`Competitive Exam AI running on http://localhost:${PORT}  (AI ${ai.aiEnabled() ? 'enabled' : 'NOT configured'})`); startCurrentAffairsAutoRefresh(); dbBackup.startScheduledBackups(); });
 module.exports = { server };
