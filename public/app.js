@@ -139,7 +139,10 @@ function renderAuth() {
           login.disabled = false; login.replaceChildren('Log in');
         }
       } }, emailInp, pass.wrap, err, h('div', { style: 'margin-top:1rem' }, login)),
-      h('div', { class: 'row between', style: 'margin-top:.5rem' }, h('span', { class:'small muted' }, 'New here?'), signup)
+      h('div', { class: 'row between', style: 'margin-top:.5rem' }, h('span', { class:'small muted' }, 'New here?'), signup),
+      h('p', { class: 'small muted', style: 'margin-top:1rem' },
+        h('a', { href: '/terms.html', target: '_blank', rel: 'noopener' }, 'Terms'), ' · ',
+        h('a', { href: '/privacy.html', target: '_blank', rel: 'noopener' }, 'Privacy'))
     );
     emailInp.focus();
   }
@@ -165,6 +168,9 @@ function renderAuth() {
           create.disabled = false; create.replaceChildren('Create account');
         }
       } }, emailInp, p1.wrap, p2.wrap, err, h('div', { style: 'margin-top:1rem' }, create)),
+      h('p', { class: 'small muted', style: 'margin-top:.75rem' }, 'By creating an account you agree to our ',
+        h('a', { href: '/terms.html', target: '_blank', rel: 'noopener' }, 'Terms of Service'), ' and ',
+        h('a', { href: '/privacy.html', target: '_blank', rel: 'noopener' }, 'Privacy Policy'), '.'),
       h('button', { class: 'btn ghost sm', onclick: () => stepLogin() }, 'Back to login')
     );
     emailInp.focus();

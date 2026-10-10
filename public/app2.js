@@ -350,7 +350,10 @@ async function pgProfile() {
     h('div', { class: 'card stack' }, h('h3', {}, 'Reset preferences'), h('p', { class: 'muted small' }, 'Sends you back through setup. Your history stays unless you tick the box.'), h('label', { class: 'row', style: 'font-weight:500' }, wipe, 'Also permanently delete my history (answers, mistakes, tests, bookmarks, AI chats)'),
       h('button', { class: 'btn', style: 'align-self:flex-start', onclick: async () => { if (!confirm(wipe.checked ? 'This permanently deletes your history. Continue?' : 'Reset your preferences?')) return; try { await post('/api/me/reset', { confirm: true, wipe_history: wipe.checked }); S.user = (await get('/api/me')).user; route(); } catch (e) { toast(e.message); } } }, 'Reset preferences')),
     adminSection,
-    h('button', { class: 'btn', style: 'align-self:flex-start', onclick: async () => { await post('/api/auth/logout'); S.user = null; location.hash = '#/'; route(); } }, 'Log out'));
+    h('button', { class: 'btn', style: 'align-self:flex-start', onclick: async () => { await post('/api/auth/logout'); S.user = null; location.hash = '#/'; route(); } }, 'Log out'),
+    h('p', { class: 'small muted' },
+      h('a', { href: '/terms.html', target: '_blank', rel: 'noopener' }, 'Terms of Service'), ' · ',
+      h('a', { href: '/privacy.html', target: '_blank', rel: 'noopener' }, 'Privacy Policy')));
 }
 
 // ---------- library ----------
