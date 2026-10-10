@@ -131,7 +131,7 @@ if (qCount === 0) {
   for (const s of SEED) {
     if (!upscSubjects.has(s.subject)) continue;
     // Only add the explicitly curated UPSC set; do not relabel unrelated legacy seed items.
-    if (![
+    if (!String(s.concept || '').startsWith('UPSC-style:') && ![
       'Which Harappan site is especially known for its dockyard?',
       'Ashoka’s major rock edicts were primarily issued to communicate his:',
       'The construction of the Qutub Minar was begun by:',
