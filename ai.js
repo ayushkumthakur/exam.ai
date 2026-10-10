@@ -181,7 +181,7 @@ function validateQuestion(x, allowed) {
   if (!x || typeof x !== 'object') return null;
   const text = String(x.text || x.question || '').trim();
   const options = Array.isArray(x.options) ? x.options.map(o => String(o).trim()) : [];
-  const normalizeChoice = value => String(value || '').normalize('NFKC').toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+  const normalizeChoice = value => String(value || '').normalize('NFKC').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   const answer = Number.isInteger(x.answer) ? x.answer : parseInt(x.answer, 10);
   const explanation = String(x.explanation || '').trim();
   const subject = String(x.subject || allowed.subject || '').trim();
@@ -232,7 +232,7 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
   // Drop near-identical question text in the same generated batch.
   const seen = new Set(), good = [];
   for (const q of valid) {
-    const key = q.text.toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+    const key = q.text.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
     if (!key || seen.has(key)) continue;
     seen.add(key); good.push(q);
   }
