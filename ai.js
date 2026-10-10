@@ -192,15 +192,34 @@ function validateQuestion(x, allowed) {
   if (explanation.length < 15) return null;
   if (!subject || !topic) return null;
   if (!['easy', 'medium', 'hard'].includes(difficulty)) return null;
+  // A generated question must not silently be relabelled as a different difficulty.
+  if (allowed.difficulty && allowed.difficulty !== 'any' && difficulty !== allowed.difficulty) return null;
   return { text, options, answer, explanation, subject: allowed.subject || subject, topic: allowed.topic || topic, difficulty,
     concept: String(x.concept || '').trim() || null, tip: String(x.tip || '').trim() || null };
 }
 
 async function generateQuestions({ examName, subject, topic, difficulty, count, weakNote, level }) {
-  const system = `You write exam-quality multiple-choice questions for ${examName} (India). Output ONLY a JSON array, no prose.
+  const exam = String(examName || '').toLowerCase();
+  const calibration = /upsc.*civil|civil services.*prelims/.test(exam)
+    ? 'UPSC CSE Prelims calibration: favour statement-based and multi-statement elimination, conceptual depth, close but fair distractors, links between static concepts and application; hard means genuinely nuanced, not obscure trivia.'
+    : /ssc cgl/.test(exam)
+      ? 'SSC CGL calibration: match Tier-I speed and accuracy; use short-to-medium arithmetic/reasoning steps, standard vocabulary/grammar and plausible traps; hard means a multi-step or less-obvious but syllabus-valid question, not lengthy UPSC-style analysis.'
+      : /nda/.test(exam)
+        ? 'NDA calibration: match NDA-level school mathematics and general ability; test concepts and application with competitive-exam distractors, not university-level content.'
+        : 'Use the named exam’s actual syllabus, level, common question style and expected solving time; do not import the difficulty or style of another exam.';
+  const levelGuide = difficulty === 'easy'
+    ? 'Easy: foundational, direct, one main idea; still exam-relevant.'
+    : difficulty === 'hard'
+      ? 'Hard: demanding but fair, requiring deeper concept use, multiple reasoning steps or careful elimination; avoid ambiguity, obscure facts and out-of-syllabus tricks.'
+      : difficulty === 'medium'
+        ? 'Moderate: representative exam-level application, typically one or two reasoning steps, with plausible distractors.'
+        : 'Mixed exam-realistic set: choose a natural spread of easy, moderate and hard questions appropriate to this exam, and label each question honestly.';
+  const system = `You are an experienced paper setter for ${examName} (India). Produce original exam-standard MCQs, not generic school quiz questions. Output ONLY a JSON array, no prose.
 Each item: {"text":string,"options":[4 distinct strings],"answer":index 0-3,"explanation":string (step-by-step, verified),"concept":string,"tip":string,"subject":"${subject}","topic":"${topic}","difficulty":"easy|medium|hard"}.
-Rules: exactly one correct option; verify all arithmetic before writing the answer; no ambiguous or unanswerable questions; no facts that change with time unless certain; do NOT claim these are real previous-year questions. Level of student: ${level || 'intermediate'}.${weakNote ? ' Focus: ' + weakNote : ''}`;
-  const r = await callClaude({ system, maxTokens: 3500, messages: [{ role: 'user', content: `Write ${count} ${difficulty} MCQs on ${subject} → ${topic}. Return valid JSON only.` }] });
+Exam-style calibration: ${calibration}
+Requested difficulty: ${levelGuide}
+Quality rules: exactly one defensible correct option; four distinct plausible options; distractors should reflect common mistakes; match the selected subject/topic and exam syllabus; keep wording and solving time realistic for the exam; verify arithmetic, answer key and explanation independently. Do not make every question the same template. No ambiguous, unanswerable, duplicate, invented-current-affairs, or out-of-syllabus questions. Do NOT copy or claim these are real previous-year questions. Label difficulty honestly; never call a routine question hard or a tricky question easy. Level of student: ${level || 'intermediate'}.${weakNote ? ' Focus: ' + weakNote : ''}`;
+  const r = await callClaude({ system, maxTokens: 5000, messages: [{ role: 'user', content: `Write ${count} ${difficulty === 'any' ? 'mixed exam-realistic difficulty' : difficulty} MCQs on ${subject} → ${topic} for ${examName}. Return valid JSON only. Make the question quality and difficulty resemble this exam, not a generic quiz.` }] });
   if (!r.ok) return r;
   const arr = extractJson(r.text);
   if (!Array.isArray(arr)) return { ok: false, error: 'AI_INVALID' };
