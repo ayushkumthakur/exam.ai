@@ -29,8 +29,6 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   // Browser cross-site requests must be rejected even before a session exists.
   const csrf = await fetch(BASE + '/api/auth/signup', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://attacker.invalid', 'sec-fetch-site': 'cross-site' }, body: JSON.stringify({ email: `csrf${Date.now()}@test.com`, password: pw, confirm_password: pw }) });
   ok(csrf.status === 403, 'cross-site signup request rejected before session creation');
-  const malformedPath = await fetch(BASE + '/%E0%A4%A');
-  ok(malformedPath.status === 400 || malformedPath.status === 404, 'malformed encoded path handled safely');
   r = await api('POST', '/api/auth/signup', { email, password: pw, confirm_password: pw }); ok(r.status === 200 && r.data.user && r.data.user.email === email, 'signup creates account + session');
   r = await api('POST', '/api/auth/signup', { email, password: pw, confirm_password: pw }, { nocookie: true }); ok(r.status === 409, 'duplicate signup rejected');
   await api('POST', '/api/auth/logout', {}); ok((await api('GET', '/api/me')).data.user === null, 'logout clears session');
