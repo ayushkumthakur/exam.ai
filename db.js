@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS topic_stats (
 );
 CREATE TABLE IF NOT EXISTS tests (
   id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, exam_id TEXT NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL,
-  question_ids TEXT NOT NULL, minutes INTEGER NOT NULL, marking TEXT NOT NULL,
+  question_ids TEXT NOT NULL, minutes INTEGER NOT NULL, marking TEXT NOT NULL, blueprint TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL DEFAULT 'active', answers TEXT NOT NULL DEFAULT '{}', marked TEXT NOT NULL DEFAULT '[]',
   times TEXT NOT NULL DEFAULT '{}', current_idx INTEGER NOT NULL DEFAULT 0, remaining_sec INTEGER NOT NULL,
   result TEXT, started_at INTEGER NOT NULL, submitted_at INTEGER, updated_at INTEGER NOT NULL
@@ -93,6 +93,8 @@ let userColumns = db.prepare('PRAGMA table_info(users)').all();
 if (!userColumns.some(c => c.name === 'password_hash')) db.exec('ALTER TABLE users ADD COLUMN password_hash TEXT');
 userColumns = db.prepare('PRAGMA table_info(users)').all();
 if (!userColumns.some(c => c.name === 'selected_subjects')) db.exec("ALTER TABLE users ADD COLUMN selected_subjects TEXT NOT NULL DEFAULT '[]'");
+let testColumns = db.prepare('PRAGMA table_info(tests)').all();
+if (!testColumns.some(c => c.name === 'blueprint')) db.exec("ALTER TABLE tests ADD COLUMN blueprint TEXT NOT NULL DEFAULT '{}'");
 
 // ---- Seed ----
 const now = () => Date.now();
