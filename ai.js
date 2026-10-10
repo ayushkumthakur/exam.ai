@@ -139,18 +139,23 @@ async function callAnthropic({ system, messages, maxTokens = 1500, timeoutMs = 4
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
+    aiMetrics.record({ type: 'request', provider: 'anthropic', model: ANTHROPIC_MODEL() });
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST', signal: ctl.signal,
       headers: { 'content-type': 'application/json', 'x-api-key': ANTHROPIC_KEY(), 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model: ANTHROPIC_MODEL(), max_tokens: maxTokens, system, messages })
     });
-    if (!r.ok) return { ok: false, error: 'AI_HTTP_' + r.status };
+    if (!r.ok) { const error = 'AI_HTTP_' + r.status; aiMetrics.record({ type: 'error', provider: 'anthropic', model: ANTHROPIC_MODEL(), error }); return { ok: false, error }; }
     const j = await r.json();
     const text = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
-    if (!text) return { ok: false, error: 'AI_EMPTY' };
+    if (!text) { aiMetrics.record({ type: 'error', provider: 'anthropic', model: ANTHROPIC_MODEL(), error: 'AI_EMPTY' }); return { ok: false, error: 'AI_EMPTY' }; }
+    const usage = j.usage || {};
+    aiMetrics.record({ type: 'success', provider: 'anthropic', model: ANTHROPIC_MODEL(), promptTokens: usage.input_tokens, outputTokens: usage.output_tokens, totalTokens: (Number(usage.input_tokens) || 0) + (Number(usage.output_tokens) || 0) });
     return { ok: true, text, provider: 'anthropic', model: ANTHROPIC_MODEL() };
   } catch (e) {
-    return { ok: false, error: e.name === 'AbortError' ? 'AI_TIMEOUT' : 'AI_NETWORK' };
+    const error = e.name === 'AbortError' ? 'AI_TIMEOUT' : 'AI_NETWORK';
+    aiMetrics.record({ type: 'error', provider: 'anthropic', model: ANTHROPIC_MODEL(), error });
+    return { ok: false, error };
   } finally { clearTimeout(t); }
 }
 
