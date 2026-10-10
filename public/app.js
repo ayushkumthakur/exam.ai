@@ -843,9 +843,27 @@ async function pgResult(parts) {
   const answeredCount = r.correct + r.wrong;
   const scorePct = r.max > 0 ? Math.round(100 * r.score / r.max) : 0;
   const outcomeLabel = r.accuracy === null ? 'Not enough attempted answers to calculate accuracy' : r.accuracy >= 80 ? 'Strong accuracy' : r.accuracy >= 60 ? 'Developing accuracy' : 'Accuracy needs attention';
-
+  const avgSeconds = answeredCount > 0 && r.total_minutes > 0 ? Math.round(r.total_minutes * 60 / answeredCount) : null;
+  const wrongRate = answeredCount ? Math.round(100 * r.wrong / answeredCount) : 0;
+  const skippedRate = r.total ? Math.round(100 * r.skipped / r.total) : 0;
+  const marking = test.marking || {};
+  const negativeMarksLost = Object.entries(r.by_subject || {}).reduce((sum, [subject, v]) => {
+    const penalty = Number(marking[subject]?.negative) || 0;
+    return sum + Math.max(0, v.attempted - v.correct) * penalty;
+  }, 0);
+  const metric = (label, value, note, tone) => h('div', { class: 'card result-metric' },
+    h('span', { class: 'result-metric-label' }, label),
+    h('b', { class: 'result-metric-value' + (tone ? ' ' + tone : '') }, value),
+    h('span', { class: 'result-metric-note' }, note));
 
   return h('div', { class: 'stack' }, h('div', { class: 'hero' }, h('p', {}, test.title), h('h1', {}, `${r.score} / ${r.max}`), h('p', {}, `Accuracy ${pct(r.accuracy)} · ${r.correct} correct · ${r.wrong} wrong · ${r.skipped} skipped`), h('p', {}, `Attempted ${answeredCount}/${r.total} · Completion ${r.total ? Math.round(100 * answeredCount / r.total) : 0}% · Time ${r.total_minutes} min`), h('p', {}, `${outcomeLabel} · Score ${scorePct}% of maximum marks`)),
+    h('div', { class: 'result-metrics' },
+      metric('Speed', avgSeconds === null ? '—' : `${Math.floor(avgSeconds / 60)}m ${avgSeconds % 60}s`, 'Average per attempted question'),
+      metric('Wrong-answer rate', `${wrongRate}%`, `${r.wrong} incorrect out of ${answeredCount} attempted`, wrongRate >= 30 ? 'bad' : ''),
+      metric('Negative marks lost', Number(negativeMarksLost.toFixed(2)).toString(), 'Estimated from this exam’s marking scheme', negativeMarksLost > 0 ? 'bad' : 'good')),
+    h('div', { class: 'card result-pace' }, h('div', { class: 'row between' }, h('b', {}, 'Attempt profile'), h('span', { class: 'small muted' }, `${skippedRate}% skipped`)),
+      h('div', { class: 'result-profile-bar' }, h('span', { class: 'result-profile-correct', style: `width:${r.total ? 100 * r.correct / r.total : 0}%` }), h('span', { class: 'result-profile-wrong', style: `width:${r.total ? 100 * r.wrong / r.total : 0}%` }), h('span', { class: 'result-profile-skipped', style: `width:${skippedRate}%` })),
+      h('div', { class: 'result-profile-legend' }, h('span', {}, `● Correct ${r.correct}`), h('span', {}, `● Wrong ${r.wrong}`), h('span', {}, `● Skipped ${r.skipped}`))),
     h('div', { class: 'card' }, h('h2', {}, 'AI Analysis'), h('div', { class: 'sol' }, h('h4', {}, 'Your next best move'), h('p', {}, nextAction)), list('What went well', c.went_well), list('What went wrong', c.went_wrong), list('Time management', c.time_problems), list('Accuracy', c.accuracy_problems),
       c.strong_topics.length ? h('p', {}, h('b', {}, 'Strong topics: '), c.strong_topics.join(', ')) : null, c.weak_topics.length ? h('p', {}, h('b', {}, 'Weak topics: '), c.weak_topics.join(', ')) : null,
       c.recommended_revision ? h('p', {}, h('b', {}, 'Recommended revision: '), `${c.recommended_revision.topic} (${c.recommended_revision.subject})`) : null, h('p', {}, h('b', {}, 'Recommended next test: '), c.recommended_test.topic ? `${c.recommended_test.topic} topic test` : `${c.recommended_test.subject} test`),
