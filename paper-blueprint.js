@@ -62,12 +62,19 @@ function activeSectionIndex(blueprint, elapsedSeconds) {
   return active ? active.index : timed[timed.length - 1].index;
 }
 
-function filterAnswersToStartedSections(blueprint, answers, elapsedSeconds) {
+function mergeBlueprintAnswers(blueprint, storedAnswers, incomingAnswers, elapsedSeconds) {
+  const stored = storedAnswers || {};
+  const incoming = incomingAnswers || {};
   const timed = (blueprint?.sections || []).filter(section => Number.isFinite(section.durationSeconds) && section.durationSeconds > 0);
-  if (!timed.length) return answers || {};
-  const allowed = new Set(timed.filter(section => elapsedSeconds >= section.startsAtOffsetSeconds)
+  if (!timed.length) return { ...stored, ...incoming };
+  const pastIds = new Set(timed.filter(section => elapsedSeconds >= section.endsAtOffsetSeconds)
     .flatMap(section => section.questionIds.map(String)));
-  return Object.fromEntries(Object.entries(answers || {}).filter(([id]) => allowed.has(String(id))));
+  const active = timed.find(section => elapsedSeconds < section.endsAtOffsetSeconds);
+  const activeIds = new Set((active?.questionIds || []).map(String));
+  const result = Object.fromEntries(Object.entries(stored).filter(([id]) => pastIds.has(String(id))));
+  for (const [id, value] of Object.entries(stored)) if (activeIds.has(String(id))) result[id] = value;
+  for (const [id, value] of Object.entries(incoming)) if (activeIds.has(String(id))) result[id] = value;
+  return result;
 }
 
-module.exports = { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, filterAnswersToStartedSections };
+module.exports = { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers };
