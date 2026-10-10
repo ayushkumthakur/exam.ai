@@ -214,7 +214,9 @@ function renderOnboarding() {
           next.disabled = false;
           draw();
         }
-      }, h('b', {}, e.name), h('span', { class: 'small muted' }, e.category))) :
+      }, h('b', {}, e.name),
+        (e.id === 'UPSC_CSE' || e.id === 'SSC_CGL') ? h('span', { class: 'badge', style: 'align-self:flex-start;margin-top:.35rem' }, e.id === 'UPSC_CSE' ? 'Priority focus · UPSC' : 'Priority focus · SSC CGL') : null,
+        h('span', { class: 'small muted' }, e.category))) :
         [h('div', { class: 'empty' }, 'No exam or class matches your search.')]));
     }
 
