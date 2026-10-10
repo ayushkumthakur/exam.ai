@@ -187,7 +187,9 @@ function validateQuestion(x, allowed) {
   const topic = String(x.topic || allowed.topic || '').trim();
   const difficulty = String(x.difficulty || allowed.difficulty || '').toLowerCase().trim();
   if (text.length < 10) return null;
-  if (options.length < 2 || options.length > 6 || new Set(options).size !== options.length) return null;
+  // Exam MCQs in this platform use four options; reject malformed output instead of
+  // quietly accepting two-option questions that make a mock easier than the real paper.
+  if (options.length !== 4 || new Set(options.map(o => o.toLocaleLowerCase())) .size !== 4) return null;
   if (!Number.isInteger(answer) || answer < 0 || answer >= options.length) return null;
   if (explanation.length < 15) return null;
   if (!subject || !topic) return null;
@@ -223,7 +225,14 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
   if (!r.ok) return r;
   const arr = extractJson(r.text);
   if (!Array.isArray(arr)) return { ok: false, error: 'AI_INVALID' };
-  const good = arr.map(x => validateQuestion(x, { subject, topic, difficulty })).filter(Boolean);
+  const valid = arr.map(x => validateQuestion(x, { subject, topic, difficulty })).filter(Boolean);
+  // Drop near-identical question text in the same generated batch.
+  const seen = new Set(), good = [];
+  for (const q of valid) {
+    const key = q.text.toLocaleLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key); good.push(q);
+  }
   if (!good.length) return { ok: false, error: 'AI_INVALID' };
   return { ok: true, questions: good, dropped: arr.length - good.length };
 }
