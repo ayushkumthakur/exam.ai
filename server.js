@@ -549,7 +549,7 @@ route('GET', '/api/practice/questions', ONB, (c) => {
   if (q.topic) { sql += ' AND q.topic=?'; p.push(q.topic); }
   if (['easy', 'medium', 'hard'].includes(q.difficulty)) { sql += ' AND q.difficulty=?'; p.push(q.difficulty); }
   if (['VERIFIED_PYQ', 'AI_GENERATED', 'PYQ_PATTERN', 'ADMIN_PRACTICE'].includes(q.source)) { sql += ' AND q.source_type=?'; p.push(q.source); }
-  const limit = Math.min(Math.max(+q.limit || 10, 1), 20), offset = Math.max(+q.offset || 0, 0);
+  const limit = 20, offset = Math.max(+q.offset || 0, 0); // Practice always serves a 20-question set.
   const baseSql = sql, baseParams = [...p];
   // Show unseen questions first, falling back to attempted questions only when needed.
   const unseenSql = sql + ' AND NOT EXISTS (SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id) ORDER BY RANDOM() LIMIT ? OFFSET ?';
