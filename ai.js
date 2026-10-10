@@ -237,7 +237,30 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
     seen.add(key); good.push(q);
   }
   if (!good.length) return { ok: false, error: 'AI_INVALID' };
-  return { ok: true, questions: good, dropped: arr.length - good.length };
+
+  // Independent second pass: solve without showing the proposed answer key first,
+  // then compare the verifier's result and explanation check with the generated item.
+  const verifyInput = good.map((q, index) => ({
+    index, question: q.text, options: q.options,
+    proposed_answer: q.answer, proposed_explanation: q.explanation,
+    exam: examName, subject: q.subject, topic: q.topic
+  }));
+  const verified = await callClaude({
+    maxTokens: Math.min(5000, 500 + good.length * 350),
+    system: `You are an independent competitive-exam answer-key auditor. Do not trust the proposed answer. Solve each MCQ yourself from the question and options first. Then compare your independently solved option with proposed_answer and check whether proposed_explanation is factually and logically correct. Flag ambiguous, underspecified, out-of-syllabus, or multiple-correct-option questions as invalid. Output ONLY a JSON array with one object per item: {"index":0,"independent_answer":0,"valid":true,"reason":"brief reason"}. independent_answer must be an option index 0-3. valid is true only if there is exactly one defensible answer, your answer matches proposed_answer, and the explanation is correct. If uncertain, valid=false.`,
+    messages: [{ role: 'user', content: JSON.stringify(verifyInput) }]
+  });
+  if (!verified.ok) return { ok: false, error: 'AI_VERIFY_UNAVAILABLE' };
+  const audit = extractJson(verified.text);
+  if (!Array.isArray(audit)) return { ok: false, error: 'AI_VERIFY_INVALID' };
+  const auditByIndex = new Map(audit.filter(x => x && Number.isInteger(x.index)).map(x => [x.index, x]));
+  const checked = good.filter((q, index) => {
+    const a = auditByIndex.get(index);
+    return !!a && a.valid === true && Number.isInteger(a.independent_answer) &&
+      a.independent_answer === q.answer && a.independent_answer >= 0 && a.independent_answer < 4;
+  });
+  if (!checked.length) return { ok: false, error: 'AI_VERIFY_REJECTED' };
+  return { ok: true, questions: checked, dropped: arr.length - checked.length, verification: 'independent' };
 }
 
 module.exports = { callClaude, callGemini, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion };
