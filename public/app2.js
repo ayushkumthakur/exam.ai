@@ -331,11 +331,25 @@ async function pgProfile() {
   const date = h('input', { type: 'date', value: f.target_date, min: new Date(Date.now() + 864e5).toISOString().slice(0, 10), onchange: (e) => f.target_date = e.target.value });
   const save = h('button', { class: 'btn primary', onclick: async () => { save.disabled = true; try { const examChanged = f.exam_id !== S.user.exam_id; const r = await put('/api/me', f); S.user = r.user; msg.replaceChildren(h('div', { class: 'info' }, examChanged ? 'Exam changed. Your dashboard, practice, tests, current affairs, tutor, revision and plan now follow the new exam. Your old history is kept.' : 'Saved.')); toast('Saved'); route(); } catch (e) { msg.replaceChildren(errBox(e)); } save.disabled = false; } }, 'Save changes');
   const wipe = h('input', { type: 'checkbox', style: 'width:20px;min-height:20px' });
+  const adminMsg = h('div');
+  const adminSection = u.role === 'admin' ? null : (() => {
+    const key = h('input', { type: 'password', placeholder: 'Admin setup key', autocomplete: 'off' });
+    const claim = h('button', { class: 'btn', style: 'align-self:flex-start', onclick: async () => {
+      claim.disabled = true;
+      try { const r = await post('/api/auth/claim-admin', { key: key.value }); S.user = r.user; toast('You are now an admin'); route(); }
+      catch (e) { adminMsg.replaceChildren(errBox(e)); }
+      claim.disabled = false;
+    } }, 'Claim admin access');
+    return h('div', { class: 'card stack' }, h('h3', {}, 'Become an admin'),
+      h('p', { class: 'muted small' }, 'If an admin setup key has been configured for this server, enter it here once to get admin access.'),
+      key, adminMsg, claim);
+  })();
   return h('div', { class: 'stack' }, h('h1', {}, 'Profile'),
     h('div', { class: 'card' }, h('div', { class: 'grid g2' }, [['Name', u.name], ['Email', u.email], ['Exam', S.exams.find(e => e.id === u.exam_id)?.name], ['Preparation level', u.level], ['Target date', u.target_date + (prog.days_left !== null ? ` (${prog.days_left} days)` : '')], ['Daily study time', u.daily_minutes / 60 + ' h'], ['Stage', u.stage], ['Overall', `${prog.questions_solved} questions · ${pct(prog.accuracy)} accuracy`]].map(([l, v]) => h('div', {}, h('div', { class: 'small muted' }, l), h('b', {}, v))))),
     h('div', { class: 'card stack' }, h('h3', {}, 'Update preferences'), h('div', { class: 'grid g2' }, examSel, sel('Preparation level', 'level', ['Beginner', 'Intermediate', 'Advanced'].map(x => [x, x])), h('div', {}, h('label', {}, 'Target date'), date), sel('Daily study time', 'daily_minutes', [[60, '1 hour'], [120, '2 hours'], [180, '3 hours'], [240, '4 hours'], [300, '5+ hours']]), sel('Stage', 'stage', ['Just Started', 'Preparing', 'Revision'].map(x => [x, x]))), msg, save),
     h('div', { class: 'card stack' }, h('h3', {}, 'Reset preferences'), h('p', { class: 'muted small' }, 'Sends you back through setup. Your history stays unless you tick the box.'), h('label', { class: 'row', style: 'font-weight:500' }, wipe, 'Also permanently delete my history (answers, mistakes, tests, bookmarks, AI chats)'),
       h('button', { class: 'btn', style: 'align-self:flex-start', onclick: async () => { if (!confirm(wipe.checked ? 'This permanently deletes your history. Continue?' : 'Reset your preferences?')) return; try { await post('/api/me/reset', { confirm: true, wipe_history: wipe.checked }); S.user = (await get('/api/me')).user; route(); } catch (e) { toast(e.message); } } }, 'Reset preferences')),
+    adminSection,
     h('button', { class: 'btn', style: 'align-self:flex-start', onclick: async () => { await post('/api/auth/logout'); S.user = null; location.hash = '#/'; route(); } }, 'Log out'));
 }
 

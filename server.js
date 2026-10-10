@@ -13,6 +13,9 @@ const TZ_MIN = +(process.env.TZ_OFFSET_MIN ?? 330); // IST
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
 // Administrator privileges must be provisioned explicitly in the database or through a reviewed migration.
 // Do not promote accounts or reset passwords automatically from environment variables at startup.
+// A logged-in user may self-promote to admin only by presenting this secret (set it in the host
+// environment, e.g. Railway variables). Leave unset to disable self-service admin claiming entirely.
+const ADMIN_SETUP_KEY = process.env.ADMIN_SETUP_KEY || '';
 const DAY = 86400000;
 const REV_DAYS = [0, 1, 3, 7, 14];
 
@@ -93,6 +96,12 @@ function hashPassword(password) {
   const salt = crypto.randomBytes(16);
   const derived = crypto.scryptSync(password, salt, 64, { N: 16384, r: 8, p: 1 });
   return 'scrypt:' + salt.toString('base64url') + ':' + derived.toString('base64url');
+}
+function safeEqual(a, b) {
+  // Compare via fixed-length digests so neither the input length nor its bytes leak through timing.
+  const ah = crypto.createHash('sha256').update(String(a)).digest();
+  const bh = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(ah, bh);
 }
 function verifyPassword(stored, password) {
   try {
@@ -523,6 +532,16 @@ route('POST', '/api/auth/set-password', A, (c) => {
   const u = db.prepare('SELECT * FROM users WHERE id=?').get(c.user.id);
   return { user: meJson(u) };
 });
+route('POST', '/api/auth/claim-admin', A, (c) => {
+  if (!ADMIN_SETUP_KEY) throw new HttpError(404, 'Admin setup is not enabled on this server.');
+  rateLimit('admin-claim-ip:' + c.ip, 10, 3600000);
+  rateLimit('admin-claim-user:' + c.user.id, 5, 3600000);
+  const key = String(c.body.key || '');
+  if (!key || !safeEqual(key, ADMIN_SETUP_KEY)) throw new HttpError(401, 'Incorrect setup key.');
+  db.prepare("UPDATE users SET role='admin' WHERE id=?").run(c.user.id);
+  const u = db.prepare('SELECT * FROM users WHERE id=?').get(c.user.id);
+  return { user: meJson(u) };
+});
 route('POST', '/api/auth/logout', {}, (c) => {
   const m = /(?:^|;\s*)sid=([^;]+)/.exec(c.req.headers.cookie || ''); if (m) db.prepare('DELETE FROM sessions WHERE token_hash=?').run(sha(m[1]));
   c.res.setHeader('Set-Cookie', 'sid=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax'); return { ok: true };
@@ -949,7 +968,7 @@ route('POST', '/api/admin/questions', ADM, (c) => {
         try { sourceUrl = new URL(String(m.source_ref)); } catch { throw new Error('source_ref must be a valid official-source HTTPS URL'); }
         if (sourceUrl.protocol !== 'https:' || !sourceUrl.hostname || sourceUrl.username || sourceUrl.password ||
             sourceUrl.hostname === 'localhost' || sourceUrl.hostname.endsWith('.localhost') ||
-            /^127\\./.test(sourceUrl.hostname) || sourceUrl.hostname === '::1') {
+            /^127\./.test(sourceUrl.hostname) || sourceUrl.hostname === '::1') {
           throw new Error('source_ref must be a public HTTPS URL; verify it points to the official exam authority or official question paper');
         }
       }
