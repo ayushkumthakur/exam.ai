@@ -120,8 +120,7 @@ function newSession(res, userId) {
   res.setHeader('Set-Cookie', `sid=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${30 * 86400}${PROD ? '; Secure' : ''}`);
 }
 function getUser(req) {
-  const m = /(?:^|;\s*)sid=([^;]+)/.exec(c.req.headers.cookie || '');
-  if (m) db.prepare('DELETE FROM sessions WHERE token_hash=?').run(sha(m[1]));
+  const m = /(?:^|;\s*)sid=([^;]+)/.exec(req.headers.cookie || '');
   if (!m) return null;
   const tokenHash = sha(m[1]);
   const session = db.prepare('SELECT user_id,expires_at FROM sessions WHERE token_hash=?').get(tokenHash);
@@ -550,7 +549,8 @@ route('POST', '/api/auth/claim-admin', A, (c) => {
   return { user: meJson(u) };
 });
 route('POST', '/api/auth/logout', {}, (c) => {
-  const m = /(?:^|;\s*)sid=([^;]+)/.exec(req.headers.cookie || '');
+  const m = /(?:^|;\s*)sid=([^;]+)/.exec(c.req.headers.cookie || '');
+  if (m) db.prepare('DELETE FROM sessions WHERE token_hash=?').run(sha(m[1]));
   c.res.setHeader('Set-Cookie', `sid=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${PROD ? '; Secure' : ''}`); return { ok: true };
 });
 route('GET', '/api/me', {}, (c) => ({ user: c.user ? meJson(c.user) : null }));
