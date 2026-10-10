@@ -3,7 +3,12 @@
   "version": "1.0.0",
   "description": "AI-powered competitive exam preparation platform",
   "main": "server.js",
-  "scripts": { "start": "node server.js", "test": "node tests/smoke.js" },
-  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/ai-quality.js && node tests/smoke.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "license": "ISC"
 }
