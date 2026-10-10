@@ -144,6 +144,9 @@ const FRIENDLY = {
   AI_HTTP_403: 'The AI API key lacks permission or the API is disabled. Check the key and enable the Gemini API in Google AI Studio/Cloud.',
   AI_HTTP_404: 'The configured AI model was not found. Remove GEMINI_MODEL in Railway or set it to gemini-2.5-flash.',
   AI_HTTP_429: 'The AI provider rate limit or free quota was reached. Wait and try again, or check your Gemini quota.',
+  AI_VERIFY_UNAVAILABLE: 'The answer-key verification service is temporarily unavailable. No unverified generated questions were saved; please try again.',
+  AI_VERIFY_INVALID: 'The independent answer-key check returned an invalid response. No unverified generated questions were saved; please try again.',
+  AI_VERIFY_REJECTED: 'The generated questions did not pass the independent answer-key check. Please generate a fresh set.',
 };
 const friendlyError = e => FRIENDLY[e] || 'Something went wrong while generating the answer.';
 
