@@ -46,6 +46,14 @@
           "official_listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
           "status": "official_paper_listed_content_not_item_audited",
           "notes": "The official listing publishes the paper. Exact question wording, options, and answers have not been compared item by item."
+        },
+        {
+          "year": 2023,
+          "paper": "Civil Services (Preliminary) Examination - General Studies Paper II (CSAT), Test Booklet Series A",
+          "question_paper_url": "https://www.upsc.gov.in/sites/default/files/QP_CS_Pre_Exam_2023_GENERAL_STUDIES_PAPER_II_280523.pdf",
+          "official_listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+          "status": "official_paper_listed_pdf_too_large_for_current_text_retrieval",
+          "notes": "The official archive lists the 2023 CSAT paper (28.84 MB), but the current retrieval path returned a content-length-too-large error. No CSAT practice prompt has been matched to the exact paper or promoted to VERIFIED_PYQ."
         }
       ]
     },
@@ -167,5 +175,5 @@
       }
     ]
   },
-  "last_progress_note": "Compared 10 static-bank prompts against official UPSC CSE Prelims 2023 GS-I text and identified three topic-level overlaps (Q33, Q34, Q37); no exact wording/options matches established. None marked VERIFIED_PYQ."
+  "last_progress_note": "Official UPSC 2023 GS-I PDF was opened and indexed text checked; ten targeted bank prompts yielded zero exact matches established, with three related-topic overlaps explicitly recorded as non-matches. Official 2023 CSAT paper is listed but current PDF retrieval exceeded the available text retrieval limit. CI passed on the audit branch's latest recorded commit."
 }
