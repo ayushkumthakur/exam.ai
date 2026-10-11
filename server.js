@@ -1191,10 +1191,28 @@ async function runCaFeedRefresh() {
   catch (e) { console.error('[ca-feed-refresh]', e.message); }
   finally { caFeedRefreshBusy = false; }
 }
+function msUntilNextDailyCurrentAffairs() {
+  const localNow = new Date(now() + TZ_MIN * 60000);
+  const next = new Date(localNow);
+  next.setUTCHours(7, 0, 0, 0);
+  if (next.getTime() <= localNow.getTime()) next.setUTCDate(next.getUTCDate() + 1);
+  return next.getTime() - localNow.getTime();
+}
+function scheduleDailyCurrentAffairs() {
+  setTimeout(async () => {
+    try { await refreshCurrentAffairsAuto(1, 12); }
+    catch (e) { console.error('[ca-daily-refresh]', e.message); }
+    scheduleDailyCurrentAffairs();
+  }, msUntilNextDailyCurrentAffairs());
+}
 function startCurrentAffairsAutoRefresh() {
-  // Official RSS only: no AI calls. Refresh at startup and every 6 hours.
-  setTimeout(() => runCaFeedRefresh(), 15000);
+  // Import official PIB/RBI feeds every six hours and create a sourced, exam-relevant digest daily at 07:00 IST when Gemini grounding is configured.
+  setTimeout(() => {
+    runCaFeedRefresh();
+    refreshCurrentAffairsAuto(1, 12).catch(e => console.error('[ca-startup-digest]', e.message));
+  }, 15000);
   setInterval(() => runCaFeedRefresh(), 6 * 60 * 60 * 1000);
+  scheduleDailyCurrentAffairs();
 }
 
 // ---------- request hardening ----------
