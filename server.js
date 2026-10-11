@@ -374,14 +374,19 @@ async function buildTest(user, exam, b) {
     title = 'PYQ Pattern Mock';
   } else if (kind === 'ai_mock') {
     if (!ai.aiEnabled()) throw bad(ai.friendlyError('AI_NOT_CONFIGURED'));
-    const secs = exam.pattern.sections.slice(0, 4), n = Math.max(20, Math.min(count, 100)), each = Math.max(2, Math.ceil(n / secs.length));
+    const secs = exam.pattern.sections;
+    const n = secs.reduce((total, section) => total + Number(section.questions || 0), 0);
+    if (!n) throw bad('This exam has no configured full-paper question count. Update its exam pattern before creating a full-length mock.');
     for (const s of secs) {
-      const tp = exam.syllabus.find(x => x.subject === s.subject).topics; const topic = tp[crypto.randomInt(tp.length)];
-      const r = await ai.generateQuestions({ examName: exam.name, subject: s.subject, topic, difficulty: diff === 'any' ? 'medium' : diff, count: each, level: user.level });
-      if (r.ok) qs.push(...storeAiQuestions(user, exam, r.questions));
+      const syllabus = exam.syllabus.find(x => x.subject === s.subject);
+      if (!syllabus || !syllabus.topics.length) { notices.push(`${s.subject}: no syllabus topics configured.`); continue; }
+      const topic = syllabus.topics[crypto.randomInt(syllabus.topics.length)];
+      const r = await ai.generateQuestions({ examName: exam.name, subject: s.subject, topic, difficulty: diff === 'any' ? 'medium' : diff, count: Number(s.questions), level: user.level });
+      if (r.ok) qs.push(...storeAiQuestions(user, exam, r.questions).slice(0, Number(s.questions)));
+      if (!r.ok || !r.questions || r.questions.length < Number(s.questions)) notices.push(`${s.subject}: AI generated fewer than ${s.questions} required questions.`);
     }
-    qs = qs.slice(0, n); if (!qs.length) throw bad('The AI could not produce valid questions this time. Please try again.');
-    title = 'AI Generated Mock';
+    if (notices.length || qs.length !== n) throw bad(`Could not build the complete ${n}-question AI mock. ${notices.join(' ')} Please retry or use Full Mock → Real Exam Mode; no shortened mock was started.`);
+    title = 'AI Generated Full-Length Mock';
   } else if (kind === 'custom') { // e.g. quiz made from AI-generated question ids
     const ids = (b.question_ids || []).map(Number).filter(Number.isInteger).slice(0, 100);
     if (!ids.length) throw bad('No questions selected.');
