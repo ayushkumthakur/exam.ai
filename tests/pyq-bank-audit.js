@@ -30,8 +30,15 @@ const banks = [
   ['priority bank', buildPriorityQuestionBank(EXAMS, TOPICS)],
   ['catalog bank', buildCatalogQuestionBank(EXAMS, TOPICS, BASE, EXPANDED)]
 ];
+const provenanceBanks = [
+  ['base/expanded mapped bank', banks.find(([name]) => name === 'base/expanded mapped bank')[1]],
+  ['priority bank', banks.find(([name]) => name === 'priority bank')[1]],
+  ['catalog bank', banks.find(([name]) => name === 'catalog bank')[1]]
+];
 for (const [name, questions] of banks) {
   assert.ok(questions.length > 0, name + ' should not be empty');
+}
+for (const [name, questions] of provenanceBanks) {
   for (const q of questions) {
     assert.equal(q.source_type, 'ADMIN_PRACTICE', name + ' must not invent verified PYQ provenance');
     assert.equal(q.pyq_year ?? null, null, name + ' must not invent a PYQ year');
