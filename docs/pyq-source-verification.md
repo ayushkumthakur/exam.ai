@@ -13,6 +13,14 @@ This register records official-source discovery and audit limitations. It does *
 | RBI Grade B Phase-I | [RBI Grade B 2026 Phase-I information handout](https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5055); [2025 Phase-I handout](https://opportunities.rbi.org.in/scripts/bs_viewcontent.aspx?Id=4758) | Official RBI information handouts are published for exam instructions and format. | A handout or sample question does not establish that a question appeared in a previous live exam. |
 | RBI Grade B Phase-II | [RBI Grade B 2025 Phase-II information handouts](https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=4791); [RBI official recruitment/call-letter portal](https://opportunities.rbi.org.in/Scripts/CallLetters.aspx) | Official recruitment information and Phase-II handouts are available. | No complete official past-paper/answer-key set was established from these pages in this audit. Keep items as practice until item-specific past-paper evidence is available. |
 
+## Targeted paper comparison completed
+
+- Opened the official [UPSC CSE Prelims 2023 GS Paper I PDF](https://www.upsc.gov.in/sites/default/files/QP_CS_Pre_Exam_2023_280523.pdf) from the UPSC archive; the official PDF is 6.63 MB.
+- Ran targeted phrase checks for ten prompts found in static practice material: Tropic of Cancer; Battle of Plassey; repo rate; World Environment Day; Ramsar Convention; GDP; Indian National Congress founded in 1885; Constitution adopted on 26 November 1949; Constitution came into force on 26 January 1950; and UN founded in 1945.
+- **Exact matches established: 0/10** in this specific paper. This does not mean the topics never appeared in other years; it means these prompts were not matched to this paper by the checks recorded.
+- The paper contains actual, differently worded questions on subjects such as lakes/rivers, ports, trees, constitutional amendments, constitutional bodies, and parliamentary bills. Topic overlap alone is not a valid exact PYQ match.
+- An answer-key copy surfaced on a non-UPSC exam-preparation site, but the direct official answer-key file was not independently retrieved in this pass. Therefore no question was promoted to `VERIFIED_PYQ` on that basis.
+
 ## Import and verification rules
 
 1. Keep newly written or AI-generated questions as `ADMIN_PRACTICE`.
@@ -24,7 +32,7 @@ This register records official-source discovery and audit limitations. It does *
 
 ## Current audit result
 
-- **UPSC:** official 2025 and 2026 Prelims paper listings found; individual static-bank items not compared against the original PDFs and official answers.
+- **UPSC:** official 2025 and 2026 Prelims paper listings found; 2023 GS Paper I opened and ten targeted static-bank wording probes recorded, with zero exact matches established. A full bank-wide audit and direct official answer-key verification remain pending.
 - **SSC CGL:** official answer-key portal and relevant 2024/2025 notices found; historical response-sheet access is time-limited, and static-bank items have not been matched to a specific shift/answer key.
 - **RBI Grade B:** official 2026 Phase-I and 2025 Phase-I/II handout pages found; these establish format/instructions, not a complete official previous-year question bank.
 - **Static source-code banks:** the audit test asserts all generated seed-bank records are `ADMIN_PRACTICE` and have no invented PYQ year or item-specific source. Verified item count remains **0**.
