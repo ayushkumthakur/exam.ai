@@ -1,36 +1,44 @@
-/* Keep the mobile drawer fully usable on short phone screens. */
+/* Mobile drawer usability: keep all menu items and account controls reachable. */
 @media (max-width: 820px) {
-  #app .shell:has(.side.mobile-open) .bottom {
+  /* .bottom is a direct child of #app, a sibling of .shell. */
+  #app:has(#mobileSideNav.mobile-open) > .bottom {
     display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 
-  #app .side,
-  #app .side.mobile-open {
-    box-sizing: border-box !important;
+  #app #mobileSideNav,
+  #app #mobileSideNav.mobile-open {
+    position: fixed !important;
     top: 0 !important;
     bottom: 0 !important;
+    left: 0 !important;
+    width: min(78vw, 340px) !important;
     height: 100vh !important;
     height: 100dvh !important;
     max-height: 100dvh !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
     overscroll-behavior-y: contain !important;
     -webkit-overflow-scrolling: touch !important;
     touch-action: pan-y !important;
     padding-top: calc(18px + env(safe-area-inset-top)) !important;
-    padding-bottom: calc(28px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
     z-index: 120 !important;
   }
 
-  #app .side .side-foot {
+  #app #mobileSideNav .side-foot {
     flex: 0 0 auto !important;
     margin-top: 14px !important;
     margin-bottom: 12px !important;
-    padding-bottom: 8px !important;
+    padding-bottom: 10px !important;
   }
 
-  #app .side .sidebar-profile,
-  #app .side .sidebar-profile-main {
+  #app #mobileSideNav .sidebar-profile,
+  #app #mobileSideNav .sidebar-profile-main {
     min-height: 48px !important;
   }
 
