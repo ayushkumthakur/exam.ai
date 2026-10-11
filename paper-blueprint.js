@@ -85,8 +85,10 @@ function createPaperBlueprint({ exam, kind, mode = 'practice', questions, minute
     const completeEvidence = source === 'VERIFIED_PYQ' &&
       !!question.source_ref && !!question.answer_source_ref &&
       String(question.verification_notes || '').trim().length >= 20 &&
-      !!question.verified_by && !!question.verified_at &&
-      Number.isInteger(Number(question.pyq_year)) && !!String(question.pyq_paper || '').trim();
+      !!String(question.verified_by || '').trim() && !!question.verified_at &&
+      question.pyq_year !== null && question.pyq_year !== undefined &&
+      Number.isInteger(Number(question.pyq_year)) && Number(question.pyq_year) >= 2000 &&
+      !!String(question.pyq_paper || '').trim();
     if (completeEvidence) {
       sourceCounts.verified_pyq++;
       verifiedItems.push(question);
