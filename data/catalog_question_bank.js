@@ -372,6 +372,24 @@ function topicForQuestion(subject, questionTopic, allowed, index) {
   for (const item of preferred) if (allowed.includes(item)) return item;
   return allowed[index % Math.max(allowed.length,1)] || 'General';
 }
+function ensureValidOptions(question) {
+  const options = Array.isArray(question.options) ? question.options.map(String) : [];
+  const answerIndex = Number.isInteger(question.answer) && question.answer >= 0 && question.answer < options.length
+    ? question.answer : 0;
+  const correct = options[answerIndex] ?? 'Correct answer';
+  const unique = [correct];
+  for (let i = 0; i < options.length; i++) {
+    if (i !== answerIndex && !unique.includes(options[i])) unique.push(options[i]);
+  }
+  const fillers = ['None of these','Cannot be determined','All of these','Not enough information'];
+  for (const filler of fillers) if (unique.length < 4 && !unique.includes(filler)) unique.push(filler);
+  let suffix = 1;
+  while (unique.length < 4) {
+    const filler = 'Alternative option ' + suffix++;
+    if (!unique.includes(filler)) unique.push(filler);
+  }
+  return { ...question, options: unique.slice(0,4), answer: 0 };
+}
 function buildCatalogQuestionBank(exams, topics, baseQuestions, expandedQuestions, priorityRows) {
   const rows = [];
   const skip = new Set(['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B']);
@@ -383,8 +401,9 @@ function buildCatalogQuestionBank(exams, topics, baseQuestions, expandedQuestion
       const q = questions[i];
       const topic = topicForQuestion(subject, q.topic, allowed, i);
       if (!allowed.includes(topic)) continue;
+      const validQuestion = ensureValidOptions(q);
       rows.push({
-        ...q,
+        ...validQuestion,
         exam_id: exam.id,
         subject,
         topic,
