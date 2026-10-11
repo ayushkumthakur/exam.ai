@@ -258,7 +258,6 @@ if (qCount === 0) {
   }
 }
 
-
 /*
  * Idempotent exam-wise question-bank expansion.
  * This copies compatible authored practice questions into every catalog exam and
@@ -334,6 +333,24 @@ if (qCount === 0) {
     insertCatalog.run(item.exam_id, item.subject, item.topic, item.difficulty, item.text, JSON.stringify(item.options),
       item.answer, item.explanation, item.concept || item.topic, item.tip || 'Review each statement and the explanation.',
       now(), item.exam_id, item.subject, item.text);
+  }
+}
+
+/*
+ * Idempotent UPSC CSE practice-bank top-up migration.
+ * These authored practice questions are not official UPSC PYQs (source_type stays
+ * ADMIN_PRACTICE). Tops up Geography, Environment and General Awareness, which had
+ * fewer than 20 visible questions, plus a few more History/Economics questions.
+ */
+{
+  const UPSC1 = require('./content/upsc_cse_batch1.json');
+  const ins = db.prepare(`INSERT INTO questions
+    (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,created_at)
+    SELECT ?,?,?,?,?,?,?,?,?,?,'ADMIN_PRACTICE',?
+    WHERE NOT EXISTS (SELECT 1 FROM questions WHERE exam_id=? AND text=?)`);
+  for (const q of UPSC1.questions) {
+    ins.run('UPSC_CSE', q.subject, q.topic, q.difficulty, q.text, JSON.stringify(q.options),
+      q.answer, q.explanation, q.concept, q.tip, now(), 'UPSC_CSE', q.text);
   }
 }
 
