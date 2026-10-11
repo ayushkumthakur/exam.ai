@@ -41,13 +41,13 @@ function validateOfficialPyqSource(examId, sourceRef) {
  * It deliberately does not claim to fetch, parse, or content-verify the links.
  */
 function validatePyqVerification({ examId, questionSourceUrl, answerSourceUrl, reviewConfirmed, verificationNotes }) {
-  if (reviewConfirmed !== true) {
-    return { valid: false, reason: 'Explicit review confirmation is required. Compare exact wording, every option, exam/year/paper/shift, and the official answer before importing.' };
-  }
   const questionSource = validateOfficialPyqSource(examId, questionSourceUrl);
   if (!questionSource.valid) return { valid: false, reason: 'Official question-paper source rejected: ' + questionSource.reason };
   const answerSource = validateOfficialPyqSource(examId, answerSourceUrl);
   if (!answerSource.valid) return { valid: false, reason: 'Official answer source rejected: ' + answerSource.reason };
+  if (reviewConfirmed !== true) {
+    return { valid: false, reason: 'Explicit review confirmation is required. Compare exact wording, every option, exam/year/paper/shift, and the official answer before importing.' };
+  }
   const notes = String(verificationNotes || '').trim();
   if (notes.length < 20) {
     return { valid: false, reason: 'Add at least 20 characters of reviewer notes describing how the exact question/options and answer were checked.' };
