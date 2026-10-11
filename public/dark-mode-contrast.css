@@ -155,3 +155,56 @@
     color: #edf2ff !important;
   }
 }
+
+
+/* Final high-specificity mobile drawer override. Keep the scrim behind the drawer. */
+@media (max-width: 820px) {
+  html[data-theme="dark"] body #app nav#mobileSideNav.side,
+  html[data-theme="dark"] body #app nav#mobileSideNav.side.mobile-open {
+    display: flex !important;
+    position: fixed !important;
+    z-index: 1001 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: min(84vw, 320px) !important;
+    height: 100dvh !important;
+    background: #11182a !important;
+    background-color: #11182a !important;
+    background-image: none !important;
+    color: #edf2ff !important;
+    opacity: 1 !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+    mix-blend-mode: normal !important;
+    isolation: isolate !important;
+    transform: translateX(-105%);
+  }
+  html[data-theme="dark"] body #app nav#mobileSideNav.side.mobile-open {
+    transform: translateX(0) !important;
+  }
+  html[data-theme="dark"] body #app nav#mobileSideNav.side > .brand,
+  html[data-theme="dark"] body #app nav#mobileSideNav.side > .brand *,
+  html[data-theme="dark"] body #app nav#mobileSideNav.side > a.nav,
+  html[data-theme="dark"] body #app nav#mobileSideNav.side > a.nav span,
+  html[data-theme="dark"] body #app nav#mobileSideNav.side > .side-foot,
+  html[data-theme="dark"] body #app nav#mobileSideNav.side > .side-foot * {
+    color: #d7e1f5 !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+  }
+  html[data-theme="dark"] body #app nav#mobileSideNav.side > a.nav:not(.on) {
+    background: transparent !important;
+  }
+  html[data-theme="dark"] body #app nav#mobileSideNav.side > a.nav.on {
+    background: linear-gradient(110deg,#1769ff,#3688ff) !important;
+    color: #ffffff !important;
+  }
+  html[data-theme="dark"] body #app button.mobile-nav-scrim,
+  html[data-theme="dark"] body #app button.mobile-nav-scrim.is-open {
+    z-index: 1000 !important;
+    background: rgba(2,8,23,.64) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
