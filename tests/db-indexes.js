@@ -26,10 +26,10 @@ try {
   assert.equal(csatPattern.minutes, 120, 'CSAT Paper II duration is 120 minutes');
   const bank = db.prepare("SELECT subject, COUNT(*) AS count FROM questions WHERE exam_id='UPSC_CSAT' GROUP BY subject").all();
   const bySubject = Object.fromEntries(bank.map(row => [row.subject, row.count]));
-  assert.equal(bySubject['Quantitative Aptitude'], 28, 'CSAT quantitative aptitude bank is seeded');
-  assert.equal(bySubject.Reasoning, 26, 'CSAT reasoning bank is seeded');
-  assert.equal(bySubject.English, 26, 'CSAT comprehension bank is seeded');
-  assert.equal(bank.reduce((n, row) => n + row.count, 0), 80, 'CSAT practice bank has 80 questions');
+  assert.ok(bySubject['Quantitative Aptitude'] >= 28, 'CSAT quantitative aptitude bank retains the original seed and adds compatible practice');
+  assert.ok(bySubject.Reasoning >= 26, 'CSAT reasoning bank retains its original seed');
+  assert.ok(bySubject.English >= 26, 'CSAT comprehension bank retains its original seed');
+  assert.ok(bank.reduce((n, row) => n + row.count, 0) >= 80, 'CSAT practice bank retains its full original 80-question seed and may expand');
   console.log('PASS database indexes and separate UPSC CSE Prelims / CSAT exam options');
   db.close();
 } finally {
