@@ -667,11 +667,11 @@ async function pgPractice(parts, params) {
   }
   const examId = S.user.exam_id === 'UPSC_CSE' && ['UPSC_CSE','UPSC_CSAT'].includes(paperId) ? paperId : S.user.exam_id;
   const ex = (await get('/api/exams/' + examId)).exam; const box = h('div', { class: 'stack' });
-  const sel = { subject: params.get('subject') || '', topic: params.get('topic') || '', difficulty: '', source: '' };
+  const sel = { subject: params.get('subject') || '', topic: params.get('topic') || '', difficulty: '', source: '', count: [10, 20, 30, 50].includes(Number(params.get('count'))) ? Number(params.get('count')) : 20 };
   async function start(src, titleOverride) {
     box.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Preparing questions…'));
     try {
-      const r = await get('/api/practice/questions' + q({ ...sel, source: src ?? sel.source, limit: 20, exam_id: examId }));
+      const r = await get('/api/practice/questions' + q({ ...sel, source: src ?? sel.source, limit: sel.count, exam_id: examId }));
       if (!r.questions.length) { setup(h('div', { class: 'note' }, 'No questions found for this selection yet. Try another topic, or generate questions with the AI Tutor.')); return; }
       box.replaceChildren(runSession(r.questions, { mode: 'practice', title: titleOverride || sel.topic || sel.subject || 'Mixed practice', examId, onFinish: () => setup() }));
     } catch (e) { setup(errBox(e, () => start(src, titleOverride))); }
@@ -691,8 +691,9 @@ async function pgPractice(parts, params) {
     const topics = ex.syllabus.find(s => s.subject === sel.subject)?.topics || [];
     const top = h('select', { 'aria-label': 'Topic', disabled: !sel.subject, onchange: (e) => sel.topic = e.target.value }, h('option', { value: '' }, 'All topics'), topics.map(t => h('option', { value: t, selected: t === sel.topic }, t)));
     const dif = h('select', { 'aria-label': 'Difficulty', onchange: (e) => sel.difficulty = e.target.value }, [['', 'Any difficulty'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === sel.difficulty }, l)));
+    const count = h('select', { 'aria-label': 'Number of questions', onchange: (e) => sel.count = Number(e.target.value) }, [10, 20, 30, 50].map(n => h('option', { value: n, selected: n === sel.count }, `${n} questions`)));
     box.replaceChildren(h('div', { class: 'row between' }, h('h1', {}, 'Practice'), S.user.exam_id === 'UPSC_CSE' ? h('a', { class: 'btn ghost sm', href: '#/practice' }, '← Choose paper') : null), h('p', { class: 'muted' }, `Questions for ${ex.name} only. Every question shows where it came from.`), examId === 'UPSC_CSAT' ? h('div', { class: 'info' }, 'CSAT is a qualifying paper. You need at least 33% to qualify.') : null, extra || null,
-      h('div', { class: 'card stack' }, h('div', { class: 'grid g3' }, h('div', {}, h('label', {}, 'Subject'), subj), h('div', {}, h('label', {}, 'Topic'), top), h('div', {}, h('label', {}, 'Difficulty'), dif)),
+      h('div', { class: 'card stack' }, h('div', { class: 'grid g3' }, h('div', {}, h('label', {}, 'Subject'), subj), h('div', {}, h('label', {}, 'Topic'), top), h('div', {}, h('label', {}, 'Difficulty'), dif), h('div', {}, h('label', {}, 'Number of questions'), count)),
         h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => start() }, 'Practice Now'), h('button', { class: 'btn', onclick: () => startSmart() }, '✨ Smart Practice'), h('a', { class: 'btn', href: '#/revision?mistakes=1' }, 'Revise My Mistakes'), S.config.ai_enabled ? h('button', { class: 'btn', onclick: () => genPanel() }, '✨ Generate AI questions') : null)));
   }
   function genPanel() {
