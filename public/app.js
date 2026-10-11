@@ -784,7 +784,7 @@ async function pgCA() {
           h('button', { class: 'btn ' + (period === 'weekly' ? 'primary' : ''), onclick: () => { period = 'weekly'; draw(); } }, 'Last 7 days'),
           h('select', { 'aria-label': 'Filter current affairs category', onchange: (ev) => { category = ev.target.value; draw(); } },
             h('option', { value: '', selected: !category }, 'All categories'),
-            (data.categories || []).map(cat => h('option', { value: cat, selected: category === cat }, cat)))),
+            (data.categories || []).map(cat => h('option', { value: cat, selected: category === cat }, cat))),
         h('p', { class: 'small muted' }, 'Auto-refresh: official feeds every 6 hours; sourced AI digest daily at 7:00 AM IST when Gemini grounding is configured.'));
       const cards = (data.items || []).map(item => {
         const sentences = String(item.summary || '').split(/(?:\n+|(?<=[.!?])\s+|;\s+)/).map(s => s.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim()).filter(Boolean);
