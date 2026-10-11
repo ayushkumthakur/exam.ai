@@ -52,9 +52,12 @@ Set variables in your deployment environment or local shell. Never commit API ke
 | `PORT` | HTTP port; defaults to 3000. |
 | `NODE_ENV` | Set to `production` for production cookie/security behavior. |
 | `DATA_DIR` | Directory for persistent app data and the application secret. Back this directory up. |
-| `AI_PROVIDER` | Primary provider: `gemini` (default) or `anthropic`. If it is unavailable, the other configured provider is used for timeouts, network errors, HTTP 429, and HTTP 5xx responses. |
+| `AI_PROVIDER` | Primary provider: `gemini` (default), `groq`, or `anthropic`. For text-only requests, configured providers automatically fall back in Gemini → Groq → Anthropic order (starting with the selected primary) after timeouts, network errors, HTTP 401/403/429, or HTTP 5xx responses. Google-grounded current affairs remain Gemini-only. |
 | `GEMINI_API_KEY` | First secret API key for Gemini; required if Gemini is the primary or backup provider. |\n| `GEMINI_API_KEY_2` | Optional second Gemini key, used if the first hits quota/authentication or transient errors. |\n| `GEMINI_API_KEY_3` | Optional third Gemini key, used if earlier configured keys fail with retryable errors. |
 | `GEMINI_MODEL` | Optional Gemini model override; defaults to `gemini-2.5-flash`. |
+| `GROQ_API_KEY` | Optional secret Groq API key for text-only AI fallback. Add it in Railway Variables; never commit it. |
+| `GROQ_API_KEY_2` | Optional backup Groq key. |
+| `GROQ_MODEL` | Optional Groq model override; defaults to `llama-3.3-70b-versatile`. |
 | `ANTHROPIC_API_KEY` | Secret API key for Anthropic; required if Anthropic is the primary or backup provider. |
 | `ANTHROPIC_MODEL` | Optional Anthropic model override; defaults to the model configured in `ai.js`. |
 | `ADMIN_EMAILS` | Comma-separated email addresses granted admin role by the application. |
