@@ -2,30 +2,32 @@
 
 Last checked: 2026-10-11
 
-This is a source-discovery register, not a claim that any existing question has been verified. No existing question is promoted to `VERIFIED_PYQ` by this change.
+This register records official-source discovery and audit limitations. It does **not** claim that any existing question has been individually verified. No existing question is promoted to `VERIFIED_PYQ` by this audit.
 
-## Approved official starting points
+## Official source register
 
-| Exam | Official source | What it establishes | Important limitation |
+| Exam | Official source checked | What it establishes | Limitation |
 |---|---|---|---|
-| UPSC CSE Prelims GS Paper I and CSAT Paper II | https://www.upsc.gov.in/examinations/previous-question-papers | UPSC publishes downloadable previous question papers, including Civil Services Preliminary Examination papers. | Verify the exact PDF, year, paper, stem, options and answer before importing each item. |
-| UPSC archived papers | https://www.upsc.gov.in/examinations/previous-question-papers/archives | Older official question papers. | Same per-question and answer review required. |
-| SSC CGL | https://ssc.gov.in/ | Official SSC notices, syllabus and answer-key announcements. | Candidate response sheets and final answer keys may be login-gated and available only for a limited window. A syllabus, notice, coaching-site copy, or generic SSC URL is not evidence that a specific question is a verified PYQ. Capture an official item-specific reference and answer provenance during the available window. |
-| RBI Grade B recruitment and information handouts | https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=4758 (Phase-I information handout, Panel Year 2025); https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=4791 (Phase-II information handouts, Panel Year 2025) | Official RBI recruitment notices and exam information handouts are available. | An information handout is not itself a complete previous-year question paper. Treat questions written from its sample formats as practice, not PYQs. Require a specific official paper/response-sheet/answer-key source before marking an item VERIFIED_PYQ. |
-| RBI official recruitment notices and updates | https://opportunities.rbi.org.in/Scripts/CallLetters.aspx | RBI identifies this as its official place for recruitment communications and warns about look-alike domains. | Official-hosted recruitment documents do not automatically prove an individual question is from an actual exam. |
+| UPSC CSE Prelims GS Paper I and CSAT Paper II | [UPSC previous question papers](https://www.upsc.gov.in/examinations/previous-question-papers); [UPSC CSE Prelims 2026 exam page](https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026); [UPSC archives](https://www.upsc.gov.in/examinations/previous-question-papers/archives) | UPSC lists downloadable previous papers. The 2026 exam page lists GS Paper I and GS Paper II uploaded on 25 May 2026. The 2025 listing also contains both Prelims papers. | Listing a paper is not item-level verification. Match the exact paper, year, stem, options and authoritative answer before importing a question. |
+| SSC CGL Tier-I | [SSC answer-key portal](https://ssc.gov.in/home/answer-key); [2024 Tier-I final answer-key notice](https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Writeup_Final_Anwerkey_CGLE_2024_T1_191224.pdf); [2025 Tier-I notice](https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/writeup_181225.pdf) | SSC's 19 December 2024 notice says final answer keys and candidate response sheets were available through registered login from 19 December 2024 to 8 January 2025. The 2025 notice says final keys and papers would be hosted later. | Candidate response sheets may be login-gated and time-limited. A notice or generic SSC URL is not evidence that a specific question appeared in a specific shift. Do not substitute coaching-site copies for official item evidence. |
+| RBI Grade B Phase-I | [RBI Grade B 2026 Phase-I information handout](https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5055); [2025 Phase-I handout](https://opportunities.rbi.org.in/scripts/bs_viewcontent.aspx?Id=4758) | Official RBI information handouts are published for exam instructions and format. | A handout or sample question does not establish that a question appeared in a previous live exam. |
+| RBI Grade B Phase-II | [RBI Grade B 2025 Phase-II information handouts](https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=4791); [RBI official recruitment/call-letter portal](https://opportunities.rbi.org.in/Scripts/CallLetters.aspx) | Official recruitment information and Phase-II handouts are available. | No complete official past-paper/answer-key set was established from these pages in this audit. Keep items as practice until item-specific past-paper evidence is available. |
 
-## Import rules
+## Import and verification rules
 
 1. Keep newly written or AI-generated questions as `ADMIN_PRACTICE`.
-2. Only use `VERIFIED_PYQ` after a human reviewer checks the exact original question, exam, year, paper/phase, options and official answer/source.
-3. The import endpoint now rejects unapproved hostnames for the three priority exam families. An allowlisted hostname is only a first-level URL check; it does not fetch or compare the document contents, so it is **not** sufficient by itself to mark a question verified.
-4. Do not use third-party coaching websites, search-result pages, social media, or generic PDF mirrors as the authoritative source for a verified item.
-5. If the official SSC response sheet has expired or an RBI official paper cannot be located, leave the question as `ADMIN_PRACTICE` or `PYQ_PATTERN` and record the limitation rather than guessing.
-6. For source references, prefer a direct official document URL or an official exam notice page that links to the exact document. Record the official answer-key reference separately where the schema supports it; otherwise include it in the review note/source metadata.
+2. Only use `VERIFIED_PYQ` after a human reviewer checks the exact original question, exam, year, paper/phase/shift, options and official answer/source.
+3. The import endpoint's approved-host check is only a URL-domain check. It does not fetch or compare the document contents, so an allowlisted official hostname alone is **not** sufficient to mark a question verified.
+4. Do not use third-party coaching websites, search-result pages, social media, or generic PDF mirrors as authoritative evidence for a verified item.
+5. If an official SSC response sheet has expired or an RBI official past paper cannot be located, leave the question as `ADMIN_PRACTICE` or `PYQ_PATTERN` and record the limitation rather than guessing.
+6. Record a direct official document URL and answer-key evidence for every verified item. If answer-key evidence is unavailable, do not claim the answer has been officially verified.
 
-## Source review result at this stage
+## Current audit result
 
-- UPSC: official previous-question-paper portal found; suitable starting point for item-by-item verification.
-- SSC CGL: official commission domain and syllabus/answer-key announcements found; the 2024 Tier-II final answer-key notice says candidate response sheets were accessible through login for a limited period. It does not make an arbitrary third-party paper a verified PYQ.
-- RBI Grade B: official Phase-I and Phase-II information handouts found for 2025; these are exam guidance/sample-format sources, not proof of complete actual PYQ content.
-- Existing question bank: no bulk conversion to `VERIFIED_PYQ` was performed. Original reviewed questions remain `ADMIN_PRACTICE`.
+- **UPSC:** official 2025 and 2026 Prelims paper listings found; individual static-bank items not compared against the original PDFs and official answers.
+- **SSC CGL:** official answer-key portal and relevant 2024/2025 notices found; historical response-sheet access is time-limited, and static-bank items have not been matched to a specific shift/answer key.
+- **RBI Grade B:** official 2026 Phase-I and 2025 Phase-I/II handout pages found; these establish format/instructions, not a complete official previous-year question bank.
+- **Static source-code banks:** the audit test asserts all generated seed-bank records are `ADMIN_PRACTICE` and have no invented PYQ year or item-specific source. Verified item count remains **0**.
+- **Production database:** not directly queried in this static source-code audit. Do not infer its contents or verified-PYQ count from this register.
+
+The next step for actual verified PYQs is to obtain an official paper/response sheet plus official answer evidence, then review and import each exact item with provenance. Do not bulk-convert exam-style practice questions into PYQs.
