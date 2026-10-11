@@ -134,7 +134,38 @@
       }
     ],
     "exact_matches_established": 0,
-    "interpretation": "All ten targeted wording checks failed to establish an exact match in this specific paper. This does not prove those facts never appeared in another year's exam. No item is promoted to VERIFIED_PYQ."
+    "interpretation": "All ten targeted wording checks failed to establish an exact match in this specific paper. This does not prove those facts never appeared in another year's exam. No item is promoted to VERIFIED_PYQ.",
+    "conceptual_overlaps": [
+      {
+        "official_paper_question": "UPSC CSE Prelims 2023 GS-I, Q33",
+        "official_topic": "Chief purpose of a country's Constitution",
+        "related_practice_bank_topics": [
+          "Constitution describes India as a Union of States",
+          "Fundamental Rights / constitutional articles"
+        ],
+        "match_status": "concept_overlap_only",
+        "reason": "Different question stem and options; must not be labelled as the same PYQ."
+      },
+      {
+        "official_paper_question": "UPSC CSE Prelims 2023 GS-I, Q34",
+        "official_topic": "Constitutional amendment widely believed enacted to overcome judicial interpretations of Fundamental Rights",
+        "related_practice_bank_topics": [
+          "Fundamental Rights are in Part III",
+          "Article 32 constitutional remedies"
+        ],
+        "match_status": "concept_overlap_only",
+        "reason": "Same broad polity area, but different question and options."
+      },
+      {
+        "official_paper_question": "UPSC CSE Prelims 2023 GS-I, Q37",
+        "official_topic": "Differences between Finance Bill and Money Bill, including Rajya Sabha powers",
+        "related_practice_bank_topics": [
+          "A Money Bill can be introduced in either House of Parliament (practice item; answer false)"
+        ],
+        "match_status": "concept_overlap_only",
+        "reason": "The practice item tests a related fact but is not the official multi-statement question."
+      }
+    ]
   },
-  "last_progress_note": "Official 2023 GS-I paper opened and indexed text inspected; 10 targeted bank-prompt checks recorded. Static bank remains 0 verified PYQs pending exact item-level matches across official papers and official answer evidence."
+  "last_progress_note": "Compared 10 static-bank prompts against official UPSC CSE Prelims 2023 GS-I text and identified three topic-level overlaps (Q33, Q34, Q37); no exact wording/options matches established. None marked VERIFIED_PYQ."
 }
