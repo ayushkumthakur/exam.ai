@@ -179,4 +179,31 @@ for (const exam of EXAMS.filter(e => !prioritySet.has(e.id))) {
   }
 }
 
+
+const realismExamIds = ['UPSC_CSE','SSC_CGL','RBI_B'];
+for (const id of realismExamIds) {
+  const exam = EXAMS.find(item => item.id === id);
+  const questions = exam.pattern.sections.flatMap((section, si) =>
+    Array.from({ length: section.questions }, (_, i) => ({
+      id: si * 1000 + i + 1,
+      subject: section.subject,
+      difficulty: ['easy','medium','hard'][(i + si) % 3]
+    }))
+  );
+  const blueprint = createPaperBlueprint({
+    exam, kind: 'full_mock', mode: 'real', questions,
+    minutes: exam.pattern.minutes, startedAt: 1000
+  });
+  assert.equal(blueprint.questionCount, exam.pattern.sections.reduce((sum, section) => sum + section.questions, 0));
+  assert.equal(blueprint.durationMinutes, exam.pattern.minutes);
+  assert.equal(blueprint.realism.patternIntegrity, true, id + ' preserves section counts and marking');
+  assert.equal(
+    blueprint.realism.difficultyDistribution.easy + blueprint.realism.difficultyDistribution.medium + blueprint.realism.difficultyDistribution.hard,
+    blueprint.questionCount, id + ' reports difficulty labels without altering the paper'
+  );
+  assert.ok(blueprint.realism.patternStatus, id + ' discloses pattern verification status');
+  assert.ok(Array.isArray(blueprint.realism.limitations), id + ' discloses known runtime limitations');
+}
+assert.deepEqual(allocateSectionTargets([{questions:25},{questions:25},{questions:50}],20),[5,5,10]);
+
 console.log('PASS AI quality, paper blueprint, and all-exam question-bank coverage tests');
