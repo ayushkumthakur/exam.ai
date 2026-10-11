@@ -383,7 +383,19 @@ function buildCatalogQuestionBank(exams, topics, baseQuestions, expandedQuestion
       const q = questions[i];
       const topic = topicForQuestion(subject, q.topic, allowed, i);
       if (!allowed.includes(topic)) continue;
-      rows.push({ ...q, exam_id: exam.id, subject, topic, source_type:'ADMIN_PRACTICE', pyq_year:null, pyq_paper:null, pyq_shift:null, source_ref:null });
+      rows.push({
+        ...q,
+        exam_id: exam.id,
+        subject,
+        topic,
+        explanation: typeof q.explanation === 'string' && q.explanation.trim().length >= 20
+          ? q.explanation
+          : 'Review the stated concept and check how each option follows from the underlying rule.',
+        concept: q.concept || topic,
+        tip: q.tip || 'Identify the concept being tested and eliminate options that contradict it.',
+        source_type:'ADMIN_PRACTICE',
+        pyq_year:null, pyq_paper:null, pyq_shift:null, source_ref:null
+      });
     }
   };
   for (const exam of exams) {
