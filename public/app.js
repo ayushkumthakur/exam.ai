@@ -802,7 +802,7 @@ async function pgCA() {
       root.replaceChildren(controls, ...(cards.length ? cards : [h('div', { class: 'card empty stack' },
         h('h2', {}, 'No items for this period yet'),
         h('p', {}, 'The feed may not have published a relevant update today. Switch to “Last 7 days” or check back after the next automatic refresh.'),
-        h('p', { class: 'small muted' }, 'Only items with a source link or an official feed origin should be relied on for revision.'))));
+        h('p', { class: 'small muted' }, 'Only items with a source link or an official feed origin should be relied on for revision.'))]));
     } catch (e) {
       root.replaceChildren(h('div', { class: 'card stack' }, h('h1', {}, 'Daily Current Affairs'), errBox(e, draw)));
     }
