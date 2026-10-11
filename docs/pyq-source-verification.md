@@ -27,8 +27,8 @@ A case-insensitive literal search was run across `data/priority_question_bank.js
 
 ## Fuzzy lexical triage added
 
-- The automated static-bank audit now also computes a simple lexical-overlap score between 30 short fragments from UPSC CSE Prelims 2023 GS Paper I and the question text in each bank.
-- It prints the highest-scoring candidates for human inspection, with bank name, source-paper question number, shared distinctive terms, and score.
+- The automated static-bank audit now also computes a simple lexical-overlap score between 30 short fragments from UPSC CSE Prelims 2023 GS Paper I and the question text in each bank. Common exam/geography terms (for example, “river”, “lake”, “India”, and “following”) are filtered to reduce generic false positives.
+- It prints the highest-scoring candidates for human inspection, with bank name, source-paper question number, shared terms, and score. Any output must still be inspected; an overlap score is not a claim that two questions are the same.
 - This is intentionally a review queue only. Lexical overlap can produce false positives for common syllabus concepts and miss paraphrases with different vocabulary; it does not confirm that a question is the same question, does not check options or the official answer, and cannot set `VERIFIED_PYQ`.
 - The exact phrase screen remains a separate regression guard. Both outputs must be interpreted within the stated sample of 30 fragments, not as a complete paper-to-bank audit.
 
