@@ -9,8 +9,8 @@ async function pgTutor(parts, params) {
   let hist = S.config.ai_enabled ? (await get('/api/ai/history')).messages : [];
   const ex = (await get('/api/exams/' + S.user.exam_id)).exam; let tab = 'chat';
   const root = h('div', { class: 'stack' }), view = h('div', { class: 'stack' });
-  const tabs = () => h('div', { class: 'chips' }, [['chat', 'Ask AI'], ['paper', 'Solve Paper'], ['gen', 'Generate Questions'], ['notes', 'Study Material']].map(([k, l]) => h('button', { class: 'chip' + (tab === k ? ' on' : ''), onclick: () => { tab = k; draw(); } }, l)));
-  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), h('p', { class: 'small muted' }, 'Fresh context per question. Saved chat history is kept separately for reference and is not sent with new questions.'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'AI is not configured on this server yet. An admin needs to add GEMINI_API_KEY or ANTHROPIC_API_KEY in Railway.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
+  const tabs = () => h('div', { class: 'chips' }, [['chat', 'Ask AI'], ['coach', 'Study Coach'], ['paper', 'Solve Paper'], ['gen', 'Generate Questions'], ['notes', 'Study Material']].map(([k, l]) => h('button', { class: 'chip' + (tab === k ? ' on' : ''), onclick: () => { tab = k; draw(); } }, l)));
+  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), h('p', { class: 'small muted' }, 'Fresh context per question. Saved chat history is kept separately for reference and is not sent with new questions.'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'AI is not configured on this server yet. An admin needs to add GEMINI_API_KEY or ANTHROPIC_API_KEY in Railway.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, coach: tCoach, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
 
   function tChat() {
     const log = h('div', { class: 'chat', 'aria-live': 'polite' }), ta = h('textarea', { rows: 2, placeholder: `Ask a ${ex.name} doubt, paste a question, or attach a photo…`, 'aria-label': 'Your question' });
@@ -76,6 +76,49 @@ async function pgTutor(parts, params) {
       catch (e) { out.replaceChildren(errBox(e, () => go_.click())); } go_.disabled = false; } }, 'Generate');
     const tGen2 = () => { view.replaceChildren(); tGen(); };
     view.append(h('div', { class: 'card stack' }, h('p', { class: 'muted' }, 'Questions are generated for your exam and checked for a valid answer and explanation before you see them. Leave it to us: weak topics are used to focus them when you practise a topic you often get wrong.'), pick, h('div', { class: 'grid g2' }, h('div', {}, h('label', {}, 'Difficulty'), dif), h('div', {}, h('label', {}, 'How many'), cnt)), go_), out);
+  }
+  async function tCoach() {
+    const out = h('div', { class: 'stack' });
+    view.append(h('div', { class: 'card stack' },
+      h('h2', {}, 'Your personal study coach'),
+      h('p', { class: 'muted' }, 'A practical plan based on your real practice history, weak topics and daily target—not a generic timetable.'),
+      h('div', { class: 'row' }, h('span', { class: 'spin' }), ' Building your plan…'), out));
+    try {
+      const d = await get('/api/home');
+      const weak = Array.isArray(d.weak_topics) ? d.weak_topics.slice(0, 5) : [];
+      const todayDone = Math.max(0, Number(d.today && d.today.questions) || 0);
+      const goal = Math.max(1, Number(d.target && d.target.questions) || 20);
+      const solved = Math.max(0, Number(d.questions_solved) || 0);
+      const accuracy = d.accuracy == null ? null : Number(d.accuracy);
+      const remaining = Math.max(0, goal - todayDone);
+      const actions = [];
+      if (weak.length) {
+        weak.slice(0, 3).forEach(w => actions.push({
+          title: 'Repair ' + w.topic,
+          detail: w.subject + ' · ' + (w.accuracy == null ? 'Accuracy not available' : w.accuracy + '% accuracy'),
+          button: 'Practise this topic',
+          run: () => go('#/practice' + q({ subject: w.subject, topic: w.topic, start: 1 }))
+        }));
+      } else if (solved < 10) {
+        actions.push({ title: 'Build your baseline', detail: 'Complete a short mixed practice set so the coach can identify your strengths and weak areas.', button: 'Start practice', run: () => go('#/practice?start=1') });
+      } else {
+        actions.push({ title: 'Keep your foundation strong', detail: 'No weak topic is flagged yet. Continue mixed practice and review any question you miss.', button: 'Start practice', run: () => go('#/practice?start=1') });
+      }
+      actions.push({ title: 'Test exam readiness', detail: 'Use a timed mock to practise pacing and identify gaps under exam conditions.', button: 'Take a mock test', run: () => go('#/tests') });
+      actions.push({ title: 'Clear one doubt', detail: 'Ask the AI Tutor to explain a concept or question you got wrong.', button: 'Ask AI Tutor', run: () => { tab = 'chat'; draw(); } });
+      out.replaceChildren(
+        h('div', { class: 'grid g2' },
+          h('div', { class: 'card' }, h('span', { class: 'small muted' }, 'Questions solved'), h('h2', {}, String(solved)), h('p', { class: 'small muted' }, 'Across your saved practice history')),
+          h('div', { class: 'card' }, h('span', { class: 'small muted' }, 'Overall accuracy'), h('h2', {}, accuracy == null ? 'Not enough data' : accuracy + '%'), h('p', { class: 'small muted' }, 'Based on recorded answers')),
+          h('div', { class: 'card' }, h('span', { class: 'small muted' }, 'Daily goal'), h('h2', {}, todayDone + ' / ' + goal), h('p', { class: 'small muted' }, remaining ? remaining + ' more question' + (remaining === 1 ? '' : 's') + ' to reach today’s target' : 'Daily question target reached')),
+          h('div', { class: 'card' }, h('span', { class: 'small muted' }, 'Target exam'), h('h2', {}, d.exam && d.exam.name || ex.name), h('p', { class: 'small muted' }, d.days_left == null ? 'Set an exam date in your profile to plan backwards.' : d.days_left > 0 ? d.days_left + ' days until your target date' : d.days_left === 0 ? 'Your target date is today' : 'Your target date has passed'))),
+        h('h3', {}, 'Your next best actions'),
+        ...actions.map((a, i) => h('div', { class: 'card row between', style: 'align-items:center;gap:1rem;flex-wrap:wrap' },
+          h('div', { class: 'stack', style: 'gap:.25rem;min-width:0;flex:1' }, h('b', {}, (i + 1) + '. ' + a.title), h('p', { class: 'small muted' }, a.detail)),
+          h('button', { class: 'btn primary sm', onclick: a.run }, a.button))),
+        weak.length ? h('p', { class: 'small muted' }, 'Recommendations use your recorded performance. Accuracy is only meaningful after you have attempted questions; the coach does not label practice questions as verified previous-year questions.') : h('div', { class: 'note' }, 'As you answer more questions, this page will use your recorded results to surface specific weak topics. No practice history is changed by opening this page.')
+      );
+    } catch (e) { out.replaceChildren(errBox(e, () => tCoach())); }
   }
   function tNotes() {
     const [pick, st] = subjTopic(); const out = h('div'); const kind = h('select', {}, [['short', 'Short notes'], ['revision', 'Revision notes'], ['formula', 'Formula sheet'], ['summary', 'Topic summary'], ['facts', 'Important facts'], ['onepage', 'One-page revision sheet'], ['flashcards', 'Flashcards']].map(([v, l]) => h('option', { value: v }, l)));
