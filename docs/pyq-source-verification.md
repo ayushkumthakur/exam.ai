@@ -34,6 +34,14 @@ A case-insensitive literal search was run across `data/priority_question_bank.js
 5. If an official SSC response sheet has expired or an RBI official past paper cannot be located, leave the question as `ADMIN_PRACTICE` or `PYQ_PATTERN` and record the limitation rather than guessing.
 6. Record a direct official document URL and answer-key evidence for every verified item. If answer-key evidence is unavailable, do not claim the answer has been officially verified.
 
+## Mock-test provenance and reliability audit
+
+- The mock blueprint reports paper-structure integrity separately from item provenance. Correct section counts, marks, and timer settings do not certify question wording or answers.
+- Source counts distinguish items with complete verification metadata, original `ADMIN_PRACTICE`, `PYQ_PATTERN`, `AI_GENERATED`, incomplete legacy PYQ labels, and other sources.
+- A set is reported as a verified same-paper set only when every item has question and answer source URLs, reviewer notes, reviewer identity/timestamp, year and paper metadata, and all verified items share one year/paper/shift key.
+- Mixed practice/AI/verified sets are not reported as a complete official paper. Legacy PYQ labels missing provenance are counted separately.
+- This is a provenance-metadata gate, not automatic PDF-content validation. A reviewer must still compare exact wording, options, year/paper/shift and the official answer. The normal exam-realism mock uses reviewed original practice questions and does not become an official PYQ paper just because its blueprint matches.
+
 ## Current audit result
 
 - **UPSC:** official 2025 and 2026 Prelims paper listings found; the official answer-key archive was located but its JS filter did not reveal the 2023 answer-key document in this text view; 2023 GS Paper I opened and ten targeted static-bank wording probes recorded, with zero exact matches established. A full bank-wide audit and direct official answer-key verification remain pending.
