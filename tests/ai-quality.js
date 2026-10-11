@@ -123,8 +123,42 @@ const upscBlueprint = createPaperBlueprint({
   kind: 'full_mock', mode: 'real', questions: cglQuestions, minutes: 120, startedAt: 100000
 });
 assert.equal(upscBlueprint.timedSections, false, 'exams without verified sectional timers retain one overall timer');
+assert.equal(upscBlueprint.realism.questionProvenanceStatus, 'practice_or_ai_questions_not_official_paper',
+  'a realistic structure does not imply official PYQ provenance');
+assert.equal(upscBlueprint.realism.sourceCounts.admin_practice, cglQuestions.length,
+  'mock blueprint reports original practice questions separately from verified PYQs');
+assert.equal(upscBlueprint.realism.sourceCounts.verified_pyq, 0,
+  'questions without complete item-level provenance never count as verified');
 
-console.log('PASS AI question quality, pattern audit and real-paper blueprint regression tests');
+const verifiedSample = {
+  id: 'official-1', subject: 'Reasoning', source_type: 'VERIFIED_PYQ',
+  source_ref: 'https://ssc.gov.in/question-paper.pdf',
+  answer_source_ref: 'https://ssc.gov.in/answer-key.pdf',
+  verification_notes: 'Compared exact stem, option order, shift, year and correct answer to official documents.',
+  verified_by: 'reviewer@example.org', verified_at: 1791690000000, pyq_year: 2024, pyq_paper: 'Tier-I', pyq_shift: 'Shift 1'
+};
+const verifiedBlueprint = createPaperBlueprint({
+  exam: { id: 'SSC_CGL', name: 'SSC CGL', pattern: { minutes: 60, sections: [{ subject: 'Reasoning', questions: 1, marks: 2, negative: 0.5 }] } },
+  kind: 'full_mock', mode: 'real', questions: [verifiedSample], minutes: 60, startedAt: 100000
+});
+assert.equal(verifiedBlueprint.realism.sourceCounts.verified_pyq, 1,
+  'complete item-level metadata is counted explicitly');
+assert.equal(verifiedBlueprint.realism.questionProvenanceStatus, 'verified_pyq_set_same_paper',
+  'a complete single-paper set is distinguishable from a mixed mock');
+const mixedBlueprint = createPaperBlueprint({
+  exam: { id: 'SSC_CGL', name: 'SSC CGL', pattern: { minutes: 60, sections: [{ subject: 'Reasoning', questions: 2, marks: 2, negative: 0.5 }] } },
+  kind: 'full_mock', mode: 'real', questions: [verifiedSample, { id: 'practice-2', subject: 'Reasoning', source_type: 'ADMIN_PRACTICE' }], minutes: 60, startedAt: 100000
+});
+assert.equal(mixedBlueprint.realism.questionProvenanceStatus, 'mixed_or_incomplete_provenance',
+  'mixed verified and practice items cannot be labelled a complete official paper');
+const incompleteLegacyBlueprint = createPaperBlueprint({
+  exam: { id: 'SSC_CGL', name: 'SSC CGL', pattern: { minutes: 60, sections: [{ subject: 'Reasoning', questions: 1, marks: 2, negative: 0.5 }] } },
+  kind: 'full_mock', mode: 'real', questions: [{ ...verifiedSample, pyq_year: null }], minutes: 60, startedAt: 100000
+});
+assert.equal(incompleteLegacyBlueprint.realism.sourceCounts.legacy_unverified, 1,
+  'legacy records with incomplete year metadata do not count as verified');
+
+console.log('PASS AI quality, pattern audit, mock provenance and real-paper blueprint regression tests');
 
 const expandedBank = buildExamQuestionBank(EXAMS, TOPICS, BASE_QUESTION_SEED, EXPANDED_QUESTION_SEED);
 assert.ok(expandedBank.length >= 300, 'expanded bank should contain hundreds of exam-specific practice rows');
