@@ -115,6 +115,7 @@ Use Google Search grounding. Search the live web for important events from the l
 Prefer authoritative primary sources: PIB/Government of India ministries, RBI, SEBI, IRDAI, NABARD, ISRO, MEA, Ministry of Defence, Election Commission, Supreme Court, official international organisations, and official sports bodies.
 Return ONLY a JSON array with at most ${maxItems} items. Each item must contain:
 {"title":string,"summary":string,"category":"National|International|Defence|Economy|Science & Technology|Environment|Sports|Awards|Appointments|Government Schemes|Important Days|Reports & Indexes|Books & Authors|Important Persons|Defence Exercises","event_date":"YYYY-MM-DD","exams":["exam_id", "..."],"source_url":"https://..."}
+Make summary easy to scan: 2–4 short factual points separated by newline characters, each beginning with "- ". Include the key fact, why it matters for the exam, and a relevant number/name/date only when verified. Keep the total summary concise (roughly 40–80 words). Do not use long paragraphs.
 Only include items whose source_url is an actually retrieved web source. Choose exams from this exact list and assign only the exams for which the fact is genuinely relevant: ${examList.join(', ')}.
 Do not invent facts, dates, awards, numbers or URLs. Do not include rumours or unsourced social posts. If there are fewer than ${maxItems} well-supported items, return fewer.`;
   const r = await callGemini({ grounded: true, system, maxTokens: 5000, timeoutMs: 60000, messages: [{
