@@ -785,7 +785,7 @@ async function pgCA() {
           h('select', { 'aria-label': 'Filter current affairs category', onchange: (ev) => { category = ev.target.value; draw(); } },
             h('option', { value: '', selected: !category }, 'All categories'),
             (data.categories || []).map(cat => h('option', { value: cat, selected: category === cat }, cat)))),
-        h('p', { class: 'small muted' }, 'Auto-refresh: official feeds every 6 hours; sourced AI digest daily at 7:00 AM IST when Gemini grounding is configured.'));
+        h('p', { class: 'small muted' }, 'Auto-refresh: official feeds every 6 hours; sourced AI digest every 3 days at 7:00 AM IST when Gemini grounding is configured.'));
       const cards = (data.items || []).map(item => {
         const sentences = String(item.summary || '').split(/(?:\n+|(?<=[.!?])\s+|;\s+)/).map(s => s.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim()).filter(Boolean);
         const points = sentences.length ? sentences.slice(0, 4) : [String(item.title || '')];
