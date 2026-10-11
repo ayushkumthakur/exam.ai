@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-const { xmlText, xmlField } = require('../current-affairs-feed');
+const { xmlText, xmlField, isEnglishText } = require('../current-affairs-feed');
 
 const rssItem = `<item>
   <title>RBI announces policy &amp; framework</title>
@@ -14,4 +14,7 @@ assert.equal(xmlField(rssItem, 'description'), 'Policy details & key rates.');
 assert.equal(xmlField('<entry><title type="text">PIB update</title></entry>', 'title'), 'PIB update');
 assert.equal(xmlField(rssItem, 'missing'), '');
 assert.equal(xmlText('A &lt; B &amp; C'), 'A < B & C');
-console.log('PASS official current-affairs RSS XML parser');
+assert.equal(isEnglishText('RBI announces monetary policy'), true);
+assert.equal(isEnglishText('भारतीय रिज़र्व बैंक'), false);
+assert.equal(isEnglishText('RBI announces policy — भारतीय रिज़र्व बैंक'), false);
+console.log('PASS official current-affairs RSS XML parser and English-language filter');
