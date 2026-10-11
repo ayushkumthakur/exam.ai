@@ -2,7 +2,7 @@
   "schema_version": 1,
   "audit_date": "2026-10-11",
   "policy": "A question is VERIFIED_PYQ only after its exact wording, options, exam/year/paper, and official answer are checked against authoritative evidence. An official portal URL alone is not per-question verification.",
-  "current_verified_question_count": 0,
+  "verified_question_count_in_static_seed_banks": 0,
   "sources": [
     {
       "exam_id": "UPSC_CSE",
