@@ -1,0 +1,120 @@
+/* Edu/UI quality pass: prioritize readable surfaces, reliable touch targets and safe-area layout. */
+:root { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+/* Crisp, legible surfaces: avoid blur layers that reduce contrast or cause mobile GPU jank. */
+.top, .side, .bottom, .dash-panel, .dash-recent-panel, .dash-hero-badge, #toast {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.top { background: var(--surface, #fff) !important; }
+.side { background: var(--surface, #fff) !important; }
+.bottom {
+  background: var(--surface, #fff) !important;
+  border: 1px solid var(--line, #dbe4f0) !important;
+}
+.dash-panel, .dash-recent-panel {
+  background: var(--surface, #fff) !important;
+}
+
+/* Interaction consistency and keyboard access. */
+button, [role="button"], input, select, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button, [role="button"] { touch-action: manipulation; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, [role="button"]:focus-visible {
+  outline: 3px solid var(--brand-2, #2563eb) !important;
+  outline-offset: 3px !important;
+}
+button:disabled, [role="button"][aria-disabled="true"] {
+  cursor: not-allowed !important;
+  opacity: .58;
+  filter: none !important;
+  transform: none !important;
+}
+.btn, button.btn, .iconbtn, .bottom button, .bottom a {
+  min-height: 44px;
+}
+input, select, textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+img, svg, canvas, video { max-width: 100%; }
+
+/* Keep dark mode surfaces and text tied to the app's theme tokens. */
+:root[data-theme="dark"] .top,
+:root[data-theme="dark"] .side,
+:root[data-theme="dark"] .bottom,
+:root[data-theme="dark"] .dash-panel,
+:root[data-theme="dark"] .dash-recent-panel {
+  background: var(--surface, #111d33) !important;
+  border-color: var(--line, #263751) !important;
+  color: var(--ink, #e8efff);
+}
+:root[data-theme="dark"] .top *,
+:root[data-theme="dark"] .side *,
+:root[data-theme="dark"] .bottom *,
+:root[data-theme="dark"] .dash-panel *,
+:root[data-theme="dark"] .dash-recent-panel * {
+  text-shadow: none;
+}
+
+/* Desktop content should not stretch into unreadable ultra-wide lines. */
+@media (min-width: 821px) {
+  .page { min-width: 0; }
+  .dash-panel, .dash-recent-panel { min-width: 0; }
+  .bottom { box-shadow: 0 -6px 22px rgba(15, 23, 42, .08); }
+}
+
+/* Mobile navigation: one predictable safe-area clearance and no content hidden behind it. */
+@media (max-width: 820px) {
+  body {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+    -webkit-text-size-adjust: 100%;
+  }
+  .page {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom)) !important;
+    scroll-padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  }
+  .bottom {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 2px !important;
+    padding: 5px 4px !important;
+    border-radius: 16px !important;
+    box-shadow: 0 -5px 22px rgba(15, 23, 42, .12) !important;
+    overflow: visible;
+  }
+  .bottom > *, .bottom button, .bottom a {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .bottom button, .bottom a {
+    padding-inline: 2px;
+    white-space: normal;
+  }
+  #toast {
+    bottom: calc(100px + env(safe-area-inset-bottom)) !important;
+    max-width: calc(100vw - 24px);
+  }
+  .page > *, .card, .dash-panel, .dash-recent-panel { min-width: 0; }
+}
+@media (max-width: 380px) {
+  .bottom { left: 4px !important; right: 4px !important; gap: 0 !important; }
+  .bottom button, .bottom a { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
