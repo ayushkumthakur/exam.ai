@@ -306,18 +306,18 @@ function factGroupsFor(subject, allowed) {
   if (s === 'History') return [group(allowed.includes('Modern India') ? 'Modern India' : allowed[0], FACTS.History)];
   if (s === 'Geography') return [group(allowed.includes('Indian Geography') ? 'Indian Geography' : allowed[0], FACTS.Geography)];
   if (s === 'Polity' || s === 'Political Science') {
-    const chunks = [FACTS.Polity.slice(0,5), FACTS.Polity.slice(5,10), FACTS.Polity.slice(10)];
-    const labels = s === 'Polity' ? ['Constitution','Fundamental Rights','Parliament'] : ['Constitution at Work','Indian Constitution','Executive & Legislature'];
+    const chunks = [FACTS.Polity.slice(0,6), FACTS.Polity.slice(6)];
+    const labels = s === 'Polity' ? ['Constitution','Parliament'] : ['Constitution at Work','Executive & Legislature'];
     return chunks.map((facts,i) => group(labels[i] || allowed[i % allowed.length], facts));
   }
   if (s === 'Economics') return [
-    group('Basic Concepts', FACTS.Economics.slice(0,5)), group('Indian Economy', FACTS.Economics.slice(5,9)), group('Banking & Finance', FACTS.Economics.slice(9))
+    group('Basic Concepts', FACTS.Economics.slice(0,6)), group('Indian Economy', FACTS.Economics.slice(6))
   ];
   if (s === 'Environment') return [
-    group('Ecology', FACTS.Environment.slice(0,5)), group('Climate Change', FACTS.Environment.slice(5,9)), group('Biodiversity', FACTS.Environment.slice(9))
+    group('Ecology', FACTS.Environment.slice(0,6)), group('Climate Change', FACTS.Environment.slice(6))
   ];
   if (s === 'Banking Awareness') return [
-    group('Banking Basics', BANKING_FACTS.slice(0,4)), group('RBI & Monetary Policy', BANKING_FACTS.slice(4,8)), group('Financial Institutions', BANKING_FACTS.slice(8))
+    group('Banking Basics', BANKING_FACTS.slice(0,6)), group('RBI & Monetary Policy', BANKING_FACTS.slice(6))
   ];
   if (s === 'Physics') return [
     group(allowed.includes('Mechanics') ? 'Mechanics' : allowed[0], EXTRA_FACTS.Physics.slice(0,5)),
