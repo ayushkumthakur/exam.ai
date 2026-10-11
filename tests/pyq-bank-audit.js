@@ -67,9 +67,9 @@ const officialPaperAnchors = [
 const normalizeAuditText = value => String(value || '')
   .toLowerCase()
   .normalize('NFKD')
-  .replace(/[\\u0300-\\u036f]/g, '')
-  .replace(/[^a-z0-9\\s]/g, ' ')
-  .replace(/\\s+/g, ' ')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9\s]/g, ' ')
+  .replace(/\s+/g, ' ')
   .trim();
 const allBankText = normalizeAuditText(banks.flatMap(([, questions]) =>
   questions.map(question => JSON.stringify(question))).join(' '));
@@ -77,8 +77,53 @@ const exactAnchorMatches = officialPaperAnchors.filter(([, phrase]) =>
   allBankText.includes(normalizeAuditText(phrase)));
 assert.equal(exactAnchorMatches.length, 0,
   'official 2023 GS-I phrase matches require manual item-level provenance review before any source label changes');
-console.log('PASS UPSC CSE 2023 GS-I literal audit: ' + officialPaperAnchors.length +
-  ' distinctive question fragments screened; ' + exactAnchorMatches.length +
-  ' exact phrase matches in static banks (not a semantic or full-paper verification)');
+
+// Fuzzy lexical triage is intentionally a candidate finder, not a semantic proof.
+// Remove common words, compare distinctive-token overlap, and print candidates for
+// human inspection. Never use a score to assign VERIFIED_PYQ automatically.
+const stopWords = new Set(('a an the and or of to in on at for from by with is are was were be been being ' +
+  'it its this that these those which what when where who how as into through only must can may will ' +
+  'under over after before present day required use used part parts question questions').split(/\s+/));
+function tokens(value) {
+  return new Set(normalizeAuditText(value).split(/\s+/).filter(token =>
+    token.length >= 3 && !stopWords.has(token)));
+}
+function overlapScore(left, right) {
+  const a = tokens(left), b = tokens(right);
+  const common = [...a].filter(token => b.has(token));
+  if (common.length < 3 || !a.size || !b.size) return 0;
+  const jaccard = common.length / (a.size + b.size - common.length);
+  const containment = common.length / Math.min(a.size, b.size);
+  return { score: Math.max(jaccard, containment), shared: common.length, terms: common };
+}
+const fuzzyCandidates = [];
+for (const [bankName, questions] of banks) {
+  for (const question of questions) {
+    const questionText = String(question.text || '');
+    if (!questionText) continue;
+    for (const [questionNo, phrase] of officialPaperAnchors) {
+      const result = overlapScore(phrase, questionText);
+      if (result && result.score >= 0.34) fuzzyCandidates.push({
+        bank: bankName, questionNo, score: Number(result.score.toFixed(3)),
+        sharedTerms: result.terms, text: questionText
+      });
+    }
+  }
+}
+fuzzyCandidates.sort((a, b) => b.score - a.score || b.sharedTerms.length - a.sharedTerms.length);
+const uniqueCandidates = [];
+const seenCandidates = new Set();
+for (const candidate of fuzzyCandidates) {
+  const key = candidate.bank + '|' + candidate.text;
+  if (seenCandidates.has(key)) continue;
+  seenCandidates.add(key);
+  uniqueCandidates.push(candidate);
+}
+console.log('UPSC 2023 GS-I fuzzy lexical triage candidates (manual review only): ' +
+  JSON.stringify(uniqueCandidates.slice(0, 20)));
+console.log('PASS UPSC CSE 2023 GS-I audit: ' + officialPaperAnchors.length +
+  ' distinctive fragments screened; exact matches=' + exactAnchorMatches.length +
+  '; fuzzy candidates=' + uniqueCandidates.length +
+  '. Fuzzy score is not semantic verification and cannot establish PYQ provenance.');
 
 console.log('PASS source audit: practice banks cannot silently become verified PYQs');
