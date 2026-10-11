@@ -106,7 +106,7 @@ const cglSections = [
 ];
 assert.deepEqual(allocateSectionTargets(cglSections, 100), [25, 25, 25, 25], 'full-paper allocation preserves exact official section counts');
 assert.deepEqual(allocateSectionTargets([{ questions: 17 }, { questions: 17 }, { questions: 16 }], 20), [7, 7, 6], 'scaled practice allocation uses largest-remainder rounding');
-const cglQuestions = cglSections.flatMap(section => Array.from({ length: section.questions }, (_, i) => ({ id: section.subject + '-' + i, subject: section.subject })));
+const cglQuestions = cglSections.flatMap(section => Array.from({ length: section.questions }, (_, i) => ({ id: section.subject + '-' + i, subject: section.subject, source_type: 'ADMIN_PRACTICE' })));
 const cglBlueprint = createPaperBlueprint({
   exam: { id: 'SSC_CGL', name: 'SSC CGL Tier-I', pattern: { minutes: 60, sections: cglSections, audit: { sectionTimingMinutes: 15 } } },
   kind: 'full_mock', mode: 'real', questions: cglQuestions, minutes: 60, startedAt: 100000
