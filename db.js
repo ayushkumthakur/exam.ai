@@ -301,14 +301,11 @@ if (qCount === 0) {
  */
 {
   const { buildCatalogQuestionBank } = require('./data/catalog_question_bank');
-  const { buildExamQuestionBank } = require('./data/question_bank');
-  const { buildPriorityQuestionBank } = require('./data/priority_question_bank');
   const catalogRows = buildCatalogQuestionBank(
     EXAMS,
     require('./data/catalog').TOPICS,
     SEED,
-    require('./data/expanded_question_bank'),
-    buildPriorityQuestionBank(EXAMS, require('./data/catalog').TOPICS)
+    require('./data/expanded_question_bank')
   );
   const insertCatalog = db.prepare(`INSERT INTO questions
     (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,
