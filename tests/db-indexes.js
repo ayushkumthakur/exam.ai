@@ -30,6 +30,17 @@ try {
   assert.ok(bySubject.Reasoning >= 26, 'CSAT reasoning bank retains its original seed');
   assert.ok(bySubject.English >= 26, 'CSAT comprehension bank retains its original seed');
   assert.ok(bank.reduce((n, row) => n + row.count, 0) >= 80, 'CSAT practice bank retains its full original 80-question seed and may expand');
+
+  for (const examId of ['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B']) {
+    const count = db.prepare("SELECT COUNT(*) AS count FROM questions WHERE exam_id=? AND source_type='ADMIN_PRACTICE'").get(examId).count;
+    assert.ok(count >= 500, examId + ' priority practice bank should contain at least 500 questions');
+  }
+  const invalidPriority = db.prepare(`SELECT COUNT(*) AS count FROM questions
+    WHERE exam_id IN ('UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B')
+    AND source_type='ADMIN_PRACTICE'
+    AND (answer < 0 OR answer > 3 OR json_array_length(options) != 4)`).get().count;
+  assert.equal(invalidPriority, 0, 'priority bank questions must have four options and valid answer indices');
+
   console.log('PASS database indexes and separate UPSC CSE Prelims / CSAT exam options');
   db.close();
 } finally {
