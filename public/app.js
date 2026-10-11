@@ -763,6 +763,57 @@ async function pgPyqs() {
   );
 }
 
+// ---------- current affairs ----------
+async function pgCA() {
+  let period = 'daily', category = '';
+  const root = h('div', { class: 'stack' });
+  async function draw() {
+    root.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Loading sourced current affairs…'));
+    try {
+      const data = await get('/api/ca' + q({ period, category, limit: 50 }));
+      const controls = h('div', { class: 'card stack' },
+        h('div', { class: 'row between' },
+          h('div', {}, h('h1', {}, 'Daily Current Affairs'), h('p', { class: 'muted small' }, 'Short, exam-focused points with original source links.')),
+          S.user.role === 'admin' ? h('button', { class: 'btn', onclick: async (ev) => {
+            const btn = ev.currentTarget; btn.disabled = true; btn.textContent = 'Refreshing…';
+            try { const r = await post('/api/admin/ca/refresh', {}); toast('Feed refresh complete · ' + r.added + ' new items'); await draw(); }
+            catch (e) { toast(e.message || 'Refresh failed'); btn.disabled = false; btn.textContent = 'Refresh now'; }
+          } }, 'Refresh now') : null),
+        h('div', { class: 'row wrap' },
+          h('button', { class: 'btn ' + (period === 'daily' ? 'primary' : ''), onclick: () => { period = 'daily'; draw(); } }, 'Today'),
+          h('button', { class: 'btn ' + (period === 'weekly' ? 'primary' : ''), onclick: () => { period = 'weekly'; draw(); } }, 'Last 7 days'),
+          h('select', { 'aria-label': 'Filter current affairs category', onchange: (ev) => { category = ev.target.value; draw(); } },
+            h('option', { value: '', selected: !category }, 'All categories'),
+            (data.categories || []).map(cat => h('option', { value: cat, selected: category === cat }, cat)))),
+        h('p', { class: 'small muted' }, 'Auto-refresh: official feeds every 6 hours; sourced AI digest daily at 7:00 AM IST when Gemini grounding is configured.'));
+      const cards = (data.items || []).map(item => {
+        const sentences = String(item.summary || '').split(/(?:\\n+|(?<=[.!?])\\s+|;\\s+)/).map(s => s.replace(/^\\s*(?:[-•*]|\\d+[.)])\\s*/, '').trim()).filter(Boolean);
+        const points = sentences.length ? sentences.slice(0, 4) : [String(item.title || '')];
+        const source = String(item.source || '');
+        let sourceNode = /^https?:\\/\\//i.test(source)
+          ? h('a', { href: source, target: '_blank', rel: 'noopener noreferrer' }, 'Read original source ↗')
+          : h('span', { class: 'small muted' }, source ? 'Source: ' + source : 'Source link unavailable');
+        return h('article', { class: 'card stack' },
+          h('div', { class: 'row wrap' }, h('span', { class: 'badge' }, item.category || 'Current Affairs'), h('span', { class: 'small muted' }, item.event_date || 'Recent')),
+          h('h2', {}, item.title),
+          h('ul', { class: 'ca-points' }, points.map(point => h('li', {}, point))),
+          h('div', { class: 'row between wrap' }, sourceNode, h('button', { class: 'btn sm', onclick: async () => {
+            try { await post('/api/library/save-ca', { id: item.id }); toast('Saved to your library'); }
+            catch { toast('Use the bookmark option if available for this item.'); }
+          } }, 'Save for revision')));
+      });
+      root.replaceChildren(controls, ...(cards.length ? cards : [h('div', { class: 'card empty stack' },
+        h('h2', {}, 'No items for this period yet'),
+        h('p', {}, 'The feed may not have published a relevant update today. Switch to “Last 7 days” or check back after the next automatic refresh.'),
+        h('p', { class: 'small muted' }, 'Only items with a source link or an official feed origin should be relied on for revision.'))));
+    } catch (e) {
+      root.replaceChildren(h('div', { class: 'card stack' }, h('h1', {}, 'Daily Current Affairs'), errBox(e, draw)));
+    }
+  }
+  await draw();
+  return root;
+}
+
 // ---------- revision ----------
 async function pgRevision(parts, params) {
   if (params.get('mistakes')) return revMistakes();
