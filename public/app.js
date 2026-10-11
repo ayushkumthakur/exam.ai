@@ -841,7 +841,7 @@ async function pgTests(parts, params) {
         h('button', { class: 'chip' + (realMode ? ' on' : ''), onclick: () => { o.mode = 'real'; draw(); } }, 'Real Exam Mode'),
         h('button', { class: 'chip' + (!realMode ? ' on' : ''), onclick: () => { o.mode = 'practice'; draw(); } }, 'Practice Mode')) : null,
       o.kind === 'full_mock' ? h('div', { class: 'info' }, `${exam.name} pattern: ${exam.pattern.sections.map(s => `${s.subject} ${s.questions} × ${s.marks} marks (−${s.negative})`).join(' · ')} · ${exam.pattern.minutes} min.` + (exam.pattern.audit?.sectionTimingMinutes && realMode ? ` Section timer: ${exam.pattern.audit.sectionTimingMinutes} minutes per section.` : '') + (exam.id === 'UPSC_CSAT' ? ' CSAT is qualifying (33% minimum).' : '') + (exam.verified ? '' : ' Subject splits are practice allocations where noted; confirm current details against the official notification.')) : null,
-      realMode ? h('div', { class: 'blueprint-lock-note' }, 'Real Exam Mode locks the paper length, section distribution, overall duration and difficulty mix. Official sectional timers are enforced when available.') : null,
+      realMode ? h('div', { class: 'blueprint-lock-note' }, 'Real Exam Mode fixes the configured paper length, section distribution, marking and duration. Difficulty targets are exam-style practice estimates, not official quotas; the result reports the actual question-bank mix.') : null,
       h('div', { class: 'grid g3' }, needS ? f('Subject', h('select', { onchange: (e) => { o.subject = e.target.value; draw(); } }, exam.syllabus.filter(s => availableSubjects.includes(s.subject)).map(s => h('option', { value: s.subject, selected: s.subject === o.subject }, s.subject)))) : null,
         needT ? f('Topic', h('select', { onchange: (e) => o.topic = e.target.value }, topics.map(t => h('option', { value: t, selected: t === o.topic }, t)))) : null,
         needN ? f('Number of questions', h('input', { type: 'number', min: 1, max: 100, value: o.count, oninput: (e) => o.count = +e.target.value })) : null,
@@ -943,7 +943,11 @@ async function pgTestTake(parts) {
 
 async function pgResult(parts) {
   const { test } = await get('/api/tests/' + parts[1]); if (test.status === 'active') { location.replace('#/test/' + test.id); return h('div'); }
-  const r = test.result, c = r.coaching; const list = (t, a) => a && a.length ? h('div', { class: 'sol' }, h('h4', {}, t), h('ul', {}, a.map(x => h('li', {}, x)))) : null;
+  const r = test.result, c = r.coaching;
+  const realism = test.blueprint?.realism || null;
+  const difficultyDistribution = realism?.difficultyDistribution || {};
+  const difficultyProfile = realism?.difficultyProfile || null;
+  const blueprintSections = test.blueprint?.sections || []; const list = (t, a) => a && a.length ? h('div', { class: 'sol' }, h('h4', {}, t), h('ul', {}, a.map(x => h('li', {}, x)))) : null;
   const follow = h('button', { class: 'btn accent', onclick: () => c.recommended_revision ? go('#/revision' + q({ subject: c.recommended_revision.subject, topic: c.recommended_revision.topic })) : go('#/practice') }, 'Follow AI Recommendation');
   const nextAction = r.accuracy !== null && r.accuracy < 60 ? 'Accuracy is the priority: review wrong answers and redo a short topic set before another full mock.' : r.skipped / Math.max(r.total, 1) > 0.25 ? 'Pacing is the priority: try a timed set and answer the easiest questions first.' : r.wrong / Math.max(r.correct + r.wrong, 1) >= 0.3 ? 'Reduce avoidable negative marks: practise elimination and review each incorrect answer.' : 'Build consistency: revise your lowest-performing topic and test it again.';
   const answeredCount = r.correct + r.wrong;
@@ -963,6 +967,20 @@ async function pgResult(parts) {
     h('span', { class: 'result-metric-note' }, note));
 
   return h('div', { class: 'stack' }, h('div', { class: 'hero' }, h('p', {}, test.title), h('h1', {}, `${r.score} / ${r.max}`), h('p', {}, `Accuracy ${pct(r.accuracy)} · ${r.correct} correct · ${r.wrong} wrong · ${r.skipped} skipped`), h('p', {}, `Attempted ${answeredCount}/${r.total} · Completion ${r.total ? Math.round(100 * answeredCount / r.total) : 0}% · Time ${r.total_minutes} min`), h('p', {}, `${outcomeLabel} · Score ${scorePct}% of maximum marks`)),
+    realism ? h('div', { class: 'card stack real-exam-audit' },
+      h('div', { class: 'row between' }, h('h2', {}, 'Real Exam Blueprint Audit'), h('span', { class: 'badge' }, String(realism.patternStatus || 'unverified').replaceAll('_',' '))),
+      h('p', { class: 'muted small' }, 'This checks the configured paper structure. It does not certify generated questions as official previous-year questions.'),
+      h('div', { class: 'grid g3' },
+        metric('Paper structure', realism.patternIntegrity ? 'Consistent' : 'Review needed', 'Question count, section counts and marks'),
+        metric('Easy', String(difficultyDistribution.easy || 0), 'Actual questions'),
+        metric('Medium / Hard', String(difficultyDistribution.medium || 0) + ' / ' + String(difficultyDistribution.hard || 0), 'Actual questions')),
+      difficultyProfile ? h('p', { class: 'small muted' }, difficultyProfile.label + '. Target mix: ' + Object.entries(difficultyProfile.targets || {}).map(([key,value]) => key + ' ' + value).join(' · ') + '. This is an internal estimate, not an official exam quota.') : null,
+      blueprintSections.length ? h('div', { class: 'list' }, blueprintSections.map(section => h('div', { class: 'row between' },
+        h('span', {}, section.name),
+        h('span', { class: 'small muted' }, section.questionCount + ' questions · +' + section.marks + ' / −' + section.negative)))) : null,
+      realism.sourceName && realism.sourceUrl ? h('p', { class: 'small' }, 'Pattern reference: ', h('a', { href: realism.sourceUrl, target: '_blank', rel: 'noopener noreferrer' }, realism.sourceName)) : null,
+      (realism.limitations || []).length ? h('div', {}, h('b', {}, 'Known limitations'), h('ul', {}, realism.limitations.map(item => h('li', {}, item)))) : null
+    ) : null,
     h('div', { class: 'result-metrics' },
       metric('Speed', avgSeconds === null ? '—' : `${Math.floor(avgSeconds / 60)}m ${avgSeconds % 60}s`, 'Average per attempted question'),
       metric('Wrong-answer rate', `${wrongRate}%`, `${r.wrong} incorrect out of ${answeredCount} attempted`, wrongRate >= 30 ? 'bad' : ''),
