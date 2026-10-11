@@ -1,4 +1,4 @@
-const CACHE = 'cea-shell-v3';
+const CACHE = 'cea-shell-v4';
 const SHELL = [
   '/',
   '/style.css?v=7',
@@ -6,7 +6,7 @@ const SHELL = [
   '/mobile-reference.css?v=4',
   '/advanced-premium-v2.css?v=2',
   '/full-site-premium.css?v=2',
-  '/mobile-bottom-clearance.css?v=2',
+  '/mobile-bottom-clearance.css?v=3',
   '/app2.js?v=8',
   '/app.js?v=17',
   '/icon.svg'
@@ -32,23 +32,17 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
-
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).then(response => {
-        if (response.ok) caches.open(CACHE).then(cache => cache.put('/', response.clone()));
-        return response;
-      }).catch(() => caches.match('/'))
-    );
+    event.respondWith(fetch(request).then(response => {
+      if (response.ok) caches.open(CACHE).then(cache => cache.put('/', response.clone()));
+      return response;
+    }).catch(() => caches.match('/')));
     return;
   }
-
   if (['.js', '.css', '.svg'].some(ext => url.pathname.endsWith(ext))) {
-    event.respondWith(
-      fetch(request).then(response => {
-        if (response.ok) caches.open(CACHE).then(cache => cache.put(request, response.clone()));
-        return response;
-      }).catch(() => caches.match(request))
-    );
+    event.respondWith(fetch(request).then(response => {
+      if (response.ok) caches.open(CACHE).then(cache => cache.put(request, response.clone()));
+      return response;
+    }).catch(() => caches.match(request)));
   }
 });
