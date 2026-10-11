@@ -470,3 +470,40 @@ details>summary{cursor:pointer;font-weight:650}
   .test-palette-summary span{font-size:.62rem}
   .bottom .nav{font-size:.66rem;min-height:49px}
 }
+
+
+/* Auth contrast hotfix: keep login text, card, fields and secondary actions readable
+   even when the saved theme preference differs from the system color scheme. */
+.auth .card{
+  background:var(--surface)!important;
+  color:var(--ink)!important;
+  border-color:var(--line);
+}
+.auth .card h1,
+.auth .card h2,
+.auth .card h3,
+.auth .card label,
+.auth .card .brand{
+  color:var(--ink);
+}
+.auth .card .muted,
+.auth .card .small{
+  color:var(--muted);
+}
+.auth .card input{
+  background:var(--bg);
+  color:var(--ink);
+  border-color:var(--line);
+}
+.auth .card input::placeholder{
+  color:var(--muted);
+  opacity:1;
+}
+.auth .card .btn.ghost{
+  color:var(--ink);
+  border-color:var(--line);
+  background:transparent;
+}
+.auth .card a{
+  color:var(--brand-2);
+}
