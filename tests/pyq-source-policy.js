@@ -29,14 +29,18 @@ const verification = {
   verificationNotes: 'Matched the exact question wording and option order, then checked the correct option against the official answer source.'
 };
 assert.equal(validatePyqVerification(verification).valid, true,
-  'verified import accepts official sources plus explicit item-level review metadata');
+  'verified import accepts separate official sources plus explicit item-level review metadata');
 assert.equal(validatePyqVerification({ ...verification, reviewConfirmed: false }).valid, false,
   'a trusted domain must not bypass explicit human review acknowledgement');
 assert.equal(validatePyqVerification({ ...verification, answerSourceUrl: '' }).valid, false,
   'a question paper link alone cannot establish an official answer');
 assert.equal(validatePyqVerification({ ...verification, answerSourceUrl: 'https://example.com/answer.pdf' }).valid, false,
   'an unofficial answer key cannot establish verified provenance');
+assert.equal(validatePyqVerification({ ...verification, answerSourceUrl: 'https://www.upsc.gov.in/sites/default/files/QP-CSP-25-GENERAL-STUDIES-PAPER-I-26052025.pdf' }).valid, false,
+  'the same official paper URL cannot be used as both question and answer evidence');
+assert.equal(validatePyqVerification({ ...verification, answerSourceUrl: 'https://www.upsc.gov.in/sites/default/files/QP-CSP-25-GENERAL-STUDIES-PAPER-I-26052025.pdf#answer' }).valid, false,
+  'URL fragments must not bypass the separate-source requirement');
 assert.equal(validatePyqVerification({ ...verification, verificationNotes: 'Looks right.' }).valid, false,
   'review notes must document the item-level verification');
 
-console.log('PASS official-source allowlist, separate answer source and explicit PYQ review gate');
+console.log('PASS official-source allowlist, distinct question/answer sources and explicit PYQ review gate');
