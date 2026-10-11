@@ -8,7 +8,7 @@ const { TOPICS, syllabusFor, NOTES } = require('./data/catalog');
 const ai = require('./ai');
 const aiMetrics = require('./ai-metrics');
 const dbBackup = require('./db-backup');
-const { allocateSectionTargets, createPaperBlueprint, mergeBlueprintAnswers } = require('./paper-blueprint');
+const { allocateSectionTargets, createPaperBlueprint, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets } = require('./paper-blueprint');
 
 const PORT = +process.env.PORT || 3000;
 const PROD = process.env.NODE_ENV === 'production';
@@ -245,6 +245,36 @@ function pickQuestions(user, exam, { subject, topic, difficulty, source, ids, li
   return unseen.concat(seen).slice(0, limit || 1000);
 }
 
+function pickRealModeSectionQuestions(user, exam, subject, target) {
+  const profile = difficultyProfileForExam(exam.id);
+  const quotas = difficultyTargets(target, profile);
+  const selected = [];
+  const seen = new Set();
+  for (const difficulty of ['easy','medium','hard']) {
+    const needed = quotas[difficulty] || 0;
+    if (!needed) continue;
+    const batch = pickQuestions(user, exam, { subject, difficulty, excludeSources: ['VERIFIED_PYQ'], limit: needed });
+    for (const question of batch) {
+      if (seen.has(question.id)) continue;
+      seen.add(question.id);
+      selected.push(question);
+      if (selected.length >= target) return selected.slice(0,target);
+    }
+  }
+  // If a difficulty bucket is sparse, fill from the remaining bank rather than
+  // silently shortening the paper. The blueprint reports the achieved mix.
+  if (selected.length < target) {
+    const fallback = pickQuestions(user, exam, { subject, difficulty: 'any', excludeSources: ['VERIFIED_PYQ'], limit: Math.max(target * 3, target) });
+    for (const question of fallback) {
+      if (seen.has(question.id)) continue;
+      seen.add(question.id);
+      selected.push(question);
+      if (selected.length >= target) break;
+    }
+  }
+  return selected.slice(0,target);
+}
+
 async function buildTest(user, exam, b) {
   const kind = b.kind, per = marking(exam); let qs = [], title = '', minutes, notices = [];
   const requestedMode = ['real', 'practice'].includes(b.mode) ? b.mode : 'real';
@@ -267,10 +297,13 @@ async function buildTest(user, exam, b) {
       : allocateSectionTargets(secs, requestedTotal);
     for (let i = 0; i < secs.length; i++) {
       const s = secs[i], target = targets[i];
-      let got = pickQuestions(user, exam, { subject: s.subject, difficulty: diff, excludeSources: ['VERIFIED_PYQ'], limit: target });
+      let got = realMode
+        ? pickRealModeSectionQuestions(user, exam, s.subject, target)
+        : pickQuestions(user, exam, { subject: s.subject, difficulty: diff, excludeSources: ['VERIFIED_PYQ'], limit: target });
       if (got.length < target) {
         const extra = await aiFillQuestions(user, exam, s.subject, null, diff, target - got.length);
-        got = got.concat(extra);
+        const seenIds = new Set(got.map(question => question.id));
+        got = got.concat(extra.filter(question => !seenIds.has(question.id)));
       }
       qs.push(...got.slice(0, target));
       if (got.length < target) notices.push(String(s.subject) + ': only ' + got.length + ' question(s) available after AI fill.');
