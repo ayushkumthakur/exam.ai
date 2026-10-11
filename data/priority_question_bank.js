@@ -105,8 +105,14 @@ const BANKING_FACTS = [
 function makeOptions(correct, distractors, seed) {
   const answerText = String(correct);
   const values = [answerText, ...distractors.map(String)].filter((v, i, a) => a.indexOf(v) === i);
+  const numeric = answerText.trim() !== "" && Number.isFinite(Number(answerText));
+  const fillers = ["None of these", "Cannot be determined", "All of these", "Not enough information"];
   let bump = 1;
-  while (values.length < 4) { const v = answerText + " (" + bump + ")"; if (!values.includes(v)) values.push(v); bump++; }
+  while (values.length < 4) {
+    const v = numeric ? fmt(Number(answerText) + bump * Math.max(1, Math.round(Math.abs(Number(answerText)) * 0.1))) : fillers[(seed + bump) % fillers.length];
+    if (!values.includes(v)) values.push(v);
+    bump++;
+  }
   const options = values.slice(0, 4);
   const shift = ((seed % 4) + 4) % 4;
   const rotated = options.slice(shift).concat(options.slice(0, shift));
@@ -191,7 +197,7 @@ function quantitativeQuestions(examId, subject, count, seedBase) {
       distractors = [correct+step, correct-step, values[0]+values[4]];
       explanation = "The five values form an arithmetic sequence; their mean is the middle value, " + fmt(correct) + "."; concept = "Arithmetic mean";
     } else if (family === 5) {
-      const daysA = 6 + (k % 12), daysB = daysA * 2;
+      const daysA = 6 + k, daysB = daysA * 2;
       correct = daysA * daysB / (daysA + daysB);
       text = "A can complete a job in " + daysA + " days and B in " + daysB + " days. How long will they take working together?";
       distractors = [daysA+daysB, Math.min(daysA,daysB), Math.max(daysA,daysB)/2];
@@ -307,37 +313,60 @@ function englishQuestions(examId, subject, count, seedBase, mode) {
     rows.push(q); i++;
   };
   if (mode === "csat") {
-    const passages = [
-      ["A city that expands public transport can reduce congestion, but only if routes are reliable and connect residential areas with places of work. Building more roads may offer temporary relief; however, new road capacity can also encourage additional driving. Transport planning therefore requires attention to accessibility, reliability and the full cost of travel.","The passage's central argument is that transport policy should prioritise connected, reliable access rather than road expansion alone.","A reliable network linking homes and workplaces is essential to effective public transport.","The passage suggests that road expansion always eliminates congestion.","According to the passage, new road capacity may encourage more driving."],
-      ["Water scarcity is not solely a result of low rainfall. Leakage, inefficient irrigation, polluted sources and poorly managed demand can make water scarce even in regions that receive substantial rain. Conservation policies are strongest when infrastructure improvements are combined with transparent local management.","The passage explains that water scarcity can arise from both physical conditions and human management.","Reducing losses and managing demand can complement infrastructure investment.","The passage claims that rainfall is irrelevant to water availability.","Poor management can worsen scarcity even where rainfall is substantial."],
-      ["Scientific evidence rarely removes every uncertainty, but it allows decisions to be revised as better information becomes available. A policy should therefore state its assumptions, monitor outcomes and remain open to correction. Refusing to act until certainty is absolute can itself create avoidable costs.","The passage favours evidence-informed decisions that can be revised as knowledge improves.","Policies should disclose assumptions and monitor their consequences.","The author believes decisions must wait until complete certainty is achieved.","Monitoring outcomes helps decision-makers revise a policy."],
-      ["Digital services can make public programmes easier to access, yet a digital-only system may exclude people without reliable connectivity, accessible devices or the skills to use them. A well-designed service retains assistance for users who face these barriers while improving the convenience of online access.","The passage argues that digital public services should improve access without excluding people who need assistance.","Digital services should be paired with support for people facing access barriers.","The passage says online services should replace every offline option immediately.","Connectivity and digital skills affect a person's ability to use online services."],
-      ["Economic growth can increase the resources available for health and education, but the benefits do not automatically reach every group. Distribution, public-service quality and access to opportunities influence whether growth improves people's lives. Aggregate output is therefore informative, but it cannot by itself describe every dimension of welfare.","The passage distinguishes growth in total output from broader improvements in welfare.","The distribution of benefits and quality of services affect welfare.","The passage states that GDP alone captures every dimension of welfare.","Growth can create resources without guaranteeing equal access to its benefits."],
-      ["A forest is more than a collection of trees. Soil organisms, water flows, pollinators and interactions among species support its resilience. Conservation that protects only a few visible species while degrading the surrounding habitat may fail to preserve the ecosystem that sustains them.","The passage treats an ecosystem as an interacting network, not merely a set of visible species.","Protecting habitat and ecological interactions is important for long-term conservation.","The passage argues that soil and water have no role in forest resilience.","Conserving a species may be insufficient if its habitat is degraded."],
-      ["Education is often measured through test scores because they are easy to compare. Yet a single score cannot fully represent curiosity, collaboration, creativity or the ability to apply knowledge in unfamiliar situations. Assessment is more informative when it combines comparable measures with evidence from varied tasks.","The passage calls for a broader view of educational assessment.","Combining different kinds of evidence can give a fuller picture of learning.","The author argues that test scores are completely useless.","Some valuable learning outcomes may not be captured by one score."],
-      ["Markets coordinate many decisions through prices, but prices may fail to reflect costs imposed on people outside a transaction. Pollution is one example: a producer and buyer may benefit while nearby residents bear health costs. Public rules can help bring these external costs into decision-making.","The passage explains why market prices may not reflect all social costs.","External costs can justify rules that make decision-makers account for wider impacts.","The passage says prices always include every social cost.","People outside a transaction may bear costs created by it."],
-      ["Reliable statistics require clear definitions and consistent collection methods. A change in a reported figure may reflect a real change, a revised method or both. Comparing figures without checking their definitions can therefore lead to mistaken conclusions.","The passage stresses the need to examine how statistics are defined and collected.","A reported change should be interpreted in light of possible methodological changes.","The passage claims that all statistics are unreliable.","Different definitions can make direct comparisons misleading."],
-      ["Community participation can improve public projects by revealing local needs that outside planners may miss. Participation does not automatically guarantee agreement or success, however. It works best when information is accessible, different voices can be heard and decision-makers explain how feedback influenced the final choice.","The passage presents participation as useful when it is inclusive and meaningfully connected to decisions.","Accessible information and responsive decision-making strengthen participation.","The author claims public participation always produces unanimous agreement.","Decision-makers should explain how public feedback was used."],
+    const themes = [
+      ["public transport","reduce travel delays","route reliability","average journey time","connect routes with housing and employment"],
+      ["groundwater management","protect drinking-water supplies","local recharge and extraction","annual rainfall alone","combine conservation with transparent monitoring"],
+      ["urban trees","reduce heat exposure","species choice and maintenance","the number of trees planted","measure shade, survival and local temperatures"],
+      ["digital public services","make applications more convenient","connectivity and accessibility","the number of downloads","retain assisted access and evaluate completion rates"],
+      ["school assessment","improve learning decisions","the variety of skills being measured","a single examination score","combine comparable tests with classroom evidence"],
+      ["renewable energy projects","reduce emissions from electricity","storage, location and grid capacity","installed capacity alone","evaluate lifecycle effects and reliable delivery"],
+      ["waste separation","increase material recovery","household participation and collection systems","the quantity collected at one site","coordinate sorting, collection and processing"],
+      ["coastal protection","reduce damage from storms","local ecology and changing exposure","the length of a barrier alone","combine risk assessment with ecosystem-sensitive planning"],
+      ["public health campaigns","improve preventive care","trust, access and follow-up","the number of messages sent","pair communication with accessible services"],
+      ["farm advisory services","support resilient crop decisions","local soil, water and weather","average yield in one season","combine local evidence with ongoing evaluation"],
+      ["financial inclusion","make formal payments easier to use","fees, trust and digital access","the number of accounts opened","track active use and barriers faced by customers"],
+      ["road safety measures","reduce serious collisions","driver behaviour and road design","the number of signs installed","use collision data and improve high-risk locations"],
+      ["air-quality plans","reduce harmful exposure","weather, transport and industrial sources","one day's pollution reading","monitor multiple sources over time and adapt interventions"],
+      ["library programmes","improve access to learning resources","opening hours, relevance and community needs","the number of books purchased","evaluate use and consult the people served"],
+      ["flood management","reduce disruption during heavy rainfall","drainage, land use and maintenance","the capacity of one drain","coordinate infrastructure with land-use planning"],
+      ["small-business support","improve business resilience","credit terms, skills and market access","the number of loans announced","assess outcomes and tailor support to local needs"],
+      ["biodiversity restoration","recover ecological functions","native species and habitat connectivity","the number of saplings planted","monitor survival, diversity and ecosystem condition"],
+      ["open-data initiatives","support accountable public decisions","data quality, privacy and accessibility","the volume of data released","publish useful information with safeguards and context"],
+      ["nutrition programmes","improve long-term health","availability, affordability and household practices","food distribution totals alone","combine access with follow-up on nutritional outcomes"],
+      ["water-quality monitoring","identify risks to communities","sampling frequency and representative locations","one sample from one location","use consistent methods and communicate uncertainty"]
     ];
-    const n = Math.ceil(count / 3);
-    for (let p = 0; p < n && rows.length < count; p++) {
-      const item = passages[p % passages.length];
-      const questionTypes = [
-        {q:"Which statement best captures the central idea of the passage?",a:item[1],w:[item[2],item[3],item[4]],e:"The central idea is the overall claim expressed across the passage."},
-        {q:"Which conclusion is best supported by the passage?",a:item[2],w:[item[3],item[4],item[1]],e:"The correct conclusion follows from the passage without adding an unsupported absolute."},
-        {q:"Which statement is consistent with the passage?",a:item[4],w:[item[3],item[1],item[2]],e:"The correct statement is directly supported by the passage."}
+    const conditions = [
+      "the needs of the people who use the service",
+      "the quality of implementation across locations",
+      "maintenance and long-term operating capacity"
+    ];
+    const evidence = [
+      "a single headline indicator",
+      "short-term results from one location",
+      "the number of activities completed"
+    ];
+    const actions = [
+      "compare outcomes across locations and review them over time",
+      "consult affected communities and disclose the assumptions used",
+      "combine outcome measures with evidence about access and quality"
+    ];
+    const unsupported = "A favourable result on one measure guarantees success in every setting.";
+    for (let p = 0; rows.length < count; p++) {
+      const theme = themes[p % themes.length];
+      const variant = Math.floor(p / themes.length);
+      const condition = conditions[variant % conditions.length];
+      const evidenceItem = evidence[(variant + p) % evidence.length];
+      const action = actions[(variant + Math.floor(p / 3)) % actions.length];
+      const passage = "An initiative concerning " + theme[0] + " may help to " + theme[1] + ". Its actual effect depends on " + theme[2] + " and " + condition + ". If evaluation counts only " + evidenceItem + ", it may overlook " + theme[3] + ". A stronger approach is to " + action + ", while adapting the intervention when new evidence reveals a problem.";
+      const qs = [
+        {topic:"Comprehension",q:"Which option best expresses the central idea of the passage?",a:"The initiative should be evaluated in context and adjusted using evidence.",w:["The initiative should be rejected in every location.","A single activity count is sufficient to prove long-term success.","The initiative will succeed regardless of implementation."],e:"The passage links outcomes to context, evaluation and revision."},
+        {topic:"Comprehension",q:"Which inference is best supported by the passage?",a:"Outcomes depend on implementation and should be reviewed using relevant evidence.",w:["The same intervention must work equally well everywhere.","Evaluation should ignore the needs of the people affected.","New evidence should never change an existing plan."],e:"The passage states that conditions differ and that interventions should adapt to evidence."},
+        {topic:"Comprehension",q:"Which claim is NOT supported by the passage?",a:unsupported,w:["Implementation conditions can affect results.","A narrow indicator can overlook important outcomes.","Decisions may need to change when evidence changes."],e:"The passage explicitly warns that a single indicator cannot guarantee success."}
       ];
-      for (const qt of questionTypes) {
+      for (const qt of qs) {
         if (rows.length >= count) break;
-        add("Comprehension", item[0] + "\n\n" + qt.q, qt.a, qt.w, qt.e, "Reading comprehension", "medium");
+        add(qt.topic, passage + "\n\n" + qt.q, qt.a, qt.w, qt.e, "Reading comprehension", "medium");
       }
-    }
-    while (rows.length < count) {
-      const n1 = 10 + rows.length, n2 = 2 + (rows.length % 7);
-      const correct = "The conclusion should be accepted only if it follows from the stated premises.";
-      add("Comprehension", "A report notes that a pilot programme improved outcomes in two locations, but provides no comparison group. Which inference is most defensible? " + "Use the principle that evidence should support, not exceed, a conclusion.", correct,
-        ["The programme is proven to work in every location.","The programme caused every observed improvement with certainty.","No useful information can be learned from the pilot."],
-        "The evidence may be encouraging but cannot establish universal effectiveness or causation by itself.", "Critical reasoning", "hard");
     }
     return rows;
   }
@@ -399,8 +428,9 @@ function buildPriorityQuestionBank(exams, topics) {
     if (!exam || !exam.pattern.sections.some(s => s.subject === sectionSubject)) return;
     const allowed = topics[sectionSubject] || [];
     for (const q of questions) {
-      if (allowed.length && !allowed.includes(topic)) throw new Error("Invalid topic " + topic + " for " + sectionSubject);
-      rows.push({ ...q, exam_id: examId, subject: sectionSubject, topic });
+      const rowTopic = q.topic && allowed.includes(q.topic) ? q.topic : topic;
+      if (allowed.length && !allowed.includes(rowTopic)) throw new Error("Invalid topic " + rowTopic + " for " + sectionSubject);
+      rows.push({ ...q, exam_id: examId, subject: sectionSubject, topic: rowTopic });
     }
   }
   // UPSC CSE Prelims GS: statement-combination practice across all six syllabus domains.
