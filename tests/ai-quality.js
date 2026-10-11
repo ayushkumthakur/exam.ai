@@ -3,6 +3,7 @@ const { EXAMS, TOPICS } = require('../data/catalog');
 const BASE_QUESTION_SEED = require('../data/seed_questions');
 const EXPANDED_QUESTION_SEED = require('../data/expanded_question_bank');
 const { buildExamQuestionBank } = require('../data/question_bank');
+const { buildPriorityQuestionBank } = require('../data/priority_question_bank');
 const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration } = require('../ai');
 const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers } = require('../paper-blueprint');
 
@@ -129,5 +130,29 @@ for (const exam of EXAMS) {
   }
 }
 assert.ok(EXAMS.every(exam => expandedBank.some(q => q.exam_id === exam.id)), 'all catalog exams need a non-empty exam-specific question bank');
+
+
+const priorityBank = buildPriorityQuestionBank(EXAMS, TOPICS);
+const priorityIds = ['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B'];
+for (const id of priorityIds) {
+  const examRows = priorityBank.filter(q => q.exam_id === id);
+  assert.ok(examRows.length >= 500, id + ' should have at least 500 authored practice questions');
+  const stems = new Set();
+  for (const q of examRows) {
+    const key = q.subject + '|' + q.text;
+    assert.ok(!stems.has(key), id + ' should not contain duplicate question stems: ' + q.text.slice(0,80));
+    stems.add(key);
+  }
+  const coverage = new Set(examRows.map(q => q.subject));
+  const exam = EXAMS.find(e => e.id === id);
+  for (const section of exam.pattern.sections) {
+    assert.ok(coverage.has(section.subject), id + ' should cover section ' + section.subject);
+  }
+}
+assert.ok(priorityBank.every(q => q.source_type === 'ADMIN_PRACTICE'), 'priority banks must not mislabel authored practice as verified PYQ');
+assert.ok(priorityBank.every(q => TOPICS[q.subject]?.includes(q.topic)), 'priority questions must use valid syllabus topics');
+assert.ok(priorityBank.every(q => Array.isArray(q.options) && q.options.length === 4 && new Set(q.options).size === 4), 'every priority MCQ must have four distinct options');
+assert.ok(priorityBank.every(q => Number.isInteger(q.answer) && q.answer >= 0 && q.answer < q.options.length), 'every priority answer key must point to a valid option');
+assert.ok(priorityBank.every(q => typeof q.explanation === 'string' && q.explanation.length >= 20), 'every priority question must have an explanation');
 
 console.log('PASS AI quality, paper blueprint, and all-exam question-bank coverage tests');
