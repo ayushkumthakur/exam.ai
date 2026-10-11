@@ -83,7 +83,11 @@ assert.equal(exactAnchorMatches.length, 0,
 // human inspection. Never use a score to assign VERIFIED_PYQ automatically.
 const stopWords = new Set(('a an the and or of to in on at for from by with is are was were be been being ' +
   'it its this that these those which what when where who how as into through only must can may will ' +
-  'under over after before present day required use used part parts question questions').split(/\s+/));
+  'under over after before present day required use used part parts question questions ' +
+  'river rivers lake lakes port ports passes passed india indian following statements statement ' +
+  'given above correct incorrect which following connect connects connected country countries ' +
+  'region regions species specieses available required production electricity paper examination ' +
+  'question questions list listed following three four one two first second third').split(/\s+/));
 function tokens(value) {
   return new Set(normalizeAuditText(value).split(/\s+/).filter(token =>
     token.length >= 3 && !stopWords.has(token)));
