@@ -1,5 +1,8 @@
 const assert = require('node:assert/strict');
-const { EXAMS } = require('../data/catalog');
+const { EXAMS, TOPICS } = require('../data/catalog');
+const BASE_QUESTION_SEED = require('../data/seed_questions');
+const EXPANDED_QUESTION_SEED = require('../data/expanded_question_bank');
+const { buildExamQuestionBank } = require('../data/question_bank');
 const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration } = require('../ai');
 const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers } = require('../paper-blueprint');
 
@@ -112,3 +115,19 @@ const upscBlueprint = createPaperBlueprint({
 assert.equal(upscBlueprint.timedSections, false, 'exams without verified sectional timers retain one overall timer');
 
 console.log('PASS AI question quality, pattern audit and real-paper blueprint regression tests');
+
+const expandedBank = buildExamQuestionBank(EXAMS, TOPICS, BASE_QUESTION_SEED, EXPANDED_QUESTION_SEED);
+assert.ok(expandedBank.length >= 300, 'expanded bank should contain hundreds of exam-specific practice rows');
+assert.ok(expandedBank.every(q => q.source_type === 'ADMIN_PRACTICE'), 'expanded questions must never be labelled as verified PYQs');
+assert.ok(expandedBank.every(q => TOPICS[q.subject]?.includes(q.topic)), 'every question topic must be allowed by its subject syllabus');
+const bankCoverage = new Map();
+for (const q of expandedBank) bankCoverage.set(q.exam_id + '|' + q.subject, (bankCoverage.get(q.exam_id + '|' + q.subject) || 0) + 1);
+for (const exam of EXAMS) {
+  for (const section of exam.pattern.sections) {
+    assert.ok((bankCoverage.get(exam.id + '|' + section.subject) || 0) > 0,
+      'every exam section needs at least one syllabus-aligned question: ' + exam.id + ' / ' + section.subject);
+  }
+}
+assert.ok(EXAMS.every(exam => expandedBank.some(q => q.exam_id === exam.id)), 'all catalog exams need a non-empty exam-specific question bank');
+
+console.log('PASS AI quality, paper blueprint, and all-exam question-bank coverage tests');
