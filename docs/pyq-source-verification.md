@@ -21,6 +21,10 @@ This register records official-source discovery and audit limitations. It does *
 - The paper contains actual, differently worded questions on subjects such as lakes/rivers, ports, trees, constitutional amendments, constitutional bodies, and parliamentary bills. Topic overlap alone is not a valid exact PYQ match.
 - An answer-key copy surfaced on a non-UPSC exam-preparation site, but the direct official answer-key file was not independently retrieved in this pass. Therefore no question was promoted to `VERIFIED_PYQ` on that basis.
 
+## Additional static-bank coverage-gap probe
+
+A case-insensitive literal search was run across `data/priority_question_bank.js`, `data/seed_questions.js`, `data/expanded_question_bank.js`, `data/csat_questions.js`, `data/catalog_question_bank.js`, and `data/question_bank.js` for 30 distinctive topic terms drawn from the official 2023 GS-I paper (including Wular/Kolleru/Kanwar lakes, major ports, selected tree species, mineral sands, wildlife and corridor names). **0/30 literal terms were found.** This is a narrow coverage-gap signal, not a semantic audit or proof that all related concepts are absent. It does not establish PYQ provenance for any item and must not be used to label existing questions `VERIFIED_PYQ`.
+
 ## Import and verification rules
 
 1. Keep newly written or AI-generated questions as `ADMIN_PRACTICE`.
