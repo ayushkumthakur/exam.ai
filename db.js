@@ -222,4 +222,25 @@ if (qCount === 0) {
   }
 }
 
+/*
+ * Idempotent SSC CHSL practice-bank migration.
+ * These authored practice questions are not official SSC PYQs (source_type stays
+ * ADMIN_PRACTICE). Covers all 4 CHSL subjects across their syllabus topics so that
+ * a 20-question subject test can be built without relying on an AI fill call.
+ */
+{
+  const CHSL1 = require('./content/ssc_chsl_batch1.json');
+  const CHSL2 = require('./content/ssc_chsl_batch2.json');
+  const ins = db.prepare(`INSERT INTO questions
+    (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,created_at)
+    SELECT ?,?,?,?,?,?,?,?,?,?,'ADMIN_PRACTICE',?
+    WHERE NOT EXISTS (SELECT 1 FROM questions WHERE exam_id=? AND text=?)`);
+  for (const batch of [CHSL1, CHSL2]) {
+    for (const q of batch.questions) {
+      ins.run('SSC_CHSL', q.subject, q.topic, q.difficulty, q.text, JSON.stringify(q.options),
+        q.answer, q.explanation, q.concept, q.tip, now(), 'SSC_CHSL', q.text);
+    }
+  }
+}
+
 module.exports = db;
