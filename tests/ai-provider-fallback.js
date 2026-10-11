@@ -6,8 +6,6 @@ process.env.GEMINI_API_KEY = 'test-gemini-key';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 process.env.GEMINI_MODEL = 'gemini-test-model';
 process.env.ANTHROPIC_MODEL = 'claude-test-model';
-process.env.GROQ_API_KEY = 'test-groq-key';
-process.env.GROQ_MODEL = 'llama-test-model';
 
 const calls = [];
 global.fetch = async (url, options = {}) => {
@@ -54,6 +52,10 @@ global.fetch = async (url, options = {}) => {
   assert.equal(reverse.provider, 'gemini', 'reverse fallback provider should be Gemini');
   assert.equal(reverse.fallback_used, true, 'reverse fallback should be marked');
   assert.equal(calls.length, 2, 'reverse fallback should call both providers');
+
+  // Enable Groq after checking the existing Gemini/Anthropic fallback behavior.
+  process.env.GROQ_API_KEY = 'test-groq-key';
+  process.env.GROQ_MODEL = 'llama-test-model';
 
   // Gemini quota failure should automatically fall back to Groq before Anthropic.
   process.env.AI_PROVIDER = 'gemini';
