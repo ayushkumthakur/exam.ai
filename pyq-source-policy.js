@@ -35,4 +35,33 @@ function validateOfficialPyqSource(examId, sourceRef) {
   };
 }
 
-module.exports = { OFFICIAL_SOURCE_HOSTS, validateOfficialPyqSource };
+/**
+ * A trusted domain is only one part of provenance. This gate also requires
+ * an official answer-key/answer source and an explicit human review record.
+ * It deliberately does not claim to fetch, parse, or content-verify the links.
+ */
+function validatePyqVerification({ examId, questionSourceUrl, answerSourceUrl, reviewConfirmed, verificationNotes }) {
+  if (reviewConfirmed !== true) {
+    return { valid: false, reason: 'Explicit review confirmation is required. Compare exact wording, every option, exam/year/paper/shift, and the official answer before importing.' };
+  }
+  const questionSource = validateOfficialPyqSource(examId, questionSourceUrl);
+  if (!questionSource.valid) return { valid: false, reason: 'Official question-paper source rejected: ' + questionSource.reason };
+  const answerSource = validateOfficialPyqSource(examId, answerSourceUrl);
+  if (!answerSource.valid) return { valid: false, reason: 'Official answer source rejected: ' + answerSource.reason };
+  const notes = String(verificationNotes || '').trim();
+  if (notes.length < 20) {
+    return { valid: false, reason: 'Add at least 20 characters of reviewer notes describing how the exact question/options and answer were checked.' };
+  }
+  if (notes.length > 1500) {
+    return { valid: false, reason: 'Reviewer notes must be 1500 characters or fewer.' };
+  }
+  return {
+    valid: true,
+    questionHost: questionSource.host,
+    answerHost: answerSource.host,
+    requiresManualContentReview: true,
+    note: 'Source domains and review acknowledgement validated; linked document contents are not automatically inspected.'
+  };
+}
+
+module.exports = { OFFICIAL_SOURCE_HOSTS, validateOfficialPyqSource, validatePyqVerification };
