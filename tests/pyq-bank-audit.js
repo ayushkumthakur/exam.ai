@@ -10,7 +10,7 @@ const { buildPriorityQuestionBank } = require('../data/priority_question_bank');
 const { buildCatalogQuestionBank } = require('../data/catalog_question_bank');
 
 const audit = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/pyq_source_audit.json'), 'utf8'));
-assert.equal(audit.current_verified_question_count, 0,
+assert.equal(audit.verified_question_count_in_static_seed_banks, 0,
   'source audit must not claim individual PYQs are verified without item-level evidence');
 assert.ok(audit.sources.some(s => s.exam_id === 'UPSC_CSE'));
 assert.ok(audit.sources.some(s => s.exam_id === 'SSC_CGL'));
