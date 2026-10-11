@@ -270,7 +270,10 @@ function reasoningQuestions(examId, subject, count, seedBase) {
       const nounsA = ["sparrows","roses","squares","whales","mangoes","triangles","planets","oak trees","novels","copper wires","dolphins","rectangles","tulips","comets","poems","eagles","cubes","oranges","bicycles","islands","pines","whales","hexagons","sonnets","satellites","lilies","cylinders","peaches","trains","continents","falcons","orchids","pentagons","haiku poems","rockets","bamboo plants"];
       const nounsB = ["birds","flowers","polygons","mammals","fruits","shapes","celestial bodies","trees","books","conductors","mammals","quadrilaterals","flowers","celestial bodies","literary works","birds of prey","solids","fruits","vehicles","landforms","trees","mammals","polygons","poetry","artificial objects","flowers","solids","fruits","transport","animals","plants","geometric figures","literary works","vehicles","ecosystems"];
       const nounsC = ["animals","plants","geometric figures","living organisms","food items","mathematical objects","objects in space","plants","written works","materials","animals","geometric figures","plants","objects in space","written works","animals","mathematical objects","food items","machines","geographical features","plants","animals","geometric figures","literary works","objects in orbit","plants","mathematical objects","food items","transport systems","animals","plants","mathematical objects","literary forms","machines","natural systems"];
-      const ix = k % nounsA.length, a = nounsA[ix], b = nounsB[ix], d = nounsC[ix];
+      const ix = k % nounsA.length;
+      const modifiers = ["red","blue","green","small","large","young","trained","registered","local","senior","junior","certified"];
+      const mod = modifiers[Math.floor(k / nounsA.length) % modifiers.length];
+      const a = mod + " " + nounsA[ix], b = mod + " " + nounsB[ix], d = mod + " " + nounsC[ix];
       correct = "All " + a + " are " + d;
       topic = "Syllogism";
       text = "Statements: All " + a + " are " + b + ". All " + b + " are " + d + ". Which conclusion must follow?";
