@@ -16,10 +16,10 @@ This register records official-source discovery and audit limitations. It does *
 ## Targeted paper comparison completed
 
 - Opened the official [UPSC CSE Prelims 2023 GS Paper I PDF](https://www.upsc.gov.in/sites/default/files/QP_CS_Pre_Exam_2023_280523.pdf) from the UPSC archive; the official PDF is 6.63 MB.
-- Ran targeted phrase checks for ten prompts found in static practice material: Tropic of Cancer; Battle of Plassey; repo rate; World Environment Day; Ramsar Convention; GDP; Indian National Congress founded in 1885; Constitution adopted on 26 November 1949; Constitution came into force on 26 January 1950; and UN founded in 1945.
-- **Exact matches established: 0/10** in this specific paper. This does not mean the topics never appeared in other years; it means these prompts were not matched to this paper by the checks recorded.
-- The paper contains actual, differently worded questions on subjects such as lakes/rivers, ports, trees, constitutional amendments, constitutional bodies, and parliamentary bills. Topic overlap alone is not a valid exact PYQ match.
-- An answer-key copy surfaced on a non-UPSC exam-preparation site, but the direct official answer-key file was not independently retrieved in this pass. Therefore no question was promoted to `VERIFIED_PYQ` on that basis.
+- Added a regression test with **30 distinctive short phrases** anchored to questions in the official paper and screened all six static banks: seed, expanded, priority, mapped question bank, catalog bank, and CSAT bank.
+- **Exact normalized phrase matches: 0/30** across those static banks for this paper. The test runs automatically so future changes that introduce an exact anchor are flagged for review.
+- This is only a literal phrase screen. It does not detect paraphrases or semantic overlap, does not prove that all other questions are different from the paper, and does not verify answers.
+- The direct official answer-key file was not independently retrieved in this pass. Therefore no question was promoted to `VERIFIED_PYQ` on this basis.
 
 ## Additional static-bank coverage-gap probe
 
