@@ -175,5 +175,44 @@
       }
     ]
   },
-  "last_progress_note": "Official UPSC 2023 GS-I PDF was opened and indexed text checked; ten targeted bank prompts yielded zero exact matches established, with three related-topic overlaps explicitly recorded as non-matches. Official 2023 CSAT paper is listed but current PDF retrieval exceeded the available text retrieval limit. CI passed on the audit branch's latest recorded commit."
+  "last_progress_note": "Added a 30-term coverage-gap check: none of the probed distinctive topics from the official UPSC CSE Prelims 2023 GS-I paper appeared literally in the six static bank/build files. This is a narrow coverage test, not item verification. All static questions remain ADMIN_PRACTICE.",
+  "paper_coverage_check": {
+    "paper": "UPSC CSE Prelims 2023 GS Paper I, Test Booklet Series A",
+    "official_url": "https://www.upsc.gov.in/sites/default/files/QP_CS_Pre_Exam_2023_280523.pdf",
+    "method": "Case-insensitive literal term search across six static source-code bank/build files: data/priority_question_bank.js, data/seed_questions.js, data/expanded_question_bank.js, data/csat_questions.js, data/catalog_question_bank.js, data/question_bank.js.",
+    "official_question_topics_probed": [
+      "Wular Lake",
+      "Kolleru Lake",
+      "Kanwar Lake",
+      "Kamarajar Port",
+      "Mundra Port",
+      "Visakhapatnam Port",
+      "Jackfruit",
+      "Mahua",
+      "Teak",
+      "arable area",
+      "irrigated area",
+      "Rann of Kutch",
+      "Ilmenite",
+      "rutile",
+      "cobalt",
+      "Congo Basin",
+      "Amarkantak",
+      "Biligirirangan",
+      "Seshachalam",
+      "East-West Corridor",
+      "Trilateral Highway",
+      "uranium enriched",
+      "Marsupials",
+      "Invasive Species Specialist Group",
+      "Lion-tailed Macaque",
+      "Malabar Civet",
+      "Sambar Deer",
+      "waggle dance",
+      "mushrooms",
+      "Indian squirrels"
+    ],
+    "exact_literal_topic_hits_in_static_banks": 0,
+    "interpretation": "None of the 30 literal topic terms probed was found in these six static bank/build files. This is a narrow coverage-gap check, not proof that every related concept is absent and not a substitute for exact stem/options/answer verification. These official-paper questions should be considered candidates for new provenance-backed records only after answer-key verification; do not label existing similar concepts as PYQs."
+  }
 }
