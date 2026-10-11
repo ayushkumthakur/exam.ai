@@ -2,16 +2,16 @@
 
 // Small, dependency-free XML helpers for official public RSS feeds.
 function xmlText(value) {
-  return String(value || '').replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, '$1')
+  return String(value || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
     .replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ')
     .replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'")
     .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
-    .replace(/&#(\\d+);/g, (_, n) => String.fromCodePoint(Math.min(0x10ffff, +n)))
-    .replace(/\\s+/g, ' ').trim();
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Math.min(0x10ffff, +n)))
+    .replace(/\s+/g, ' ').trim();
 }
 function xmlField(block, tag) {
-  const safeTag = String(tag || '').replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
-  const m = String(block || '').match(new RegExp('<' + safeTag + '(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)<\\\\/' + safeTag + '>', 'i'));
+  const safeTag = String(tag || '').replace(/[^a-z0-9:_-]/gi, '');
+  const m = String(block || '').match(new RegExp('<' + safeTag + '(?:\\s[^>]*)?>([\\s\\S]*?)<\\/' + safeTag + '>', 'i'));
   return m ? xmlText(m[1]) : '';
 }
 module.exports = { xmlText, xmlField };
