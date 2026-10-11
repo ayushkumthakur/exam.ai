@@ -41,6 +41,14 @@ try {
     AND (answer < 0 OR answer > 3 OR json_array_length(options) != 4)`).get().count;
   assert.equal(invalidPriority, 0, 'priority bank questions must have four options and valid answer indices');
 
+
+  const catalogIds = require('../data/catalog').EXAMS.map(exam => exam.id)
+    .filter(id => !['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B'].includes(id));
+  for (const examId of catalogIds) {
+    const count = db.prepare("SELECT COUNT(*) AS count FROM questions WHERE exam_id=? AND source_type='ADMIN_PRACTICE'").get(examId).count;
+    assert.ok(count >= 500, examId + ' should be populated with at least 500 practice questions at startup');
+  }
+
   console.log('PASS database indexes and separate UPSC CSE Prelims / CSAT exam options');
   db.close();
 } finally {
