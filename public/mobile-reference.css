@@ -89,3 +89,42 @@
 @media (prefers-reduced-motion:reduce) {
   .dashboard-hero,.card,.dash-panel,.quick-item,.bottom,.msg { animation:none!important; transition:none!important; }
 }
+
+/* Phone-first usability pass: keep the desktop brand, adapt controls to narrow screens. */
+@media (max-width: 820px) {
+  html, body { width:100%; max-width:100%; overflow-x:hidden; }
+  #app, .shell, .main, .page, .mock-hub { min-width:0; max-width:100%; }
+  .page { padding:12px 12px calc(92px + env(safe-area-inset-bottom)) !important; }
+  .mock-hub { gap:14px !important; }
+  .mock-brand-hero { padding:20px 17px !important; border-radius:20px !important; }
+  .mock-brand-lockup { font-size:.68rem !important; letter-spacing:.09em !important; }
+  .mock-brand-lockup svg { width:32px !important; height:32px !important; }
+  .mock-hero-copy { margin-top:20px !important; max-width:100% !important; }
+  .mock-hero-copy .mock-eyebrow { display:inline-block; font-size:.65rem; letter-spacing:.1em; line-height:1.4; }
+  .mock-hero-copy h1 { font-size:clamp(1.8rem,8vw,2.35rem) !important; line-height:1.08 !important; margin:10px 0 9px !important; overflow-wrap:anywhere; }
+  .mock-hero-copy p { font-size:.96rem !important; line-height:1.55 !important; }
+  .mock-promise-row { gap:7px !important; margin-top:14px !important; }
+  .mock-promise-row span { font-size:.72rem !important; padding:7px 9px !important; }
+  .mock-section-heading { align-items:flex-start !important; gap:8px !important; }
+  .mock-section-heading h2 { font-size:1.1rem !important; }
+  .mock-section-heading .badge { white-space:normal; max-width:100%; font-size:.72rem; }
+  .mock-hub .card { padding:14px !important; }
+  .mock-hub form { min-width:0; max-width:100%; }
+  .mock-hub form .row, .mock-hub form .actions { flex-wrap:wrap; }
+  .mock-hub form button, .mock-hub form .btn { max-width:100%; }
+  .mock-hub form input, .mock-hub form select, .mock-hub form textarea { width:100%; min-width:0; }
+  .mock-hub form [role="tablist"], .mock-hub form .tabs, .mock-hub form .chips { display:flex; flex-wrap:wrap; gap:7px; max-width:100%; }
+  .mock-hub form [role="tab"], .mock-hub form .chip { max-width:100%; white-space:normal; }
+}
+@media (max-width: 520px) {
+  .mock-brand-hero { padding:17px 14px !important; border-radius:17px !important; }
+  .mock-hero-copy { margin-top:17px !important; }
+  .mock-hero-copy h1 { font-size:1.85rem !important; }
+  .mock-promise-row span { font-size:.68rem !important; padding:6px 8px !important; }
+  .mock-section-heading { flex-direction:column; }
+  .mock-section-heading .badge { align-self:flex-start; }
+  .mock-hub .card { padding:12px !important; }
+  .mock-hub form .btn, .mock-hub form button { min-height:44px; }
+  .mock-hub form .row.between { align-items:flex-start; }
+  .mock-hub .list .row { flex-wrap:wrap; }
+}
