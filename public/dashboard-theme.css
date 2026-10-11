@@ -781,7 +781,7 @@ body,.shell,.main{background:var(--cea-page-bg)}
 
 
 /* Premium light refresh — visual-only overrides; preserve existing routes and hooks. */
-:root:not([data-theme="dark"]),:root[data-theme="light]{
+:root:not([data-theme="dark"]),:root[data-theme="light"]{
   --bg:#f4f7fc;--surface:#fff;--ink:#14213d;--muted:#64748b;--line:#e2eaf5;
   --brand:#145ee8;--brand-2:#0757d8;--accent:#0ea5e9;--accent-soft:#eaf4ff;
   --info-soft:#edf5ff;--shadow:0 8px 28px rgba(24,57,110,.055);
