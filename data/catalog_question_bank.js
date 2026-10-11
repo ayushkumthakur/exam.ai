@@ -289,6 +289,55 @@ function factsFor(subject) {
   if (['Reasoning'].includes(s)) return null;
   return null;
 }
+function factGroupsFor(subject, allowed) {
+  const s = String(subject || '');
+  const group = (topic, facts) => ({ topic: allowed.includes(topic) ? topic : (allowed[0] || 'General'), facts });
+  if (s === 'General Awareness') return [
+    group('Static GK', FACTS.History), group('Static GK', FACTS.Geography), group('Static GK', FACTS.Polity),
+    group('Static GK', FACTS.Economics), group('Science', EXTRA_FACTS.Physics.concat(EXTRA_FACTS.Chemistry,EXTRA_FACTS.Biology)),
+    group('Current Affairs', FACTS.Environment), group('Static GK', BANKING_FACTS), group('Important Days', FACTS.GeneralAwareness)
+  ];
+  if (s === 'Social Science') return [
+    group('History', FACTS.History), group('Geography', FACTS.Geography), group('Political Science', FACTS.Polity), group('Economics', FACTS.Economics)
+  ];
+  if (s === 'Science') return [
+    group('Motion', EXTRA_FACTS.Physics), group('Matter and Its Nature', EXTRA_FACTS.Chemistry), group('Life Processes', EXTRA_FACTS.Biology)
+  ];
+  if (s === 'History') return [group(allowed.includes('Modern India') ? 'Modern India' : allowed[0], FACTS.History)];
+  if (s === 'Geography') return [group(allowed.includes('Indian Geography') ? 'Indian Geography' : allowed[0], FACTS.Geography)];
+  if (s === 'Polity' || s === 'Political Science') {
+    const chunks = [FACTS.Polity.slice(0,5), FACTS.Polity.slice(5,10), FACTS.Polity.slice(10)];
+    const labels = s === 'Polity' ? ['Constitution','Fundamental Rights','Parliament'] : ['Constitution at Work','Indian Constitution','Executive & Legislature'];
+    return chunks.map((facts,i) => group(labels[i] || allowed[i % allowed.length], facts));
+  }
+  if (s === 'Economics') return [
+    group('Basic Concepts', FACTS.Economics.slice(0,5)), group('Indian Economy', FACTS.Economics.slice(5,9)), group('Banking & Finance', FACTS.Economics.slice(9))
+  ];
+  if (s === 'Environment') return [
+    group('Ecology', FACTS.Environment.slice(0,5)), group('Climate Change', FACTS.Environment.slice(5,9)), group('Biodiversity', FACTS.Environment.slice(9))
+  ];
+  if (s === 'Banking Awareness') return [
+    group('Banking Basics', BANKING_FACTS.slice(0,4)), group('RBI & Monetary Policy', BANKING_FACTS.slice(4,8)), group('Financial Institutions', BANKING_FACTS.slice(8))
+  ];
+  if (s === 'Physics') return [
+    group(allowed.includes('Mechanics') ? 'Mechanics' : allowed[0], EXTRA_FACTS.Physics.slice(0,5)),
+    group(allowed.includes('Electricity & Magnetism') ? 'Electricity & Magnetism' : allowed[1] || allowed[0], EXTRA_FACTS.Physics.slice(5,11)),
+    group(allowed.includes('Optics') ? 'Optics' : allowed[2] || allowed[0], EXTRA_FACTS.Physics.slice(11))
+  ];
+  if (s === 'Chemistry') return [
+    group(allowed.includes('Physical Chemistry') ? 'Physical Chemistry' : allowed[0], EXTRA_FACTS.Chemistry.slice(0,7)),
+    group(allowed.includes('Inorganic Chemistry') ? 'Inorganic Chemistry' : allowed[1] || allowed[0], EXTRA_FACTS.Chemistry.slice(7,14)),
+    group(allowed.includes('Organic Chemistry') ? 'Organic Chemistry' : allowed[2] || allowed[0], EXTRA_FACTS.Chemistry.slice(14))
+  ];
+  if (s === 'Biology') return [
+    group(allowed.includes('Cell Biology') ? 'Cell Biology' : allowed[0], EXTRA_FACTS.Biology.slice(0,6)),
+    group(allowed.includes('Human Physiology') ? 'Human Physiology' : allowed[1] || allowed[0], EXTRA_FACTS.Biology.slice(6,12)),
+    group(allowed.includes('Genetics') ? 'Genetics' : allowed[2] || allowed[0], EXTRA_FACTS.Biology.slice(12))
+  ];
+  const facts = factsFor(s);
+  if (!facts) return [];
+  return [group(allowed[0], facts)];
+}
 function topicForQuestion(subject, questionTopic, allowed, index) {
   if (allowed.includes(questionTopic)) return questionTopic;
   const s = String(subject || '');
@@ -353,10 +402,20 @@ function buildCatalogQuestionBank(exams, topics, baseQuestions, expandedQuestion
       } else if (['English','English Core','English Language & Literature'].includes(subject)) {
         questions = englishQuestions(exam.id,subject,targetPerSection,21000 + si*1000 + exam.id.length*23, subject === 'English' ? 'ssc' : 'school');
       } else {
-        const facts = factsFor(subject);
-        if (facts && facts.length >= 3) {
-          const topic = allowed[0] || 'General';
-          questions = statementQuestions(exam.id,subject,topic,facts,targetPerSection,24000 + si*1000 + exam.id.length*29);
+        const groups = factGroupsFor(subject, allowed);
+        if (groups.length) {
+          const seenLocal = new Set();
+          for (let gi = 0; gi < groups.length && questions.length < targetPerSection; gi++) {
+            const g = groups[gi];
+            const need = Math.ceil((targetPerSection - questions.length) / (groups.length - gi));
+            const generated = statementQuestions(exam.id,subject,g.topic,g.facts,need,24000 + si*1000 + gi*100 + exam.id.length*29);
+            for (const q of generated) {
+              if (seenLocal.has(q.text)) continue;
+              seenLocal.add(q.text);
+              questions.push(q);
+              if (questions.length >= targetPerSection) break;
+            }
+          }
         }
       }
       // Add existing authored material first, where available; keep stems unique per exam+section.
