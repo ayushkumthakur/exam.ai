@@ -77,64 +77,64 @@
     "result": "No item in these source-code banks has been verified against an exact official paper and official answer key in this audit. Do not seed any of these records as VERIFIED_PYQ. Production database questions have not been directly queried and are outside this static-bank count."
   },
   "spot_checks": {
-    "scope": "Targeted wording probes against one official paper (UPSC CSE Prelims 2023 GS-I); this is not a full question-by-question or multi-year audit.",
-    "official_paper": "UPSC CSE Prelims 2023 GS Paper I, Test Booklet Series A",
-    "results": [
+    "scope": "Targeted exact-phrase checks against the official UPSC CSE Prelims 2023 GS Paper I PDF. This is a sample, not a complete bank-wide or multi-year audit.",
+    "official_paper": "Civil Services (Preliminary) Examination, 2023 — General Studies Paper I, Test Booklet Series A",
+    "official_source_url": "https://www.upsc.gov.in/sites/default/files/QP_CS_Pre_Exam_2023_280523.pdf",
+    "official_archive_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
+    "checks": [
       {
         "bank_prompt": "The Tropic of Cancer passes through India.",
-        "result": "No occurrence of the phrase 'Tropic of Cancer' found in the official PDF text."
+        "search_term": "Tropic of Cancer",
+        "result": "No matching text found in official PDF."
       },
       {
-        "bank_prompt": "The Constitution of India was adopted on 26 November 1949.",
-        "result": "The search did not establish this exact bank wording as an official question. The paper contains a different Constitution Day question; thematic overlap is not an exact PYQ match."
-      },
-      {
-        "bank_prompt": "The Battle of Plassey was fought in 1757.",
-        "result": "No occurrence of this exact wording found in the official PDF text."
+        "bank_prompt": "The Battle of Plassey was fought in the year 1757.",
+        "search_term": "Battle of Plassey",
+        "result": "No matching text found in official PDF."
       },
       {
         "bank_prompt": "The repo rate is associated with RBI lending to banks against eligible collateral.",
-        "result": "No occurrence of 'repo rate' found in the official PDF text."
+        "search_term": "repo rate",
+        "result": "No matching text found in official PDF."
       },
       {
         "bank_prompt": "World Environment Day is observed on 5 June.",
-        "result": "No occurrence of 'World Environment Day' found in the official PDF text."
+        "search_term": "World Environment Day",
+        "result": "No matching text found in official PDF."
+      },
+      {
+        "bank_prompt": "The Ramsar Convention concerns wetlands of international importance.",
+        "search_term": "Ramsar",
+        "result": "No matching text found in official PDF."
+      },
+      {
+        "bank_prompt": "GDP measures the value of final goods and services produced within domestic territory over a period.",
+        "search_term": "GDP",
+        "result": "No matching text found in official PDF."
       },
       {
         "bank_prompt": "The Indian National Congress was founded in 1885.",
-        "result": "No exact wording match established in the official 2023 GS-I PDF text; remains ADMIN_PRACTICE."
+        "search_term": "Indian National Congress",
+        "result": "No matching text found in official PDF."
       },
       {
-        "bank_prompt": "The RBI began operations in 1935.",
-        "result": "No exact wording match established in the official 2023 GS-I PDF text; remains ADMIN_PRACTICE."
+        "bank_prompt": "The Constitution of India was adopted on 26 November 1949.",
+        "search_term": "Constitution adopted on 26 November 1949",
+        "result": "No exact wording match established. Official paper has a different question on the 1st Amendment and Fundamental Rights (Q34); topic similarity is not a match."
       },
       {
         "bank_prompt": "The Constitution of India came into force on 26 January 1950.",
-        "result": "The official paper includes a different Constitution Day/Drafting Committee question, not this bank wording; conceptual proximity is not an exact match."
-      },
-      {
-        "bank_prompt": "The Battle of Plassey was fought in 1757.",
-        "result": "No exact wording match established in the official 2023 GS-I PDF text; remains ADMIN_PRACTICE."
+        "search_term": "Constitution came into force on 26 January 1950",
+        "result": "No exact wording match established. Similar constitutional subject matter elsewhere in the paper does not establish a match."
       },
       {
         "bank_prompt": "The United Nations was founded in 1945.",
-        "result": "No exact wording match established in the official 2023 GS-I PDF text; remains ADMIN_PRACTICE."
+        "search_term": "United Nations was founded in 1945",
+        "result": "No exact wording match established."
       }
     ],
-    "verified_matches": 0,
-    "interpretation": "These spot checks do not prove that a concept never appeared in any year. They show that these exact bank prompts have not been matched to this specific official 2023 paper. Keep all such records ADMIN_PRACTICE until exact wording/options/year/paper and official answer evidence are matched.",
-    "official_paper_notes": [
-      {
-        "question_numbers": "85–88 (official PDF text extraction excerpt)",
-        "official_question_topics": [
-          "Constitution Day and the Drafting Committee",
-          "US–EU Trade and Technology Council",
-          "Switzerland as a gold exporter and gold reserves",
-          "India's share of global goods exports and Production-Linked Incentive scheme"
-        ],
-        "comparison_result": "These actual official-paper items were confirmed from the official PDF's indexed text. No exact wording/options match was found among the sampled static-bank prompts. Topic overlap is not sufficient for VERIFIED_PYQ status.",
-        "source": "https://www.upsc.gov.in/sites/default/files/QP_CS_Pre_Exam_2023_280523.pdf"
-      }
-    ]
-  }
+    "exact_matches_established": 0,
+    "interpretation": "All ten targeted wording checks failed to establish an exact match in this specific paper. This does not prove those facts never appeared in another year's exam. No item is promoted to VERIFIED_PYQ."
+  },
+  "last_progress_note": "Official 2023 GS-I paper opened and indexed text inspected; 10 targeted bank-prompt checks recorded. Static bank remains 0 verified PYQs pending exact item-level matches across official papers and official answer evidence."
 }
