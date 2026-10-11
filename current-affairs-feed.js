@@ -14,4 +14,8 @@ function xmlField(block, tag) {
   const m = String(block || '').match(new RegExp('<' + safeTag + '(?:\\s[^>]*)?>([\\s\\S]*?)<\\/' + safeTag + '>', 'i'));
   return m ? xmlText(m[1]) : '';
 }
-module.exports = { xmlText, xmlField };
+function isEnglishText(value) {
+  // Keep Devanagari-language items out of the English current-affairs feed.
+  return !/[\u0900-\u097F]/u.test(String(value || ''));
+}
+module.exports = { xmlText, xmlField, isEnglishText };

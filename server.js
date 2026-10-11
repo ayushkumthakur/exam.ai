@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const { TOPICS, syllabusFor, NOTES } = require('./data/catalog');
 const ai = require('./ai');
-const { xmlField } = require('./current-affairs-feed');
+const { xmlField, isEnglishText } = require('./current-affairs-feed');
 const aiMetrics = require('./ai-metrics');
 const dbBackup = require('./db-backup');
 const { validateOfficialPyqSource, validatePyqVerification } = require('./pyq-source-policy');
@@ -863,7 +863,9 @@ route('GET', '/api/ca', ONB, async (c) => {
   let sql = "SELECT * FROM current_affairs WHERE (exams='ALL' OR (',' || exams || ',') LIKE ?) AND (event_date IS NULL OR event_date>=?)";
   const p = ['%,' + c.user.exam_id + ',%', from];
   if (cat) { sql += ' AND category=?'; p.push(cat); }
-  const items = db.prepare(sql + " ORDER BY COALESCE(event_date,'') DESC, id DESC LIMIT ? OFFSET ?").all(...p, limit, offset);
+  // Pull a wider window before filtering so Hindi legacy rows do not leave the English feed empty.
+  const candidates = db.prepare(sql + " ORDER BY COALESCE(event_date,'') DESC, id DESC LIMIT ? OFFSET 0").all(...p, Math.min(250, Math.max(limit + offset, limit * 5)));
+  const items = candidates.filter(item => isEnglishText(item.title) && isEnglishText(item.summary)).slice(offset, offset + limit);
   return { items, categories: CA_CATS, period, from, updated: dayStr() };
 });
 const CA_CATS = ['National', 'International', 'Defence', 'Economy', 'Science & Technology', 'Environment', 'Sports', 'Awards', 'Appointments', 'Government Schemes', 'Important Days', 'Reports & Indexes', 'Books & Authors', 'Important Persons', 'Defence Exercises'];
