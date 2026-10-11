@@ -265,9 +265,9 @@ function pickRealModeSectionQuestions(user, exam, subject, target) {
     }
   }
   for (const difficulty of ['easy','medium','hard']) {
-    const needed = quotas[difficulty] || 0;
+    const needed = Math.max(0, (quotas[difficulty] || 0) - selected.filter(question => question.difficulty === difficulty).length);
     if (!needed) continue;
-    const batch = pickQuestions(user, exam, { subject, difficulty, excludeSources: ['VERIFIED_PYQ'], limit: Math.max(needed, target - selected.length) });
+    const batch = pickQuestions(user, exam, { subject, difficulty, excludeSources: ['VERIFIED_PYQ'], limit: needed });
     for (const question of batch) {
       if (seen.has(question.id)) continue;
       seen.add(question.id);
