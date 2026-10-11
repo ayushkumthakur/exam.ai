@@ -6,7 +6,7 @@ const { buildExamQuestionBank } = require('../data/question_bank');
 const { buildPriorityQuestionBank } = require('../data/priority_question_bank');
 const { buildCatalogQuestionBank } = require('../data/catalog_question_bank');
 const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration } = require('../ai');
-const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers } = require('../paper-blueprint');
+const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets } = require('../paper-blueprint');
 
 const base = {
   text: 'A sample exam question asks which value is correct?',
@@ -177,6 +177,44 @@ for (const exam of EXAMS.filter(e => !prioritySet.has(e.id))) {
   for (const section of exam.pattern.sections) {
     assert.ok(subjects.has(section.subject), exam.id + ' must cover section ' + section.subject);
   }
+}
+
+
+const realismExamIds = ['UPSC_CSE','SSC_CGL','RBI_B'];
+for (const id of realismExamIds) {
+  const exam = EXAMS.find(item => item.id === id);
+  const questions = exam.pattern.sections.flatMap((section, si) =>
+    Array.from({ length: section.questions }, (_, i) => ({
+      id: si * 1000 + i + 1,
+      subject: section.subject,
+      difficulty: ['easy','medium','hard'][(i + si) % 3]
+    }))
+  );
+  const blueprint = createPaperBlueprint({
+    exam, kind: 'full_mock', mode: 'real', questions,
+    minutes: exam.pattern.minutes, startedAt: 1000
+  });
+  assert.equal(blueprint.questionCount, exam.pattern.sections.reduce((sum, section) => sum + section.questions, 0));
+  assert.equal(blueprint.durationMinutes, exam.pattern.minutes);
+  assert.equal(blueprint.realism.patternIntegrity, true, id + ' preserves section counts and marking');
+  assert.equal(
+    blueprint.realism.difficultyDistribution.easy + blueprint.realism.difficultyDistribution.medium + blueprint.realism.difficultyDistribution.hard,
+    blueprint.questionCount, id + ' reports difficulty labels without altering the paper'
+  );
+  assert.ok(blueprint.realism.patternStatus, id + ' discloses pattern verification status');
+  assert.ok(Array.isArray(blueprint.realism.limitations), id + ' discloses known runtime limitations');
+}
+assert.deepEqual(allocateSectionTargets([{questions:25},{questions:25},{questions:50}],20),[5,5,10]);
+for (const [id, expected] of [
+  ['UPSC_CSE',{easy:20,medium:50,hard:30}],
+  ['SSC_CGL',{easy:35,medium:45,hard:20}],
+  ['RBI_B',{easy:20,medium:50,hard:30}]
+]) {
+  const profile = difficultyProfileForExam(id);
+  const targets = difficultyTargets(100, profile);
+  assert.deepEqual(targets, expected, id + ' uses its documented practice difficulty profile');
+  assert.equal(Object.values(targets).reduce((sum,n)=>sum+n,0),100,id+' difficulty targets sum to paper size');
+  assert.match(profile.label,/practice estimate/i,id+' profile is clearly labelled as an estimate');
 }
 
 console.log('PASS AI quality, paper blueprint, and all-exam question-bank coverage tests');

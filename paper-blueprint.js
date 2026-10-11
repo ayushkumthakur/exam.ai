@@ -11,6 +11,29 @@ function allocateSectionTargets(sections, total) {
   return targets;
 }
 
+// These are internal practice-calibration targets, not official published exam quotas.
+function difficultyProfileForExam(examId) {
+  if (examId === 'UPSC_CSE' || examId === 'UPSC_CSAT') {
+    return { easy: 0.20, medium: 0.50, hard: 0.30, label: 'UPSC-style conceptual balance (practice estimate)' };
+  }
+  if (examId === 'SSC_CGL') {
+    return { easy: 0.35, medium: 0.45, hard: 0.20, label: 'SSC-style speed-and-accuracy balance (practice estimate)' };
+  }
+  if (examId === 'RBI_B') {
+    return { easy: 0.20, medium: 0.50, hard: 0.30, label: 'RBI-style applied and analytical balance (practice estimate)' };
+  }
+  return { easy: 0.30, medium: 0.45, hard: 0.25, label: 'General competitive-exam balance (practice estimate)' };
+}
+function difficultyTargets(total, profile) {
+  const keys = ['easy','medium','hard'];
+  const raw = keys.map(key => Math.max(0, Number(profile[key]) || 0) * total);
+  const targets = raw.map(Math.floor);
+  let left = Math.max(0, Math.round(total) - targets.reduce((sum, n) => sum + n, 0));
+  const order = raw.map((value,index)=>({index,remainder:value-Math.floor(value)}))
+    .sort((a,b)=>b.remainder-a.remainder || a.index-b.index);
+  for (let i=0;i<left;i++) targets[order[i % order.length].index]++;
+  return Object.fromEntries(keys.map((key,index)=>[key,targets[index]]));
+}
 function createPaperBlueprint({ exam, kind, mode = 'practice', questions, minutes, startedAt }) {
   const sections = exam.pattern.sections || [];
   const isFullMock = kind === 'full_mock';
@@ -45,12 +68,39 @@ function createPaperBlueprint({ exam, kind, mode = 'practice', questions, minute
   }
   const totalQuestions = questions.length;
   const timed = blueprintSections.some(section => section.durationSeconds !== null);
+  const difficultyDistribution = questions.reduce((counts, question) => {
+    const key = ['easy', 'medium', 'hard'].includes(String(question.difficulty || '').toLowerCase())
+      ? String(question.difficulty).toLowerCase() : 'unclassified';
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, { easy: 0, medium: 0, hard: 0, unclassified: 0 });
+  const patternAudit = exam.pattern.audit || {};
+  const difficultyProfile = difficultyProfileForExam(exam.id);
+  const patternIntegrity = blueprintSections.every(section => {
+    const source = sections.find(item => item.subject === section.subject);
+    return Boolean(source) && section.questionCount === source.questions &&
+      section.marks === Number(source.marks) && section.negative === Number(source.negative);
+  }) && blueprintSections.reduce((sum, section) => sum + section.questionCount, 0) === totalQuestions;
+  const realism = {
+    patternStatus: patternAudit.status || (exam.verified ? 'admin_verified' : 'unverified'),
+    patternCheckedAt: patternAudit.checkedAt || null,
+    sourceName: patternAudit.sourceName || null,
+    sourceUrl: patternAudit.sourceUrl || null,
+    verifiedFields: Array.isArray(patternAudit.verifiedFields) ? patternAudit.verifiedFields : [],
+    approximateFields: Array.isArray(patternAudit.approximateFields) ? patternAudit.approximateFields : [],
+    limitations: Array.isArray(patternAudit.runtimeLimitations) ? patternAudit.runtimeLimitations : [],
+    patternIntegrity,
+    difficultyDistribution,
+    difficultyProfile: { ...difficultyProfile, targets: difficultyTargets(totalQuestions, difficultyProfile) },
+    difficultyPolicy: 'Estimated internal practice mix, not an official quota. Actual distribution reflects the available question bank and is reported above.'
+  };
   return {
-    version: 1, examId: exam.id, examName: exam.name, kind, mode,
+    version: 2, examId: exam.id, examName: exam.name, kind, mode,
     questionCount: totalQuestions, durationMinutes: minutes,
     startAt: startedAt, totalMarks: blueprintSections.reduce((sum, section) => sum + section.questionCount * section.marks, 0),
     timedSections: timed,
     timingRule: timed ? 'fixed_sequential_sections' : 'overall_timer',
+    realism,
     sections: blueprintSections
   };
 }
@@ -77,4 +127,4 @@ function mergeBlueprintAnswers(blueprint, storedAnswers, incomingAnswers, elapse
   return result;
 }
 
-module.exports = { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers };
+module.exports = { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets };
