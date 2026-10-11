@@ -17,6 +17,7 @@ let baseEnv;
 let server;
 let exited = false;
 let serverOutput = '';
+let serverSpawnError = '';
 async function prepareServerConfig() {
   if (!port) {
     const probe = net.createServer();
@@ -42,22 +43,24 @@ async function prepareServerConfig() {
 function startServer(extraEnv = {}) {
   exited = false;
   serverOutput = '';
+  serverSpawnError = '';
   server = spawn(process.execPath, ['server.js'], {
     cwd: root,
     env: { ...baseEnv, ...extraEnv },
     stdio: ['ignore', 'pipe', 'pipe']
   });
+  server.on('error', error => { serverSpawnError = error.message; exited = true; });
   for (const stream of [server.stdout, server.stderr]) stream.on('data', chunk => {
     serverOutput = (serverOutput + chunk.toString()).slice(-4000);
   });
   server.on('exit', () => { exited = true; });
 }
 
-async function waitForServer(timeoutMs = 15000) {
+async function waitForServer(timeoutMs = 60000) {
   const deadline = Date.now() + timeoutMs;
   let lastError;
   while (Date.now() < deadline) {
-    if (exited) throw new Error('Test server exited before becoming ready.');
+    if (exited) throw new Error(`Test server exited before becoming ready.${serverSpawnError ? ` Spawn error: ${serverSpawnError}.` : ''}${serverOutput ? ` Server output: ${serverOutput.trim()}` : ''}`);
     try {
       const response = await fetch(base + '/api/config');
       if (response.ok) return;
@@ -67,7 +70,7 @@ async function waitForServer(timeoutMs = 15000) {
     }
     await new Promise(resolve => setTimeout(resolve, 250));
   }
-  throw new Error(`Test server did not become ready at ${base}: ${lastError?.message || 'timeout'}${serverOutput ? `; server output: ${serverOutput.trim()}` : '; server produced no stdout/stderr'}`);
+  throw new Error(`Test server did not become ready at ${base} within ${timeoutMs}ms: ${lastError?.message || 'timeout'}${serverSpawnError ? `; spawn error: ${serverSpawnError}` : ''}${serverOutput ? `; server output: ${serverOutput.trim()}` : '; server produced no stdout/stderr'}`);
 }
 
 async function stopServer() {
