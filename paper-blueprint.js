@@ -74,6 +74,37 @@ function createPaperBlueprint({ exam, kind, mode = 'practice', questions, minute
     counts[key] = (counts[key] || 0) + 1;
     return counts;
   }, { easy: 0, medium: 0, hard: 0, unclassified: 0 });
+  // Provenance is independent from structural realism: a correctly-shaped mock can
+  // still be made from practice/AI items. Count a PYQ only with complete item-level
+  // source and reviewer metadata; legacy rows with a PYQ label but missing proof
+  // are reported separately instead of being trusted.
+  const sourceCounts = { verified_pyq: 0, admin_practice: 0, pyq_pattern: 0, ai_generated: 0, legacy_unverified: 0, other: 0 };
+  const verifiedItems = [];
+  for (const question of questions) {
+    const source = String(question.source_type || '').toUpperCase();
+    const completeEvidence = source === 'VERIFIED_PYQ' &&
+      !!question.source_ref && !!question.answer_source_ref &&
+      String(question.verification_notes || '').trim().length >= 20 &&
+      !!String(question.verified_by || '').trim() && !!question.verified_at &&
+      question.pyq_year !== null && question.pyq_year !== undefined &&
+      Number.isInteger(Number(question.pyq_year)) && Number(question.pyq_year) >= 2000 &&
+      !!String(question.pyq_paper || '').trim();
+    if (completeEvidence) {
+      sourceCounts.verified_pyq++;
+      verifiedItems.push(question);
+    } else if (source === 'VERIFIED_PYQ') sourceCounts.legacy_unverified++;
+    else if (source === 'ADMIN_PRACTICE') sourceCounts.admin_practice++;
+    else if (source === 'PYQ_PATTERN') sourceCounts.pyq_pattern++;
+    else if (source === 'AI_GENERATED') sourceCounts.ai_generated++;
+    else sourceCounts.other++;
+  }
+  const paperKeys = new Set(verifiedItems.map(question =>
+    [question.pyq_year, question.pyq_paper, question.pyq_shift || ''].join('|')));
+  const questionProvenanceStatus = verifiedItems.length === totalQuestions && totalQuestions > 0 && paperKeys.size === 1
+    ? 'verified_pyq_set_same_paper'
+    : verifiedItems.length > 0
+      ? 'mixed_or_incomplete_provenance'
+      : 'practice_or_ai_questions_not_official_paper';
   const patternAudit = exam.pattern.audit || {};
   const difficultyProfile = difficultyProfileForExam(exam.id);
   const patternIntegrity = blueprintSections.every(section => {
@@ -90,6 +121,8 @@ function createPaperBlueprint({ exam, kind, mode = 'practice', questions, minute
     approximateFields: Array.isArray(patternAudit.approximateFields) ? patternAudit.approximateFields : [],
     limitations: Array.isArray(patternAudit.runtimeLimitations) ? patternAudit.runtimeLimitations : [],
     patternIntegrity,
+    sourceCounts,
+    questionProvenanceStatus,
     difficultyDistribution,
     difficultyProfile: { ...difficultyProfile, targets: difficultyTargets(totalQuestions, difficultyProfile) },
     difficultyPolicy: 'Estimated internal practice mix, not an official quota. Actual distribution reflects the available question bank and is reported above.'
