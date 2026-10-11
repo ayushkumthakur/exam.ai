@@ -6,6 +6,9 @@ process.env.GEMINI_API_KEY = 'test-gemini-key';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 process.env.GEMINI_MODEL = 'gemini-test-model';
 process.env.ANTHROPIC_MODEL = 'claude-test-model';
+// Isolate legacy fallback assertions from any CI/deployment secrets.
+delete process.env.GROQ_API_KEY;
+delete process.env.GROQ_API_KEY_2;
 
 const calls = [];
 global.fetch = async (url, options = {}) => {
