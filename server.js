@@ -8,6 +8,7 @@ const { TOPICS, syllabusFor, NOTES } = require('./data/catalog');
 const ai = require('./ai');
 const aiMetrics = require('./ai-metrics');
 const dbBackup = require('./db-backup');
+const { validateOfficialPyqSource } = require('./pyq-source-policy');
 const { allocateSectionTargets, createPaperBlueprint, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets } = require('./paper-blueprint');
 
 const PORT = +process.env.PORT || 3000;
@@ -1063,13 +1064,8 @@ route('POST', '/api/admin/questions', ADM, (c) => {
         const year = Number(m.pyq_year);
         if (!Number.isInteger(year) || year < 2000 || year > new Date().getFullYear() + 1) throw new Error('PYQ year must be a valid year from 2000 through next year');
         if (String(m.source_ref).length > 2000) throw new Error('source_ref must be 2000 characters or fewer');
-        let sourceUrl;
-        try { sourceUrl = new URL(String(m.source_ref)); } catch { throw new Error('source_ref must be a valid official-source HTTPS URL'); }
-        if (sourceUrl.protocol !== 'https:' || !sourceUrl.hostname || sourceUrl.username || sourceUrl.password ||
-            sourceUrl.hostname === 'localhost' || sourceUrl.hostname.endsWith('.localhost') ||
-            /^127\./.test(sourceUrl.hostname) || sourceUrl.hostname === '::1') {
-          throw new Error('source_ref must be a public HTTPS URL; verify it points to the official exam authority or official question paper');
-        }
+        const sourceCheck = validateOfficialPyqSource(m.exam_id, m.source_ref);
+        if (!sourceCheck.valid) throw new Error(sourceCheck.reason);
       }
       const id = ins.run(m.exam_id || null, v.subject, v.topic, v.difficulty, v.text, JSON.stringify(v.options), v.answer, v.explanation, v.concept, v.tip, type, m.pyq_year ? +m.pyq_year : null, m.pyq_paper || null, m.pyq_shift || null, m.source_ref || null, now()).lastInsertRowid;
       added.push(Number(id));
