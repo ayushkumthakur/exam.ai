@@ -63,7 +63,8 @@
       "official_notice_2024_tier1_final_answer_keys": "https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Writeup_Final_Anwerkey_CGLE_2024_T1_191224.pdf",
       "official_notice_2025_tier1_answer_key_status": "https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/writeup_181225.pdf",
       "status": "official_authority_and_notices_verified_item_level_records_not_audited",
-      "notes": "SSC's official notice confirms the 2024 Tier-I final answer keys and candidate response sheets were accessible from 19 December 2024 to 8 January 2025 via registered login and would not remain available afterward. The 2025 Tier-I notice says final answer keys and question papers would be published later; that notice is not itself an item-level question source. No static bank item has been matched to an SSC response sheet or final answer key in this audit."
+      "notes": "SSC's official notice confirms the 2024 Tier-I final answer keys and candidate response sheets were accessible from 19 December 2024 to 8 January 2025 via registered login and would not remain available afterward. The 2025 Tier-I notice says final answer keys and question papers would be published later; that notice is not itself an item-level question source. No static bank item has been matched to an SSC response sheet or final answer key in this audit. The legacy official SSC answer-key portal also lists the Combined Graduate Level Examination (Tier-I), 2023 final answer key along with candidate response sheets. Access to an individual candidate's response sheet may still be login-bound; no static-bank item has been matched to a specific official 2023 shift/question/answer in this pass.",
+      "official_2023_tier1_final_answer_key_listing": "https://ssc.nic.in/Portal/AnswerKey"
     },
     {
       "exam_id": "RBI_B",
@@ -214,5 +215,6 @@
     ],
     "exact_literal_topic_hits_in_static_banks": 0,
     "interpretation": "None of the 30 literal topic terms probed was found in these six static bank/build files. This is a narrow coverage-gap check, not proof that every related concept is absent and not a substitute for exact stem/options/answer verification. These official-paper questions should be considered candidates for new provenance-backed records only after answer-key verification; do not label existing similar concepts as PYQs."
-  }
+  },
+  "ssc_next_step": "Use the official 2023 Tier-I final-answer-key listing as the next accessible source target; extract actual item-level records only if the official linked response-sheet/question-paper content can be retrieved and tied to a shift and answer."
 }
