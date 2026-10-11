@@ -15,6 +15,11 @@ assert.equal(audit.verified_question_count_in_static_seed_banks, 0,
 assert.ok(audit.sources.some(s => s.exam_id === 'UPSC_CSE'));
 assert.ok(audit.sources.some(s => s.exam_id === 'SSC_CGL'));
 assert.ok(audit.sources.some(s => s.exam_id === 'RBI_B'));
+const upscAudit = audit.sources.find(s => s.exam_id === 'UPSC_CSE');
+assert.match(upscAudit.answer_key_archive_notes, /does not by itself prove whether a final key for 2023 exists/,
+  'audit must not infer that a 2023 final key does not exist just because the archive filter was not retrievable');
+assert.match(upscAudit.answer_key_archive_notes, /PRID=2265884/,
+  'historical answer-key availability note must cite the official PIB policy announcement');
 
 const banks = [
   ['base/expanded mapped bank', buildExamQuestionBank(EXAMS, TOPICS, BASE, EXPANDED)],
