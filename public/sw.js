@@ -1,4 +1,4 @@
-const CACHE = 'cea-shell-v4';
+const CACHE = 'cea-shell-v5';
 const SHELL = [
   '/',
   '/style.css?v=7',
@@ -7,17 +7,14 @@ const SHELL = [
   '/advanced-premium-v2.css?v=2',
   '/full-site-premium.css?v=2',
   '/mobile-bottom-clearance.css?v=3',
+  '/dark-mode-contrast.css?v=1',
   '/app2.js?v=8',
   '/app.js?v=17',
   '/icon.svg'
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE)
-      .then(cache => cache.addAll(SHELL))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', event => {
