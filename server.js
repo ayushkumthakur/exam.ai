@@ -224,7 +224,7 @@ function marking(exam) {
 }
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = crypto.randomInt(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
-function pickQuestions(user, exam, { subject, topic, difficulty, source, ids, limit, excludeSources }) {
+function pickQuestions(user, exam, { subject, topic, difficulty, source, ids, limit, excludeSources, reviewedOnly = false }) {
   const v = visible(user, exam);
   let sql = `SELECT q.* FROM questions q WHERE ${v.sql}`; const p = [...v.params];
   if (subject) { sql += ' AND q.subject=?'; p.push(subject); }
@@ -232,6 +232,7 @@ function pickQuestions(user, exam, { subject, topic, difficulty, source, ids, li
   if (difficulty && difficulty !== 'any') { sql += ' AND q.difficulty=?'; p.push(difficulty); }
   if (source) { sql += ' AND q.source_type=?'; p.push(source); }
   if (excludeSources) { sql += ` AND q.source_type NOT IN (${excludeSources.map(() => '?').join(',')})`; p.push(...excludeSources); }
+  if (reviewedOnly) sql += " AND q.concept LIKE 'Exam-realism reviewed:%'";
   if (ids) { sql += ` AND q.id IN (${ids.map(() => '?').join(',')})`; p.push(...ids); }
   const baseSql = sql;
   const baseParams = [...p];
@@ -250,10 +251,23 @@ function pickRealModeSectionQuestions(user, exam, subject, target) {
   const quotas = difficultyTargets(target, profile);
   const selected = [];
   const seen = new Set();
+  // Guarantee reviewed examples are represented when that section has them;
+  // fill the rest from the wider practice bank to preserve full-paper length.
   for (const difficulty of ['easy','medium','hard']) {
     const needed = quotas[difficulty] || 0;
     if (!needed) continue;
-    const batch = pickQuestions(user, exam, { subject, difficulty, excludeSources: ['VERIFIED_PYQ'], limit: needed });
+    const curated = pickQuestions(user, exam, { subject, difficulty, excludeSources: ['VERIFIED_PYQ'], reviewedOnly: true, limit: needed });
+    for (const question of curated) {
+      if (seen.has(question.id)) continue;
+      seen.add(question.id);
+      selected.push(question);
+      if (selected.length >= target) return selected.slice(0,target);
+    }
+  }
+  for (const difficulty of ['easy','medium','hard']) {
+    const needed = quotas[difficulty] || 0;
+    if (!needed) continue;
+    const batch = pickQuestions(user, exam, { subject, difficulty, excludeSources: ['VERIFIED_PYQ'], limit: Math.max(needed, target - selected.length) });
     for (const question of batch) {
       if (seen.has(question.id)) continue;
       seen.add(question.id);
