@@ -6,7 +6,7 @@ const { buildExamQuestionBank } = require('../data/question_bank');
 const { buildPriorityQuestionBank } = require('../data/priority_question_bank');
 const { buildCatalogQuestionBank } = require('../data/catalog_question_bank');
 const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration } = require('../ai');
-const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers } = require('../paper-blueprint');
+const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets } = require('../paper-blueprint');
 
 const base = {
   text: 'A sample exam question asks which value is correct?',
@@ -205,5 +205,16 @@ for (const id of realismExamIds) {
   assert.ok(Array.isArray(blueprint.realism.limitations), id + ' discloses known runtime limitations');
 }
 assert.deepEqual(allocateSectionTargets([{questions:25},{questions:25},{questions:50}],20),[5,5,10]);
+for (const [id, expected] of [
+  ['UPSC_CSE',{easy:20,medium:50,hard:30}],
+  ['SSC_CGL',{easy:35,medium:45,hard:20}],
+  ['RBI_B',{easy:20,medium:50,hard:30}]
+]) {
+  const profile = difficultyProfileForExam(id);
+  const targets = difficultyTargets(100, profile);
+  assert.deepEqual(targets, expected, id + ' uses its documented practice difficulty profile');
+  assert.equal(Object.values(targets).reduce((sum,n)=>sum+n,0),100,id+' difficulty targets sum to paper size');
+  assert.match(profile.label,/practice estimate/i,id+' profile is clearly labelled as an estimate');
+}
 
 console.log('PASS AI quality, paper blueprint, and all-exam question-bank coverage tests');
