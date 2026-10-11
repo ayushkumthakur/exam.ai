@@ -10,4 +10,14 @@
   .bottom {
     padding-bottom: max(7px, env(safe-area-inset-bottom)) !important;
   }
+  /* Dim the page behind the drawer without blurring the entire interface. */
+  .mobile-nav-scrim {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(9, 26, 56, .42) !important;
+  }
+  .side.mobile-open {
+    filter: none !important;
+    opacity: 1 !important;
+  }
 }
