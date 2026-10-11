@@ -5,6 +5,7 @@ const path = require('node:path');
 const { EXAMS, TOPICS } = require('../data/catalog');
 const BASE = require('../data/seed_questions');
 const EXPANDED = require('../data/expanded_question_bank');
+const CSAT = require('../data/csat_questions');
 const { buildExamQuestionBank } = require('../data/question_bank');
 const { buildPriorityQuestionBank } = require('../data/priority_question_bank');
 const { buildCatalogQuestionBank } = require('../data/catalog_question_bank');
@@ -22,6 +23,9 @@ assert.match(upscAudit.answer_key_archive_notes, /PRID=2265884/,
   'historical answer-key availability note must cite the official PIB policy announcement');
 
 const banks = [
+  ['seed bank', BASE],
+  ['expanded bank', EXPANDED],
+  ['CSAT bank', CSAT],
   ['base/expanded mapped bank', buildExamQuestionBank(EXAMS, TOPICS, BASE, EXPANDED)],
   ['priority bank', buildPriorityQuestionBank(EXAMS, TOPICS)],
   ['catalog bank', buildCatalogQuestionBank(EXAMS, TOPICS, BASE, EXPANDED)]
