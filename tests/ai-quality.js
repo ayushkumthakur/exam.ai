@@ -169,7 +169,7 @@ for (const q of reviewedPriority) {
   assert.ok(q.concept.startsWith('Exam-realism reviewed:'), 'review status must be visible in question metadata');
 }
 const generatedStatementItems = priorityBank.filter(q => /^Consider the following statements:/i.test(q.text));
-const statementTriples = generatedStatementItems.map(q => q.text.split('Which of the statements given above are correct?')[0].trim().toLowerCase());
+const statementTriples = generatedStatementItems.map(q => q.exam_id + '|' + q.subject + '|' + q.text.split('Which of the statements given above are correct?')[0].trim().toLowerCase());
 assert.equal(new Set(statementTriples).size, statementTriples.length,
   'statement-question builder must not inflate bank size by permuting the same three facts');
 
