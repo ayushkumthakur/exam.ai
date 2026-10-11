@@ -243,4 +243,30 @@ if (qCount === 0) {
   }
 }
 
+
+/*
+ * Idempotent exam-wise question-bank expansion.
+ * This copies compatible authored practice questions into every catalog exam and
+ * subject, with topics constrained to that exam's syllabus. It never labels
+ * generated/adapted questions as VERIFIED_PYQ.
+ */
+{
+  const EXPANDED_SEED = require('./data/expanded_question_bank');
+  const { buildExamQuestionBank } = require('./data/question_bank');
+  const bankRows = buildExamQuestionBank(EXAMS, require('./data/catalog').TOPICS, SEED, EXPANDED_SEED);
+  const insert = db.prepare(`INSERT INTO questions
+    (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,
+     pyq_year,pyq_paper,pyq_shift,source_ref,owner_user_id,created_at)
+    SELECT ?,?,?,?,?,?,?,?,?,?,'ADMIN_PRACTICE',NULL,NULL,NULL,NULL,NULL,?
+    WHERE NOT EXISTS (
+      SELECT 1 FROM questions
+      WHERE exam_id=? AND subject=? AND topic=? AND text=? AND source_type='ADMIN_PRACTICE'
+    )`);
+  for (const item of bankRows) {
+    insert.run(item.exam_id, item.subject, item.topic, item.difficulty, item.text, JSON.stringify(item.options),
+      item.answer, item.explanation, item.concept, item.tip, now(),
+      item.exam_id, item.subject, item.topic, item.text);
+  }
+}
+
 module.exports = db;
