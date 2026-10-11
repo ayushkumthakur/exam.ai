@@ -110,3 +110,48 @@
     box-shadow: inset 0 0 0 1px #405d8a !important;
   }
 }
+
+
+/* Mobile drawer contrast: prevent dark-theme overrides from leaving a white drawer with pale text. */
+:root[data-theme="dark"] .side,
+:root[data-theme="dark"] .side.mobile-open {
+  background: #11182a !important;
+  color: #edf2ff !important;
+  border-color: #303b55 !important;
+  box-shadow: 18px 0 45px rgba(0,0,0,.42) !important;
+  opacity: 1 !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+:root[data-theme="dark"] .side .brand,
+:root[data-theme="dark"] .side .brand b,
+:root[data-theme="dark"] .side .brand span,
+:root[data-theme="dark"] .side .brand small,
+:root[data-theme="dark"] .side .nav,
+:root[data-theme="dark"] .side .nav:not(.on),
+:root[data-theme="dark"] .side .side-foot,
+:root[data-theme="dark"] .side .sidebar-profile,
+:root[data-theme="dark"] .side .sidebar-profile * {
+  color: #d7e1f5 !important;
+}
+:root[data-theme="dark"] .side .nav:not(.on) {
+  background: transparent !important;
+}
+:root[data-theme="dark"] .side .nav.on {
+  color: #ffffff !important;
+  background: linear-gradient(110deg,#1769ff,#3688ff) !important;
+}
+:root[data-theme="dark"] .mobile-nav-scrim,
+:root[data-theme="dark"] .mobile-nav-scrim.is-open {
+  background: rgba(2,8,23,.64) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+}
+@media (max-width: 820px) {
+  :root[data-theme="dark"] body #app .side.mobile-open {
+    background: #11182a !important;
+    color: #edf2ff !important;
+  }
+}
