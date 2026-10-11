@@ -114,7 +114,6 @@ const upscBlueprint = createPaperBlueprint({
 });
 assert.equal(upscBlueprint.timedSections, false, 'exams without verified sectional timers retain one overall timer');
 
-console.log('PASS AI quality, paper blueprint, and all-exam question-bank coverage tests');
 
 const expandedBank = buildExamQuestionBank(EXAMS, TOPICS, BASE_QUESTION_SEED, EXPANDED_QUESTION_SEED);
 assert.ok(expandedBank.length >= 300, 'expanded bank should contain hundreds of exam-specific practice rows');
@@ -129,3 +128,5 @@ for (const exam of EXAMS) {
   }
 }
 assert.ok(EXAMS.every(exam => expandedBank.some(q => q.exam_id === exam.id)), 'all catalog exams need a non-empty exam-specific question bank');
+
+console.log('PASS AI quality, paper blueprint, and all-exam question-bank coverage tests');
