@@ -1231,8 +1231,9 @@ function scheduleCurrentAffairsEveryThreeDays() {
 function startCurrentAffairsAutoRefresh() {
   // Refresh official PIB/RBI feeds every six hours; build the sourced exam-relevant digest every three days at 07:00 IST when Gemini grounding is configured.
   setTimeout(() => {
+    // Refresh official feeds at startup, but do not spend a grounded-AI request on every
+    // deploy/restart. The sourced AI digest remains on the three-day schedule below.
     runCaFeedRefresh();
-    refreshCurrentAffairsAuto(3, 12).catch(e => console.error('[ca-startup-digest]', e.message));
   }, 15000);
   setInterval(() => runCaFeedRefresh(), 6 * 60 * 60 * 1000);
   scheduleCurrentAffairsEveryThreeDays();
