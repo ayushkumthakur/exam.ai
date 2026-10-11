@@ -1,0 +1,13 @@
+/* Mobile screenshot follow-up: keep the fixed bottom navigation from covering the last content. */
+@media (max-width: 820px) {
+  body {
+    padding-bottom: calc(136px + env(safe-area-inset-bottom)) !important;
+  }
+  .page {
+    padding-bottom: calc(136px + env(safe-area-inset-bottom)) !important;
+    scroll-padding-bottom: calc(136px + env(safe-area-inset-bottom));
+  }
+  .bottom {
+    padding-bottom: max(7px, env(safe-area-inset-bottom)) !important;
+  }
+}
