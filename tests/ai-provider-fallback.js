@@ -6,6 +6,9 @@ process.env.GEMINI_API_KEY = 'test-gemini-key';
 process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
 process.env.GEMINI_MODEL = 'gemini-test-model';
 process.env.ANTHROPIC_MODEL = 'claude-test-model';
+// Isolate legacy fallback assertions from any CI/deployment secrets.
+delete process.env.GROQ_API_KEY;
+delete process.env.GROQ_API_KEY_2;
 
 const calls = [];
 global.fetch = async (url, options = {}) => {
@@ -13,6 +16,7 @@ global.fetch = async (url, options = {}) => {
   if (String(url).includes('generativelanguage.googleapis.com')) {
     return { ok: false, status: 503 };
   }
+  if (String(url).includes('api.groq.com')) throw new Error('Groq should not be called before Anthropic in the legacy first test');
   if (String(url).includes('api.anthropic.com')) {
     return {
       ok: true,
@@ -52,6 +56,43 @@ global.fetch = async (url, options = {}) => {
   assert.equal(reverse.fallback_used, true, 'reverse fallback should be marked');
   assert.equal(calls.length, 2, 'reverse fallback should call both providers');
 
+  // Enable Groq after checking the existing Gemini/Anthropic fallback behavior.
+  process.env.GROQ_API_KEY = 'test-groq-key';
+  process.env.GROQ_MODEL = 'llama-test-model';
+
+  // Gemini quota failure should automatically fall back to Groq before Anthropic.
+  process.env.AI_PROVIDER = 'gemini';
+  calls.length = 0;
+  global.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), headers: options.headers || {}, body: options.body || '' });
+    if (String(url).includes('generativelanguage.googleapis.com')) return { ok: false, status: 429 };
+    if (String(url).includes('api.groq.com')) return {
+      ok: true, status: 200,
+      json: async () => ({ choices: [{ message: { content: 'groq backup response' } }], usage: { prompt_tokens: 2, completion_tokens: 3, total_tokens: 5 } })
+    };
+    throw new Error('Unexpected mocked URL');
+  };
+  const groqFallback = await callClaude({ system: 'test system', messages: [{ role: 'user', content: 'hello' }] });
+  assert.equal(groqFallback.ok, true, 'Groq should recover from Gemini quota errors');
+  assert.equal(groqFallback.provider, 'groq', 'Groq should be returned as fallback');
+  assert.equal(groqFallback.fallback_used, true, 'Groq fallback should be marked');
+  assert.equal(calls.length, 2, 'Gemini and Groq should be called, not Anthropic');
+  assert.ok(calls[1].url.includes('api.groq.com/openai/v1/chat/completions'), 'second request should use Groq chat completions');
+  assert.equal(calls[1].headers.authorization, 'Bearer test-groq-key', 'Groq key stays server-side');
+  assert.equal(JSON.parse(calls[1].body).model, 'llama-test-model', 'configured Groq model should be used');
+
+  // Groq should not be used for image/document requests or grounded current-affairs calls.
+  calls.length = 0;
+  global.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), headers: options.headers || {} });
+    if (String(url).includes('generativelanguage.googleapis.com')) return { ok: false, status: 429 };
+    if (String(url).includes('api.anthropic.com')) return { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: 'multimodal backup' }] }) };
+    throw new Error('Unexpected mocked URL');
+  };
+  const imageFallback = await callClaude({ system: 'test', messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', data: 'abc', media_type: 'image/png' } }] }] });
+  assert.equal(imageFallback.provider, 'anthropic', 'image request should skip text-only Groq');
+  assert.equal(calls.length, 2, 'image request should try Gemini and Anthropic only');
+
   // Invalid request errors should not silently switch providers.
   process.env.AI_PROVIDER = 'gemini';
   calls.length = 0;
@@ -63,5 +104,5 @@ global.fetch = async (url, options = {}) => {
   assert.equal(invalid.ok, false, 'invalid request should fail');
   assert.equal(invalid.error, 'AI_HTTP_400', 'invalid request error should remain visible');
   assert.equal(calls.length, 1, 'invalid request should not trigger provider fallback');
-  console.log('PASS AI primary-to-backup provider fallback');
+  console.log('PASS AI primary-to-backup provider fallback including Groq');
 })().catch(err => { console.error(err); process.exit(1); });
