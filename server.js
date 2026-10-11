@@ -1350,7 +1350,7 @@ const server = http.createServer(async (req, res) => {
       let body = {};
       if (method !== 'GET' && method !== 'DELETE') {
         if (!/application\/json/.test(req.headers['content-type'] || '')) throw bad('Expected JSON.');
-        const bodyLimit = ['/api/ai/paper-parse', '/api/ai/solve-question', '/api/ai/notes'].includes(url.pathname) ? 16e6 : 2e6;
+        const bodyLimit = ['/api/ai/ask', '/api/ai/paper-parse', '/api/ai/solve-question', '/api/ai/notes'].includes(url.pathname) ? 16e6 : 2e6;
         const raw = await readBody(req, bodyLimit); try { body = raw ? JSON.parse(raw) : {}; } catch { throw bad('Invalid JSON.'); }
       }
       const out = await matched.fn({ req, res, user, body, params, query: Object.fromEntries(url.searchParams), ip });

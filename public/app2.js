@@ -23,14 +23,17 @@ async function pgTutor(parts, params) {
       if (role === 'assistant') { if (id) m.append(actions(id, text)); } return m;
     }
     function actions(id, text) {
-      const labels = { simple: 'Explain simply', detail: 'Explain in detail', another: 'Show another method', again: 'Explain again' };
+      const labels = { simple: 'Explain simply', another: 'Show another method' };
       const send = (mode, msg) => ask(msg || `Use only the answer below as context for this request; do not rely on any other conversation history.\n\nPrevious answer:\n${text}`, mode, msg || labels[mode]);
       const B = (l, f) => h('button', { class: 'btn sm', onclick: f }, l);
-      return h('div', { class: 'row', style: 'margin-top:.7rem' }, B('Explain Simply', () => send('simple')), B('Explain in Detail', () => send('detail')), B('Show Another Method', () => send('another')), B('Explain Again', () => send('again')),
-        B('Give Similar Question', () => ask(`Based only on the answer below, give me one similar practice question testing the same concept. Do not reveal the answer until I ask.\n\nPrevious answer:\n${text}`, undefined, 'Give me a similar practice question on the same concept.')), B('Generate 5 Questions', () => { tab = 'gen'; draw(); }), B('Generate Quiz', () => { tab = 'gen'; draw(); }),
-        B('Add to Revision', () => post('/api/bookmarks', { kind: 'revision', ref_id: 'ai' + id, title: 'AI explanation', body: text }).then(() => toast('Added to revision items')).catch(e => toast(e.message))),
+      // Kept only the actions that do something distinct: two genuinely different re-explanations,
+      // one way to get more practice, one save action, and feedback. Everything redundant with these
+      // (Explain in Detail/Again, Give Similar Question, Generate Quiz, Add to Revision, Ask Follow-up)
+      // was trimmed — the textbox below is always visible, so there's no need for a button just to focus it.
+      return h('div', { class: 'row', style: 'margin-top:.7rem' }, B('Explain Simply', () => send('simple')), B('Show Another Method', () => send('another')),
+        B('More Practice', () => { tab = 'gen'; draw(); }),
         B('🔖 Bookmark', () => post('/api/bookmarks', { kind: 'ai', ref_id: 'ai' + id, title: 'AI explanation', body: text }).then(r => toast(r.saved ? 'Bookmarked' : 'Removed')).catch(e => toast(e.message))),
-        B('Ask Follow-up', () => ta.focus()), h('span', { class: 'grow' }),
+        h('span', { class: 'grow' }),
         B('👍 Helpful', () => fb(id, 'helpful')), B('👎 Not Helpful', () => fb(id, 'not_helpful')), B('Report Answer', () => { const n = prompt('What is wrong with this answer? (optional)') ; if (n !== null) fb(id, 'report', n); }));
     }
     const fb = (id, kind, note) => post('/api/ai/feedback', { conversation_id: id, kind, note }).then(() => toast(kind === 'report' ? 'Reported. An admin will review it.' : 'Thanks for the feedback')).catch(e => toast(e.message));
@@ -418,7 +421,7 @@ async function pgSearch(parts, params) {
   const none = !Object.values(r).some(a => a.length);
   return h('div', { class: 'stack' }, h('h1', {}, `Results for “${term}”`), none ? h('div', { class: 'card empty' }, 'Nothing found. Try another word.') : null,
     r.topics.map(t => h('div', { class: 'card stack' }, h('div', {}, h('h3', {}, t.topic), h('span', { class: 'muted small' }, t.subject)),
-      h('div', { class: 'row' }, h('button', { class: 'btn sm primary', onclick: () => go('#/revision' + q({ subject: t.subject, topic: t.topic })) }, 'Learn ' + t.topic), h('a', { class: 'btn sm', href: '#/pyqs' }, t.topic + ' PYQs'), h('button', { class: 'btn sm', onclick: () => go('#/practice' + q({ subject: t.subject, topic: t.topic, start: 1 })) }, 'Practice'), h('button', { class: 'btn sm', onclick: () => go('#/revision' + q({ subject: t.subject, topic: t.topic })) }, 'Revision'), h('button', { class: 'btn sm', onclick: () => startTest({ kind: 'topic', subject: t.subject, topic: t.topic, count: 10 }) }, 'Tests'), h('a', { class: 'btn sm', href: '#/tutor' + q({ ask: 'Teach me ' + t.topic }) }, 'AI Tutor')))),
+      h('div', { class: 'row' }, h('button', { class: 'btn sm primary', onclick: () => go('#/revision' + q({ subject: t.subject, topic: t.topic })) }, 'Learn ' + t.topic), h('button', { class: 'btn sm', onclick: () => go('#/practice' + q({ subject: t.subject, topic: t.topic, start: 1 })) }, 'Practice'), h('button', { class: 'btn sm', onclick: () => startTest({ kind: 'topic', subject: t.subject, topic: t.topic, count: 10 }) }, 'Tests'), h('a', { class: 'btn sm', href: '#/tutor' + q({ ask: 'Teach me ' + t.topic }) }, 'AI Tutor')))),
     r.questions.length ? h('div', { class: 'card' }, h('h3', {}, 'Questions'), h('div', { class: 'list' }, r.questions.map(x => h('div', {}, srcBadge(x), ' ', x.text)))) : null,
     r.pyqs.length ? h('div', { class: 'card' }, h('h3', {}, 'PYQs'), h('div', { class: 'list' }, r.pyqs.map(x => h('div', {}, srcBadge(x), ' ', x.text)))) : null,
     r.current_affairs.length ? h('div', { class: 'card' }, h('h3', {}, 'Current Affairs'), h('div', { class: 'list' }, r.current_affairs.map(x => h('div', {}, h('span', { class: 'badge' }, x.category), ' ', x.title)))) : null,
