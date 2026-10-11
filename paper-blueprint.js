@@ -45,12 +45,37 @@ function createPaperBlueprint({ exam, kind, mode = 'practice', questions, minute
   }
   const totalQuestions = questions.length;
   const timed = blueprintSections.some(section => section.durationSeconds !== null);
+  const difficultyDistribution = questions.reduce((counts, question) => {
+    const key = ['easy', 'medium', 'hard'].includes(String(question.difficulty || '').toLowerCase())
+      ? String(question.difficulty).toLowerCase() : 'unclassified';
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, { easy: 0, medium: 0, hard: 0, unclassified: 0 });
+  const patternAudit = exam.pattern.audit || {};
+  const patternIntegrity = blueprintSections.every(section => {
+    const source = sections.find(item => item.subject === section.subject);
+    return Boolean(source) && section.questionCount === source.questions &&
+      section.marks === Number(source.marks) && section.negative === Number(source.negative);
+  }) && blueprintSections.reduce((sum, section) => sum + section.questionCount, 0) === totalQuestions;
+  const realism = {
+    patternStatus: patternAudit.status || (exam.verified ? 'admin_verified' : 'unverified'),
+    patternCheckedAt: patternAudit.checkedAt || null,
+    sourceName: patternAudit.sourceName || null,
+    sourceUrl: patternAudit.sourceUrl || null,
+    verifiedFields: Array.isArray(patternAudit.verifiedFields) ? patternAudit.verifiedFields : [],
+    approximateFields: Array.isArray(patternAudit.approximateFields) ? patternAudit.approximateFields : [],
+    limitations: Array.isArray(patternAudit.runtimeLimitations) ? patternAudit.runtimeLimitations : [],
+    patternIntegrity,
+    difficultyDistribution,
+    difficultyPolicy: 'Uses the difficulty labels of available questions; official exams do not publish a fixed Easy/Medium/Hard quota for every paper.'
+  };
   return {
-    version: 1, examId: exam.id, examName: exam.name, kind, mode,
+    version: 2, examId: exam.id, examName: exam.name, kind, mode,
     questionCount: totalQuestions, durationMinutes: minutes,
     startAt: startedAt, totalMarks: blueprintSections.reduce((sum, section) => sum + section.questionCount * section.marks, 0),
     timedSections: timed,
     timingRule: timed ? 'fixed_sequential_sections' : 'overall_timer',
+    realism,
     sections: blueprintSections
   };
 }
