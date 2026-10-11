@@ -1,12 +1,12 @@
-const CACHE = 'cea-shell-v2';
+const CACHE = 'cea-shell-v3';
 const SHELL = [
   '/',
   '/style.css?v=7',
   '/dashboard-theme.css?v=10',
-  '/mobile-reference.css?v=3',
+  '/mobile-reference.css?v=4',
   '/advanced-premium-v2.css?v=2',
-  '/full-site-premium.css?v=1',
-  '/mobile-bottom-clearance.css?v=1',
+  '/full-site-premium.css?v=2',
+  '/mobile-bottom-clearance.css?v=2',
   '/app2.js?v=8',
   '/app.js?v=17',
   '/icon.svg'
@@ -44,7 +44,6 @@ self.addEventListener('fetch', event => {
   }
 
   if (['.js', '.css', '.svg'].some(ext => url.pathname.endsWith(ext))) {
-    // Prefer deployed assets so a new release cannot be hidden behind an old PWA cache.
     event.respondWith(
       fetch(request).then(response => {
         if (response.ok) caches.open(CACHE).then(cache => cache.put(request, response.clone()));
