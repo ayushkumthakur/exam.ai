@@ -269,4 +269,28 @@ if (qCount === 0) {
   }
 }
 
+
+/*
+ * Priority exam banks: deterministic, authored practice questions for UPSC CSE,
+ * CSAT, SSC CGL Tier-I and RBI Grade B Phase-I. Idempotent on persistent Railway
+ * volumes and deliberately separate from source-verified PYQ records.
+ */
+{
+  const { buildPriorityQuestionBank } = require('./data/priority_question_bank');
+  const priorityRows = buildPriorityQuestionBank(EXAMS, require('./data/catalog').TOPICS);
+  const insertPriority = db.prepare(`INSERT INTO questions
+    (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,
+     pyq_year,pyq_paper,pyq_shift,source_ref,owner_user_id,created_at)
+    SELECT ?,?,?,?,?,?,?,?,?,?,'ADMIN_PRACTICE',NULL,NULL,NULL,NULL,NULL,?
+    WHERE NOT EXISTS (
+      SELECT 1 FROM questions
+      WHERE exam_id=? AND subject=? AND text=? AND source_type='ADMIN_PRACTICE'
+    )`);
+  for (const item of priorityRows) {
+    insertPriority.run(item.exam_id, item.subject, item.topic, item.difficulty, item.text, JSON.stringify(item.options),
+      item.answer, item.explanation, item.concept || item.topic, item.tip || 'Check each statement and eliminate unsupported options.',
+      now(), item.exam_id, item.subject, item.text);
+  }
+}
+
 module.exports = db;
