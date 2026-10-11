@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const { TOPICS, syllabusFor, NOTES } = require('./data/catalog');
 const ai = require('./ai');
+const { xmlField } = require('./current-affairs-feed');
 const aiMetrics = require('./ai-metrics');
 const dbBackup = require('./db-backup');
 const { validateOfficialPyqSource, validatePyqVerification } = require('./pyq-source-policy');
@@ -1151,18 +1152,6 @@ const CA_FEEDS = [
   { name: 'Press Information Bureau', url: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3' },
   { name: 'Reserve Bank of India', url: 'https://www.rbi.org.in/Scripts/RSS.aspx?Id=6' }
 ];
-function xmlText(value) {
-  return String(value || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/gi, ' ')
-    .replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'")
-    .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Math.min(0x10ffff, +n)))
-    .replace(/\s+/g, ' ').trim();
-}
-function xmlField(block, tag) {
-  const m = block.match(new RegExp('<' + tag + '(?:\s[^>]*)?>([\s\S]*?)<\/' + tag + '>', 'i'));
-  return m ? xmlText(m[1]) : '';
-}
 function caCategory(title, summary, feed) {
   const t = (title + ' ' + summary).toLowerCase();
   if (/rbi|reserve bank|inflation|gdp|repo rate|banking|economy|trade|finance|budget/.test(t)) return 'Economy';
