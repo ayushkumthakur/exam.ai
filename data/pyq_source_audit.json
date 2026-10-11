@@ -6,14 +6,30 @@
   "sources": [
     {
       "exam_id": "UPSC_CSE",
+      "official_listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+      "latest_exam_page_url": "https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026",
       "papers": [
+        {
+          "year": 2026,
+          "paper": "Civil Services (Preliminary) Examination - General Studies Paper I",
+          "official_exam_page_url": "https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026",
+          "status": "official_question_paper_listed_content_not_item_audited",
+          "notes": "The official exam page lists both 2026 question papers uploaded on 25 May 2026. This confirms publication, not any individual question or answer."
+        },
+        {
+          "year": 2026,
+          "paper": "Civil Services (Preliminary) Examination - General Studies Paper II (CSAT)",
+          "official_exam_page_url": "https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026",
+          "status": "official_question_paper_listed_content_not_item_audited",
+          "notes": "The official exam page lists both 2026 question papers uploaded on 25 May 2026. This confirms publication, not any individual question or answer."
+        },
         {
           "year": 2025,
           "paper": "Civil Services (Preliminary) Examination - General Studies Paper I",
           "question_paper_url": "https://www.upsc.gov.in/sites/default/files/QP-CSP-25-GENERAL-STUDIES-PAPER-I-26052025.pdf",
           "official_listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
           "status": "official_paper_listed_content_not_item_audited",
-          "notes": "Official UPSC listing confirms the paper is published. Automated retrieval of the 27.8 MB PDF was not available during this audit; no question has been promoted based on the listing alone."
+          "notes": "The official listing publishes the paper. Exact question wording, options, and answers have not been compared item by item."
         },
         {
           "year": 2025,
@@ -21,22 +37,26 @@
           "question_paper_url": "https://www.upsc.gov.in/sites/default/files/QP-CSP-25-GENERAL-STUDIES-PAPER-II-26052025.pdf",
           "official_listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
           "status": "official_paper_listed_content_not_item_audited",
-          "notes": "Official UPSC listing confirms the paper is published. Automated retrieval of the 30.58 MB PDF was not available during this audit; no question has been promoted based on the listing alone."
+          "notes": "The official listing publishes the paper. Exact question wording, options, and answers have not been compared item by item."
         }
       ]
     },
     {
       "exam_id": "SSC_CGL",
-      "official_listing_url": "https://ssc.gov.in/",
-      "status": "official_authority_identified_item_level_records_not_audited",
-      "notes": "SSC question/response-sheet and answer-key access may be login- and time-limited. A generic SSC homepage is not sufficient evidence for an individual question. Store an item-specific official reference and answer-key evidence when available."
+      "official_listing_url": "https://ssc.gov.in/home/answer-key",
+      "official_notice_2024_tier1_final_answer_keys": "https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Writeup_Final_Anwerkey_CGLE_2024_T1_191224.pdf",
+      "official_notice_2025_tier1_answer_key_status": "https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/writeup_181225.pdf",
+      "status": "official_authority_and_notices_verified_item_level_records_not_audited",
+      "notes": "SSC's official notice confirms the 2024 Tier-I final answer keys and candidate response sheets were accessible from 19 December 2024 to 8 January 2025 via registered login and would not remain available afterward. The 2025 Tier-I notice says final answer keys and question papers would be published later; that notice is not itself an item-level question source. No static bank item has been matched to an SSC response sheet or final answer key in this audit."
     },
     {
       "exam_id": "RBI_B",
       "official_listing_url": "https://opportunities.rbi.org.in/Scripts/CallLetters.aspx",
-      "information_handout_url": "https://opportunities.rbi.org.in/scripts/bs_viewcontent.aspx?Id=4758",
-      "status": "official_handout_available_actual_paper_not_established",
-      "notes": "Official information handouts establish exam format, not that an item appeared in an actual previous paper. Handout/sample questions must not be labelled VERIFIED_PYQ without item-specific past-paper evidence."
+      "phase1_information_handout_2026": "https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5055",
+      "phase1_information_handout_2025": "https://opportunities.rbi.org.in/scripts/bs_viewcontent.aspx?Id=4758",
+      "phase2_information_handouts_2025": "https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=4791",
+      "status": "official_handouts_available_actual_question_paper_and_answer_key_not_established",
+      "notes": "The official RBI portal provides Grade B recruitment handouts, including the 2026 Phase-I handout and 2025 Phase-II handouts. Handouts establish exam instructions/format, not that an item appeared in an actual previous exam. No static bank item has been matched to an official past-paper record in this audit."
     }
   ],
   "question_bank_audit": {
@@ -46,6 +66,6 @@
     "data/csat_questions.js": "ADMIN_PRACTICE original CSAT practice material",
     "data/catalog_question_bank.js": "ADMIN_PRACTICE generated/adapted practice bank",
     "data/question_bank.js": "Builder hard-codes source_type=ADMIN_PRACTICE",
-    "result": "No item in these source-code banks has been verified against an exact official paper and official answer key in this audit. Do not seed any of these records as VERIFIED_PYQ."
+    "result": "No item in these source-code banks has been verified against an exact official paper and official answer key in this audit. Do not seed any of these records as VERIFIED_PYQ. Production database questions have not been directly queried and are outside this static-bank count."
   }
 }
