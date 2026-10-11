@@ -507,3 +507,31 @@ details>summary{cursor:pointer;font-weight:650}
 .auth .card a{
   color:var(--brand-2);
 }
+
+
+/* Onboarding exam picker contrast fix: avoid OS dark-mode rules washing out
+   labels when the saved in-app theme and system theme differ. */
+.auth .examgrid .exam{
+  background:var(--surface)!important;
+  color:var(--ink)!important;
+  border-color:var(--line)!important;
+}
+.auth .examgrid .exam b{color:var(--ink)!important}
+.auth .examgrid .exam .muted,
+.auth .examgrid .exam .small{color:var(--muted)!important}
+.auth .examgrid .exam.on{
+  background:var(--info-soft)!important;
+  color:var(--ink)!important;
+  border-color:var(--brand-2)!important;
+}
+.auth .chips .chip{
+  background:var(--surface);
+  color:var(--ink);
+  border-color:var(--line);
+}
+.auth .chips .chip.on{
+  background:var(--brand-2)!important;
+  color:#fff!important;
+  border-color:var(--brand-2)!important;
+}
+:root[data-theme="dark"] .auth .chips .chip.on{color:#10234a!important}
