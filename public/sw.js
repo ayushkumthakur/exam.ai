@@ -1,26 +1,55 @@
-const CACHE = 'cea-shell-v1';
-const SHELL = ['/', '/style.css?v=7', '/dashboard-theme.css?v=8', '/app2.js?v=8', '/app.js?v=16', '/icon.svg'];
+const CACHE = 'cea-shell-v2';
+const SHELL = [
+  '/',
+  '/style.css?v=7',
+  '/dashboard-theme.css?v=10',
+  '/mobile-reference.css?v=3',
+  '/advanced-premium-v2.css?v=2',
+  '/full-site-premium.css?v=1',
+  '/mobile-bottom-clearance.css?v=1',
+  '/app2.js?v=8',
+  '/app.js?v=17',
+  '/icon.svg'
+];
+
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE)
+      .then(cache => cache.addAll(SHELL))
+      .then(() => self.skipWaiting())
+  );
 });
+
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
+  );
 });
+
 self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).then(response => {
-      if (response.ok) caches.open(CACHE).then(cache => cache.put('/', response.clone()));
-      return response;
-    }).catch(() => caches.match('/')));
+    event.respondWith(
+      fetch(request).then(response => {
+        if (response.ok) caches.open(CACHE).then(cache => cache.put('/', response.clone()));
+        return response;
+      }).catch(() => caches.match('/'))
+    );
     return;
   }
+
   if (['.js', '.css', '.svg'].some(ext => url.pathname.endsWith(ext))) {
-    event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
-      if (response.ok) caches.open(CACHE).then(cache => cache.put(request, response.clone()));
-      return response;
-    })));
+    // Prefer deployed assets so a new release cannot be hidden behind an old PWA cache.
+    event.respondWith(
+      fetch(request).then(response => {
+        if (response.ok) caches.open(CACHE).then(cache => cache.put(request, response.clone()));
+        return response;
+      }).catch(() => caches.match(request))
+    );
   }
 });
