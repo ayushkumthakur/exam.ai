@@ -295,7 +295,7 @@ function factGroupsFor(subject, allowed) {
   if (s === 'General Awareness') return [
     group('Static GK', FACTS.History), group('Static GK', FACTS.Geography), group('Static GK', FACTS.Polity),
     group('Static GK', FACTS.Economics), group('Science', EXTRA_FACTS.Physics.concat(EXTRA_FACTS.Chemistry,EXTRA_FACTS.Biology)),
-    group('Current Affairs', FACTS.Environment), group('Static GK', BANKING_FACTS), group('Important Days', FACTS.GeneralAwareness)
+    group('Static GK', FACTS.Environment), group('Static GK', BANKING_FACTS), group('Static GK', FACTS.GeneralAwareness)
   ];
   if (s === 'Social Science') return [
     group('History', FACTS.History), group('Geography', FACTS.Geography), group('Political Science', FACTS.Polity), group('Economics', FACTS.Economics)
