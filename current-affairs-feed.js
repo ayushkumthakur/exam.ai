@@ -16,6 +16,6 @@ function xmlField(block, tag) {
 }
 function isEnglishText(value) {
   // Keep Devanagari-language items out of the English current-affairs feed.
-  return !/[\u0900-\u097F]/u.test(String(value || ''));
+  return !/[\u0900-\u097F\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/u.test(String(value || ''));
 }
 module.exports = { xmlText, xmlField, isEnglishText };
