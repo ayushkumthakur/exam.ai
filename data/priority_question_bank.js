@@ -262,10 +262,16 @@ function reasoningQuestions(examId, subject, count, seedBase) {
       distractors = [fmt(north+east),fmt(Math.abs(north-east)),fmt(dist+scale)];
       explanation = "The movements are perpendicular, so distance = √(" + north + "² + " + east + "²) = " + fmt(dist) + " km."; concept = "Direction and distance";
     } else {
-      const a = 10 + (k%40), b = 10 + ((k*7)%40), c = 10 + ((k*11)%40);
-      correct = a+b+c; topic = "Analogy";
-      text = "Three boxes contain " + a + ", " + b + " and " + c + " cards respectively. If all cards are combined, how many cards are there?";
-      distractors = [a+b, b+c, a+c]; explanation = "Add all three quantities: " + a + " + " + b + " + " + c + " = " + correct + "."; concept = "Basic quantitative reasoning";
+      const nounsA = ["sparrows","roses","squares","whales","mangoes","triangles","planets","oak trees","novels","copper wires","dolphins","rectangles","tulips","comets","poems","eagles","cubes","oranges","bicycles","islands","pines","whales","hexagons","sonnets","satellites","lilies","cylinders","peaches","trains","continents"];
+      const nounsB = ["birds","flowers","polygons","mammals","fruits","shapes","celestial bodies","trees","books","conductors","mammals","quadrilaterals","flowers","celestial bodies","literary works","birds of prey","solids","fruits","vehicles","landforms","trees","mammals","polygons","poetry","artificial objects","flowers","solids","fruits","transport","landmasses"];
+      const nounsC = ["animals","plants","geometric figures","living organisms","food items","mathematical objects","objects in space","plants","written works","materials","animals","geometric figures","plants","objects in space","written works","animals","mathematical objects","food items","machines","geographical features","plants","animals","geometric figures","literary works","objects in orbit","plants","mathematical objects","food items","transport systems","geographical regions"];
+      const ix = k % nounsA.length, a = nounsA[ix], b = nounsB[ix], d = nounsC[ix];
+      correct = "All " + a + " are " + d;
+      topic = "Syllogism";
+      text = "Statements: All " + a + " are " + b + ". All " + b + " are " + d + ". Which conclusion must follow?";
+      distractors = ["All " + d + " are " + a, "No " + a + " are " + d, "Some " + a + " are not " + d];
+      explanation = "If every " + a + " belongs to the group " + b + ", and every " + b + " belongs to " + d + ", then every " + a + " must belong to " + d + ".";
+      concept = "Transitive class inclusion";
     }
     rows.push(numericQuestion(examId, subject, topic, text, String(correct),
       distractors.map(String), explanation, concept, "Identify the rule or relationship and test it against every term.", seed, "medium"));
