@@ -14,8 +14,8 @@
           "paper": "Civil Services (Preliminary) Examination - General Studies Paper I, Test Booklet Series A",
           "question_paper_url": "https://www.upsc.gov.in/sites/default/files/QP_CS_Pre_Exam_2023_280523.pdf",
           "official_listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers/archives",
-          "status": "official_pdf_text_searchable_targeted_spot_checks_only",
-          "notes": "The official 2023 GS-I PDF is accessible with extracted text. Targeted spot-checks of five static-bank fact prompts were performed; no exact question wording was established. This is not a complete bank-wide match and no item was promoted to VERIFIED_PYQ."
+          "status": "official_pdf_text_searchable_30_distinctive_phrase_screen",
+          "notes": "A regression test screens 30 distinctive short fragments anchored to questions in this official paper against all six static banks (seed, expanded, priority, mapped question bank, catalog bank, and CSAT bank). Result: 0/30 exact normalized phrase matches. This is a narrow literal screen, not semantic similarity, not a full paper-to-bank match, and not item-level answer-key verification. No item was promoted to VERIFIED_PYQ."
         },
         {
           "year": 2026,
