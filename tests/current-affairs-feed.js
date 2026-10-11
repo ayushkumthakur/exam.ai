@@ -17,4 +17,6 @@ assert.equal(xmlText('A &lt; B &amp; C'), 'A < B & C');
 assert.equal(isEnglishText('RBI announces monetary policy'), true);
 assert.equal(isEnglishText('भारतीय रिज़र्व बैंक'), false);
 assert.equal(isEnglishText('RBI announces policy — भारतीय रिज़र्व बैंक'), false);
+assert.equal(isEnglishText('پاکستان کے دفاعی امور'), false);
+assert.equal(isEnglishText('RBI policy — پاکستان کے دفاعی امور'), false);
 console.log('PASS official current-affairs RSS XML parser and English-language filter');
