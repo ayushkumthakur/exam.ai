@@ -57,8 +57,8 @@
         }
       ],
       "official_answer_key_archive_url": "https://www.upsc.gov.in/examinations/answer-key/archives",
-      "answer_key_archive_status": "official_archive_exists_dynamic_exam_filter_not_resolved_in_current_text_view",
-      "answer_key_archive_notes": "The official UPSC Answer Keys Archives page is accessible, but its examination filter is JavaScript-driven and the current text view does not expose the 2023 CSE Prelims answer-key document link. Therefore the 2023 GS-I answer key was not independently retrieved from the official archive in this pass."
+      "answer_key_archive_status": "archive_found_2023_final_key_not_independently_retrieved",
+      "answer_key_archive_notes": "The official UPSC Answer Keys Archives page exists, but its JavaScript-driven examination filter did not expose the 2023 CSE Prelims answer-key document in this review. PIB states that publishing a provisional answer key soon after the exam was introduced for CSE Prelims 2026 for the first time (https://www.pib.gov.in/PressReleasePage.aspx?PRID=2265884&lang=1&reg=20). This 2026 policy does not by itself prove whether a final key for 2023 exists in the archive. No 2023 item is treated as answer-key verified until the relevant official document is retrieved and checked."
     },
     {
       "exam_id": "SSC_CGL",
