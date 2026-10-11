@@ -510,6 +510,7 @@ function addReviewedExamItems(addForExam) {
 
 function buildPriorityQuestionBank(exams, topics) {
   const rows = [];
+  const seenQuestionKeys = new Set();
   const byId = Object.fromEntries(exams.map(e => [e.id,e]));
   function addForExam(examId, sectionSubject, topic, questions) {
     const exam = byId[examId];
@@ -518,6 +519,9 @@ function buildPriorityQuestionBank(exams, topics) {
     for (const q of questions) {
       const rowTopic = q.topic && allowed.includes(q.topic) ? q.topic : topic;
       if (allowed.length && !allowed.includes(rowTopic)) throw new Error("Invalid topic " + rowTopic + " for " + sectionSubject);
+      const uniqueKey = examId + "\\u0000" + sectionSubject + "\\u0000" + String(q.text || '').trim().toLowerCase();
+      if (seenQuestionKeys.has(uniqueKey)) continue;
+      seenQuestionKeys.add(uniqueKey);
       rows.push({ ...q, exam_id: examId, subject: sectionSubject, topic: rowTopic });
     }
   }
