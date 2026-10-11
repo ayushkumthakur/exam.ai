@@ -1135,12 +1135,28 @@ route('DELETE', '/api/admin/questions/:id', ADM, (c) => { db.prepare("DELETE FRO
 
 // ---------- automatic current-affairs refresh ----------
 let caRefreshBusy = false;
+// Restarting the server (every deploy) used to re-trigger this Gemini-backed digest every
+// time, burning free-tier quota on days with several deploys. Skip it if it already ran
+// recently; the AI_MIN_REFRESH_GAP_MS setting lets this be tuned without a redeploy.
+const CA_AI_MIN_GAP_MS = Math.max(0, +process.env.AI_MIN_REFRESH_GAP_MS || 20 * 3600000);
+function caAiRefreshDueNow() {
+  const row = db.prepare("SELECT value FROM app_state WHERE key='ca_ai_last_run'").get();
+  const last = row ? +row.value || 0 : 0;
+  return now() - last >= CA_AI_MIN_GAP_MS;
+}
+function markCaAiRefreshed() {
+  db.prepare("INSERT INTO app_state (key,value) VALUES ('ca_ai_last_run',?) ON CONFLICT(key) DO UPDATE SET value=?").run(String(now()), String(now()));
+}
 async function refreshCurrentAffairsAuto(days, maxItems) {
   if (caRefreshBusy || !ai.aiEnabled() || ai.aiProvider() !== 'gemini' || !ai.generateCurrentAffairs) return;
+  if (!caAiRefreshDueNow()) return;
   caRefreshBusy = true;
   try {
     const examIds = listExams().map(e => e.id);
     if (!examIds.length) return;
+    // Record the attempt before calling out, so a failure (e.g. quota exhausted) still
+    // starts the cooldown instead of being retried on every subsequent restart.
+    markCaAiRefreshed();
     const r = await ai.generateCurrentAffairs({ today: dayStr(), days, examList: examIds, maxItems });
     if (!r.ok) { console.error('[ca-refresh]', r.error); return; }
     for (const x of r.items || []) {

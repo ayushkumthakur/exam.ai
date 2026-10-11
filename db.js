@@ -87,6 +87,9 @@ CREATE TABLE IF NOT EXISTS ai_feedback (
 CREATE TABLE IF NOT EXISTS plan_done (
   user_id INTEGER NOT NULL, day TEXT NOT NULL, task_key TEXT NOT NULL, PRIMARY KEY(user_id, day, task_key)
 );
+CREATE TABLE IF NOT EXISTS app_state (
+  key TEXT PRIMARY KEY, value TEXT NOT NULL
+);
 `);
 
 // Backward-compatible PYQ provenance migration for existing Railway databases.
