@@ -13,6 +13,22 @@
     padding-bottom: max(7px, env(safe-area-inset-bottom)) !important;
     z-index: 80 !important;
     pointer-events: auto !important;
+    background: #ffffff !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    opacity: 1 !important;
+    box-shadow: 0 -8px 28px rgba(24, 65, 128, .14) !important;
+  }
+  .bottom .nav {
+    color: #42536b !important;
+    opacity: 1 !important;
+    font-weight: 700 !important;
+  }
+  .bottom .nav.on {
+    color: #1558c8 !important;
+    background: #e4efff !important;
+    box-shadow: inset 0 0 0 1px #c9dcff !important;
   }
   .mobile-nav-scrim {
     z-index: 70 !important;
@@ -34,7 +50,6 @@
     pointer-events: auto !important;
     touch-action: manipulation;
   }
-
   #app, .shell, .main, .page, .card, .dashboard, .stack, .grid, .split,
   .row, .col, .form-row, .field, .panel {
     min-width: 0;
@@ -65,18 +80,13 @@
   .page .row.between { align-items: flex-start; }
   .page .btn, .page button { white-space: normal; }
   .bottom .nav { min-height: 52px; }
-
-  /* Keep movement smooth without animating expensive layout/paint properties. */
   .side { will-change: transform; backface-visibility: hidden; }
   .mobile-nav-scrim { transition: opacity .16s ease !important; }
   .card, .dash-panel, .dash-recent-panel, .quick-item, .exam, .opt, .btn {
     transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease !important;
   }
   .card:hover, .dash-panel:hover, .dash-recent-panel:hover, .quick-item:hover,
-  .exam:hover, .opt:hover, .btn:hover {
-    transform: none !important;
-  }
-  .bottom { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+  .exam:hover, .opt:hover, .btn:hover { transform: none !important; }
 }
 @media (max-width: 420px) {
   .page { padding-left: 10px; padding-right: 10px; }
