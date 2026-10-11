@@ -1,35 +1,54 @@
 // Run the smoke suite against an isolated local server/database.
 // Usage: node tests/run-smoke.js
 const { spawn, spawnSync } = require('node:child_process');
+const net = require('node:net');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const port = Number(process.env.SMOKE_PORT || 3111);
-const base = `http://127.0.0.1:${port}`;
+let port = Number(process.env.SMOKE_PORT || 0);
+let base;
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'competitive-exam-ai-test-'));
 const adminEmail = 'admin@x.com';
 const adminPassword = 'AdminTest@12345';
-const baseEnv = {
-  ...process.env,
-  NODE_ENV: 'test',
-  PORT: String(port),
-  DATA_DIR: dataDir,
-  APP_SECRET: 'isolated-smoke-test-secret',
-  ADMIN_EMAILS: '',
-  BOOTSTRAP_ADMIN_EMAIL: '',
-  BOOTSTRAP_ADMIN_PASSWORD: ''
-};
+let baseEnv;
 
 let server;
 let exited = false;
+let serverOutput = '';
+async function prepareServerConfig() {
+  if (!port) {
+    const probe = net.createServer();
+    await new Promise((resolve, reject) => {
+      probe.once('error', reject);
+      probe.listen(0, '127.0.0.1', resolve);
+    });
+    port = probe.address().port;
+    await new Promise((resolve, reject) => probe.close(error => error ? reject(error) : resolve()));
+  }
+  base = `http://127.0.0.1:${port}`;
+  baseEnv = {
+    ...process.env,
+    NODE_ENV: 'test',
+    PORT: String(port),
+    DATA_DIR: dataDir,
+    APP_SECRET: 'isolated-smoke-test-secret',
+    ADMIN_EMAILS: '',
+    BOOTSTRAP_ADMIN_EMAIL: '',
+    BOOTSTRAP_ADMIN_PASSWORD: ''
+  };
+}
 function startServer(extraEnv = {}) {
   exited = false;
+  serverOutput = '';
   server = spawn(process.execPath, ['server.js'], {
     cwd: root,
     env: { ...baseEnv, ...extraEnv },
-    stdio: 'ignore'
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  for (const stream of [server.stdout, server.stderr]) stream.on('data', chunk => {
+    serverOutput = (serverOutput + chunk.toString()).slice(-4000);
   });
   server.on('exit', () => { exited = true; });
 }
@@ -48,7 +67,7 @@ async function waitForServer(timeoutMs = 15000) {
     }
     await new Promise(resolve => setTimeout(resolve, 250));
   }
-  throw new Error(`Test server did not become ready: ${lastError?.message || 'timeout'}`);
+  throw new Error(`Test server did not become ready at ${base}: ${lastError?.message || 'timeout'}${serverOutput ? `; server output: ${serverOutput.trim()}` : '; server produced no stdout/stderr'}`);
 }
 
 async function stopServer() {
@@ -63,6 +82,7 @@ async function stopServer() {
 (async () => {
   let exitCode = 1;
   try {
+    await prepareServerConfig();
     // Public signup must always create a student. Provision the admin fixture
     // directly in this disposable test database, never through startup environment
     // variables that could accidentally promote/reset a production account.
