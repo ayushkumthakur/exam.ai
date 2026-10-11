@@ -990,7 +990,12 @@ async function pgTestTake(parts) {
   }
   const overallTimerEl = h('span', { class: 'timer overall-timer' });
   draw(); updateClock();
-  root.append(h('div', { class: 'card row between test-sticky-header', style: 'position:sticky;top:60px;z-index:4' }, h('div', {}, h('b', {}, test.title), h('div', {}, saveEl)), timedSections.length ? h('div', { class: 'test-timers' }, h('span', { class: 'timer-caption' }, 'Section'), timerEl, h('span', { class: 'timer-caption' }, 'Overall'), overallTimerEl) : timerEl, h('button', { class: 'btn accent', id: 'submitBtn', onclick: () => submit(false) }, 'Submit Test')),
+  const verifiedPyqCount = test.questions.filter(q => q.source_type === 'VERIFIED_PYQ' && q.pyq).length;
+  const practiceCount = test.questions.length - verifiedPyqCount;
+  const provenanceNotice = h('div', { class: 'card stack', role: 'note' },
+    h('b', {}, 'Question source transparency'),
+    h('p', { class: 'muted', style: 'margin:0' }, `${verifiedPyqCount} verified PYQs · ${practiceCount} practice/pattern questions. Each question has its own source label. Practice questions are not verified previous-year questions.`));
+  root.append(provenanceNotice, h('div', { class: 'card row between test-sticky-header', style: 'position:sticky;top:60px;z-index:4' }, h('div', {}, h('b', {}, test.title), h('div', {}, saveEl)), timedSections.length ? h('div', { class: 'test-timers' }, h('span', { class: 'timer-caption' }, 'Section'), timerEl, h('span', { class: 'timer-caption' }, 'Overall'), overallTimerEl) : timerEl, h('button', { class: 'btn accent', id: 'submitBtn', onclick: () => submit(false) }, 'Submit Test')),
     h('div', { class: 'split' }, body, h('div', { class: 'card' }, h('h3', {}, 'Questions'), pal)));
   return root;
 }
