@@ -35,6 +35,16 @@ function validateOfficialPyqSource(examId, sourceRef) {
   };
 }
 
+function normalizedSourceUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    url.hash = '';
+    return url.href.replace(/\/$/, '');
+  } catch {
+    return '';
+  }
+}
+
 /**
  * A trusted domain is only one part of provenance. This gate also requires
  * an official answer-key/answer source and an explicit human review record.
@@ -45,6 +55,9 @@ function validatePyqVerification({ examId, questionSourceUrl, answerSourceUrl, r
   if (!questionSource.valid) return { valid: false, reason: 'Official question-paper source rejected: ' + questionSource.reason };
   const answerSource = validateOfficialPyqSource(examId, answerSourceUrl);
   if (!answerSource.valid) return { valid: false, reason: 'Official answer source rejected: ' + answerSource.reason };
+  if (normalizedSourceUrl(questionSourceUrl) === normalizedSourceUrl(answerSourceUrl)) {
+    return { valid: false, reason: 'Question-paper and official answer-key sources must be separate URLs. A question paper alone does not verify the answer.' };
+  }
   if (reviewConfirmed !== true) {
     return { valid: false, reason: 'Explicit review confirmation is required. Compare exact wording, every option, exam/year/paper/shift, and the official answer before importing.' };
   }
