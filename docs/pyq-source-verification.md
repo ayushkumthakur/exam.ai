@@ -49,9 +49,15 @@ A case-insensitive literal search was run across `data/priority_question_bank.js
 - Mixed practice/AI/verified sets are not reported as a complete official paper. Legacy PYQ labels missing provenance are counted separately.
 - This is a provenance-metadata gate, not automatic PDF-content validation. A reviewer must still compare exact wording, options, year/paper/shift and the official answer. The normal exam-realism mock uses reviewed original practice questions and does not become an official PYQ paper just because its blueprint matches.
 
+## Historical answer-key availability note
+
+- The official [PIB release on the 2026 UPSC provisional key](https://www.pib.gov.in/PressReleasePage.aspx?PRID=2265884&lang=1&reg=20) says publishing a provisional CSE Prelims answer key soon after the examination began in 2026 for the first time.
+- This announcement must not be overinterpreted: it does not prove that no final key for 2023 exists. The UPSC answer-key archive is JavaScript-driven, and a direct official 2023 CSE Prelims key file was not retrieved in this pass.
+- Third-party answer keys may be used only as leads for review, not as the authoritative answer source for a `VERIFIED_PYQ` record. Do not mark an item verified until the relevant official answer evidence is retrieved and checked.
+
 ## Current audit result
 
-- **UPSC:** official 2025 and 2026 Prelims paper listings found; the official answer-key archive was located but its JS filter did not reveal the 2023 answer-key document in this text view; 2023 GS Paper I opened and ten targeted static-bank wording probes recorded, with zero exact matches established. A full bank-wide audit and direct official answer-key verification remain pending.
+- **UPSC:** official 2025 and 2026 Prelims paper listings found. For the 2023 GS-I Series A paper, 30 distinctive fragments were checked against six static banks: 0 exact phrase matches and 0 candidates from the conservative fuzzy lexical triage after generic terms were filtered. This is still a sample screen, not a full semantic paper-to-bank comparison. The official answer-key archive did not expose the 2023 key in this review, and answer correctness has not been verified item by item.
 - **SSC CGL:** official current answer-key portal, legacy 2023 CGL Tier-I final-key listing, and relevant 2024/2025 notices found; historical response-sheet access may be time-limited or login-gated, and static-bank items have not been matched to a specific shift/answer key.
 - **RBI Grade B:** official 2026 Phase-I and 2025 Phase-I/II handout pages found; these establish format/instructions, not a complete official previous-year question bank.
 - **Static source-code banks:** the audit test asserts all generated seed-bank records are `ADMIN_PRACTICE` and have no invented PYQ year or item-specific source. Verified item count remains **0**.
