@@ -55,7 +55,10 @@
           "status": "official_paper_listed_pdf_too_large_for_current_text_retrieval",
           "notes": "The official archive lists the 2023 CSAT paper (28.84 MB), but the current retrieval path returned a content-length-too-large error. No CSAT practice prompt has been matched to the exact paper or promoted to VERIFIED_PYQ."
         }
-      ]
+      ],
+      "official_answer_key_archive_url": "https://www.upsc.gov.in/examinations/answer-key/archives",
+      "answer_key_archive_status": "official_archive_exists_dynamic_exam_filter_not_resolved_in_current_text_view",
+      "answer_key_archive_notes": "The official UPSC Answer Keys Archives page is accessible, but its examination filter is JavaScript-driven and the current text view does not expose the 2023 CSE Prelims answer-key document link. Therefore the 2023 GS-I answer key was not independently retrieved from the official archive in this pass."
     },
     {
       "exam_id": "SSC_CGL",
@@ -64,7 +67,9 @@
       "official_notice_2025_tier1_answer_key_status": "https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/writeup_181225.pdf",
       "status": "official_authority_and_notices_verified_item_level_records_not_audited",
       "notes": "SSC's official notice confirms the 2024 Tier-I final answer keys and candidate response sheets were accessible from 19 December 2024 to 8 January 2025 via registered login and would not remain available afterward. The 2025 Tier-I notice says final answer keys and question papers would be published later; that notice is not itself an item-level question source. No static bank item has been matched to an SSC response sheet or final answer key in this audit. The legacy official SSC answer-key portal also lists the Combined Graduate Level Examination (Tier-I), 2023 final answer key along with candidate response sheets. Access to an individual candidate's response sheet may still be login-bound; no static-bank item has been matched to a specific official 2023 shift/question/answer in this pass.",
-      "official_2023_tier1_final_answer_key_listing": "https://ssc.nic.in/Portal/AnswerKey"
+      "official_2023_tier1_final_answer_key_listing": "https://ssc.nic.in/Portal/AnswerKey",
+      "official_2023_tier1_tentative_answer_key_notice": "https://ssc.nic.in/SSCFileServer/PortalManagement/UploadedFiles/Write_Up_Tentative_AnswerKey_T1_CGLE_2023_01082023.pdf",
+      "official_2023_tier1_tentative_answer_key_notice_notes": "Official notice states CGL Tier-I 2023 was held 14–27 July 2023 and candidate response sheets/tentative answer keys were login-accessible 1–4 August 2023, after which response sheets would not remain available. This confirms historical access limitations, not item-level matches."
     },
     {
       "exam_id": "RBI_B",
@@ -176,7 +181,7 @@
       }
     ]
   },
-  "last_progress_note": "Added a 30-term coverage-gap check: none of the probed distinctive topics from the official UPSC CSE Prelims 2023 GS-I paper appeared literally in the six static bank/build files. This is a narrow coverage test, not item verification. All static questions remain ADMIN_PRACTICE.",
+  "last_progress_note": "New official-source discovery: UPSC has a separate official answer-key archive, but the 2023 CSE Prelims entry could not be resolved in its JS-driven text view. SSC official archive confirms CGL Tier-I 2023 response sheets/tentative keys were login-gated and time-limited (1–4 Aug 2023). No item-level verified count change.",
   "paper_coverage_check": {
     "paper": "UPSC CSE Prelims 2023 GS Paper I, Test Booklet Series A",
     "official_url": "https://www.upsc.gov.in/sites/default/files/QP_CS_Pre_Exam_2023_280523.pdf",
