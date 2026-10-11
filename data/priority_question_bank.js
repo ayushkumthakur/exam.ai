@@ -128,24 +128,26 @@ function statementQuestions(examId, subject, topic, facts, limit, startSeed) {
   const rows = [];
   let serial = 0;
   const permutations = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+  // Priority banks deliberately use one ordering per fact triple to avoid
+  // inflated near-duplicates. Broad catalogue banks retain variants so every
+  // syllabus section has enough practice coverage while those banks are audited.
+  const variantsPerTriple = ['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B'].includes(examId) ? 1 : 6;
   for (let a = 0; a < facts.length && rows.length < limit; a++) {
     for (let b = a + 1; b < facts.length && rows.length < limit; b++) {
       for (let d = b + 1; d < facts.length && rows.length < limit; d++) {
         const base = [facts[a], facts[b], facts[d]];
-        for (const order of permutations) {
-          if (rows.length >= limit) break;
-          const triple = order.map(i => base[i]);
+        for (let variant = 0; variant < variantsPerTriple && rows.length < limit; variant++) {
+          const triple = permutations[variant].map(i => base[i]);
           const mask = (triple[0][1] ? 1 : 0) | (triple[1][1] ? 2 : 0) | (triple[2][1] ? 4 : 0);
           const wrongMasks = [];
           for (const m of [mask ^ 1, mask ^ 2, mask ^ 4, (mask + 3) % 8, (mask + 5) % 8, (mask + 6) % 8]) {
             if (m !== mask && !wrongMasks.includes(m)) wrongMasks.push(m);
           }
-          const distractors = wrongMasks.slice(0,3);
-          const built = makeOptions(maskLabel(mask), distractors.map(maskLabel), startSeed + serial);
-          const statementText = triple.map((f, i) => (i + 1) + ". " + f[0]).join("\n");
+          const built = makeOptions(maskLabel(mask), wrongMasks.slice(0,3).map(maskLabel), startSeed + serial);
+          const statementText = triple.map((f, i) => (i + 1) + ". " + f[0]).join("\\n");
           rows.push({
             exam_id: examId, subject, topic, difficulty: "medium",
-            text: "Consider the following statements:\n" + statementText + "\nWhich of the statements given above are correct?",
+            text: "Consider the following statements:\\n" + statementText + "\\nWhich of the statements given above are correct?",
             options: built.options, answer: built.answer,
             explanation: triple.map((f,i) => "Statement " + (i+1) + " is " + (f[1] ? "correct. " : "incorrect. ") + f[2]).join(" "),
             concept: topic, tip: "Evaluate each statement independently before matching the correct combination.",
@@ -476,8 +478,45 @@ function englishQuestions(examId, subject, count, seedBase, mode) {
   }
   return rows;
 }
+// Carefully authored, reviewed exam-style items. These remain ADMIN_PRACTICE;
+ // they are not copied or represented as official previous-year questions.
+const REVIEWED_EXAM_ITEMS = [
+  ['UPSC_CSE','Polity','Constitution','hard','With reference to a Money Bill in India, consider the following statements: (1) The Speaker of the Lok Sabha certifies whether a Bill is a Money Bill. (2) The Rajya Sabha can amend a Money Bill and require the Lok Sabha to accept those amendments. (3) The President may return a Money Bill to Parliament for reconsideration. Which statements are correct?','1 only',['1 and 2 only','1 and 3 only','1, 2 and 3'],'The Speaker certifies a Money Bill. The Rajya Sabha can only recommend changes, and the President cannot return a Money Bill for reconsideration.','Constitutional procedure','Check the distinct powers of the Speaker, Rajya Sabha and President.',31001],
+  ['UPSC_CSE','Geography','Indian Geography','hard','A river forms an estuary rather than a large delta most directly when:','strong tidal action and coastal currents remove much of the deposited sediment',['the river carries no sediment at all','the river flows only through hard crystalline rocks','the river has no tributaries'],'Strong tides and currents can disperse sediment before it accumulates into a delta.','River landforms','Distinguish sediment supply from the processes that redistribute sediment.',31002],
+  ['UPSC_CSE','Economics','Indian Economy','hard','If the RBI raises the policy repo rate and other factors remain broadly unchanged, which immediate transmission is most likely?','short-term borrowing costs tend to rise, moderating credit demand',['all bank deposit rates must fall immediately','the rupee supply automatically doubles','government tax revenue necessarily rises by the same percentage'],'A higher policy rate tends to increase funding costs and lending rates, though transmission varies and is not instantaneous or one-for-one.','Monetary transmission','Look for a likely transmission channel, not an unconditional outcome.',31003],
+  ['UPSC_CSE','Environment','Ecology','hard','Which situation best illustrates biomagnification?','A persistent pollutant reaches higher concentrations in organisms at successively higher trophic levels',['a biodegradable leaf breaks down in soil','a nutrient is diluted as water flows downstream','a population grows after a temporary increase in food'],'Biomagnification is an increase in concentration across trophic levels for certain persistent substances.','Ecology and pollution','Separate biomagnification from bioaccumulation within one organism.',31004],
+  ['UPSC_CSE','History','Modern India','medium','The main political significance of the 1931 Gandhi–Irwin Pact was that it:','led to Congress participation in the Second Round Table Conference',['immediately granted complete independence to India','abolished separate electorates permanently','transferred provincial governments to elected Indian ministries'],'The pact enabled Congress to participate in the Second Round Table Conference; it did not grant independence.','National movement','Identify the concrete political consequence rather than a broader movement goal.',31005],
+  ['UPSC_CSE','General Awareness','Static GK','hard','Which statement best distinguishes a constitutional body from a statutory body in India?','A constitutional body derives its existence or mandate from the Constitution, while a statutory body is created by legislation',['a constitutional body is always elected directly by citizens','a statutory body can never exercise regulatory powers','every constitutional body is part of the judiciary'],'The distinction concerns the legal source of establishment, not election or function.','Indian institutions','Focus on the legal source of the institution.',31006],
+  ['UPSC_CSAT','Quantitative Aptitude','Percentage','hard','A town’s population rises by 20% in one year and falls by 10% the next year. Relative to the original population, the final population is:','8% higher',['10% higher','2% higher','2% lower'],'Using an index of 100, the final value is 100 × 1.20 × 0.90 = 108, an 8% increase.','Successive percentage change','Apply each percentage to the value after the previous change.',32001],
+  ['UPSC_CSAT','Quantitative Aptitude','Ratio & Proportion','medium','A sum is divided between A and B in the ratio 3:5. If B receives ₹480 more than A, the total sum is:','₹1,920',['₹1,440','₹2,400','₹3,840'],'The difference is 2 parts, so one part is ₹240. The total is 8 parts = ₹1,920.','Ratio and proportion','Use the difference between ratio parts before finding the total.',32002],
+  ['UPSC_CSAT','Reasoning','Syllogism','hard','Statements: All district officers are public servants. Some public servants are engineers. Conclusions: (I) Some district officers are engineers. (II) All district officers are public servants. Which conclusion follows?','Only conclusion II',['Only conclusion I','Both conclusions I and II','Neither conclusion I nor II'],'Conclusion II repeats the first statement. The engineers who are public servants need not be district officers, so I does not follow.','Logical deduction','Do not assume two groups overlap merely because both belong to a larger group.',32003],
+  ['UPSC_CSAT','English','Comprehension','medium','Passage: A policy may achieve its stated output while failing to improve public welfare if access is unequal or benefits do not reach the intended group. Evaluation should therefore compare both delivery and outcomes. Which inference is best supported?','Counting delivered services alone may be insufficient to judge a policy’s impact',['Every policy with measurable outputs improves welfare','Unequal access proves that no service was delivered','Outcome evaluation makes delivery data irrelevant'],'The passage distinguishes outputs from welfare outcomes and asks evaluators to consider access and beneficiaries.','Reading comprehension','Choose the inference that preserves the passage’s qualification.',32004],
+  ['SSC_CGL','Quantitative Aptitude','Profit & Loss','medium','An article is marked 25% above cost price and sold after a discount of 10% on the marked price. The seller’s profit percentage is:','12.5%',['10%','15%','17.5%'],'Let cost be 100. Marked price = 125; selling price = 112.5, so profit = 12.5%.','Successive percentage calculations','Use cost price as 100 to track the markup and discount.',33001],
+  ['SSC_CGL','Quantitative Aptitude','Time & Work','hard','A can finish a job in 12 days and B in 18 days. They work together for 4 days, after which A leaves. How many additional days does B need to finish the remaining work?','8 days',['6 days','9 days','10 days'],'Their combined rate is 1/12 + 1/18 = 5/36. In four days they finish 5/9, leaving 4/9. B needs (4/9) ÷ (1/18) = 8 days.','Work rates','Subtract completed work from one whole job, then use B’s individual rate.',33002],
+  ['SSC_CGL','Reasoning','Coding-Decoding','medium','In a code, each letter is replaced by the letter three places after it in the alphabet, with Z followed by C. How is BANK coded?','EDQN',['EDQM','EDMP','EDPJ'],'B→E, A→D, N→Q and K→N, giving EDQN.','Letter coding','Apply the same forward shift independently to each letter.',33003],
+  ['SSC_CGL','Reasoning','Seating Arrangement','hard','Five people P, Q, R, S and T sit in a row facing north. Q is immediately to the right of P. R is at the left end. S sits immediately to the left of T. P is not at either end. Which arrangement is possible from left to right?','R, P, Q, S, T',['R, S, T, P, Q','P, Q, R, S, T','S, T, R, P, Q'],'R must be first; P cannot be at either end and Q must immediately follow P. R, P, Q, S, T satisfies all conditions, including S immediately before T.','Linear seating','Check every condition against the complete arrangement.',33004],
+  ['SSC_CGL','English','Error Spotting','medium','Identify the part containing an error: “Each of the applicants / have submitted / the required certificate / before the deadline.”','have submitted',['Each of the applicants','the required certificate','before the deadline'],'The head word “Each” is singular, so the verb phrase should be “has submitted”.','Subject–verb agreement','Find the grammatical head of the subject before selecting the verb.',33005],
+  ['SSC_CGL','General Awareness','Static GK','medium','The Comptroller and Auditor General of India is appointed by the:','President of India',['Prime Minister','Chief Justice of India','Speaker of the Lok Sabha'],'Article 148 provides for appointment of the CAG by the President.','Indian polity','Recall the constitutional appointing authority, not the reporting relationship.',33006],
+  ['RBI_B','General Awareness','Static GK','hard','Which of the following is the clearest example of a liquidity risk for a bank?','The bank cannot meet expected cash outflows when due without unacceptable losses',['the bank’s annual profit is higher than forecast','a borrower repays a loan earlier than scheduled','the bank’s branch network expands faster than planned'],'Liquidity risk concerns meeting payment obligations when due; profitability and expansion alone do not define it.','Bank risk management','Distinguish liquidity risk from credit and profitability risk.',34001],
+  ['RBI_B','General Awareness','Static GK','hard','When a central bank conducts an open-market sale of government securities, the immediate intended effect, all else equal, is to:','absorb liquidity from the banking system',['inject reserve money into banks','reduce the face value of every government security','guarantee an increase in bank credit'],'A sale receives funds from buyers and tends to absorb liquidity from the banking system.','Monetary operations','Track the direction of the cash payment in the transaction.',34002],
+  ['RBI_B','General Awareness','Static GK','medium','A rise in the policy repo rate is generally intended to make short-term central-bank borrowing for eligible counterparties:','more expensive',['automatically interest-free','cheaper in nominal terms','unrelated to the policy rate'],'The repo rate is a policy rate that influences the cost of short-term funds; actual transmission depends on conditions.','RBI monetary policy','Separate the intended rate signal from the eventual effect on inflation or output.',34003],
+  ['RBI_B','Quantitative Aptitude','Data Interpretation','hard','A bank’s deposits rise from ₹800 crore to ₹920 crore. Over the same period, advances rise from ₹600 crore to ₹690 crore. The advances-to-deposits ratio is:','75% in both periods',['75% initially and 80% later','80% initially and 75% later','the ratio cannot be compared'],'600/800 = 75%; 690/920 = 75%. The ratio is unchanged.','Banking data interpretation','Compute each ratio separately before comparing them.',34004],
+  ['RBI_B','Reasoning','Puzzles','hard','Three officers A, B and C each handle exactly one of Risk, Audit and Treasury. A does not handle Risk. B handles Audit. C does not handle Treasury. Which assignment is consistent?','A–Treasury, B–Audit, C–Risk',['A–Risk, B–Audit, C–Treasury','A–Audit, B–Risk, C–Treasury','A–Treasury, B–Risk, C–Audit'],'B is Audit. A cannot be Risk, so A is Treasury or Audit; Audit is taken, hence A is Treasury and C is Risk, satisfying C not Treasury.','Constraint-based assignment','Apply fixed assignments first, then eliminate impossible options.',34005],
+  ['RBI_B','English','Comprehension','medium','Passage: A bank’s rapid growth in digital transactions may improve convenience, but transaction volume alone does not show whether customers can resolve failed payments or access help. Which metric would best complement transaction volume?','The proportion of failed transactions resolved within a stated service time',['the number of promotional messages sent','the total number of app downloads only','the number of branches opened in a different region'],'Resolution within a defined time measures service quality and customer outcomes, which transaction volume alone cannot show.','Reading comprehension','Choose a measurable outcome that addresses the passage’s stated gap.',34006]
+];
+
+function addReviewedExamItems(addForExam) {
+  for (const item of REVIEWED_EXAM_ITEMS) {
+    const [examId,subject,topic,difficulty,text,correct,distractors,explanation,concept,tip,seed] = item;
+    const q = numericQuestion(examId,subject,topic,text,correct,distractors,explanation,
+      'Exam-realism reviewed: ' + concept,tip,seed,difficulty);
+    addForExam(examId,subject,topic,[q]);
+  }
+}
+
 function buildPriorityQuestionBank(exams, topics) {
   const rows = [];
+  const seenQuestionKeys = new Set();
   const byId = Object.fromEntries(exams.map(e => [e.id,e]));
   function addForExam(examId, sectionSubject, topic, questions) {
     const exam = byId[examId];
@@ -486,6 +525,9 @@ function buildPriorityQuestionBank(exams, topics) {
     for (const q of questions) {
       const rowTopic = q.topic && allowed.includes(q.topic) ? q.topic : topic;
       if (allowed.length && !allowed.includes(rowTopic)) throw new Error("Invalid topic " + rowTopic + " for " + sectionSubject);
+      const uniqueKey = examId + "\\u0000" + sectionSubject + "\\u0000" + String(q.text || '').trim().toLowerCase();
+      if (seenQuestionKeys.has(uniqueKey)) continue;
+      seenQuestionKeys.add(uniqueKey);
       rows.push({ ...q, exam_id: examId, subject: sectionSubject, topic: rowTopic });
     }
   }
@@ -515,6 +557,7 @@ function buildPriorityQuestionBank(exams, topics) {
   addForExam("RBI_B","Quantitative Aptitude","Percentage",quantitativeQuestions("RBI_B","Quantitative Aptitude",100,11000));
   addForExam("RBI_B","Reasoning","Series",reasoningQuestions("RBI_B","Reasoning",100,12000));
   addForExam("RBI_B","English","Grammar",englishQuestions("RBI_B","English",100,13000,"ssc"));
+  addReviewedExamItems(addForExam);
   return rows;
 }
 module.exports = { buildPriorityQuestionBank, FACTS, BANKING_FACTS, quantitativeQuestions, reasoningQuestions, englishQuestions, statementQuestions };

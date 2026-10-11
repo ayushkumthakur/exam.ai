@@ -156,6 +156,24 @@ assert.ok(priorityBank.every(q => Array.isArray(q.options) && q.options.length =
 assert.ok(priorityBank.every(q => Number.isInteger(q.answer) && q.answer >= 0 && q.answer < q.options.length), 'every priority answer key must point to a valid option');
 assert.ok(priorityBank.every(q => typeof q.explanation === 'string' && q.explanation.length >= 20), 'every priority question must have an explanation');
 
+const reviewedPriority = priorityBank.filter(q => String(q.concept || '').startsWith('Exam-realism reviewed:'));
+assert.ok(reviewedPriority.length >= 20, 'priority banks should include a reviewed exam-style layer');
+assert.ok(reviewedPriority.every(q => q.source_type === 'ADMIN_PRACTICE'), 'reviewed original items must not be mislabelled as verified PYQs');
+assert.equal(new Set(reviewedPriority.map(q => q.exam_id + '|' + q.subject + '|' + q.text)).size, reviewedPriority.length,
+  'reviewed question stems must be unique within each exam section');
+for (const q of reviewedPriority) {
+  assert.ok(['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B'].includes(q.exam_id), 'reviewed layer is limited to priority exams');
+  assert.equal(new Set(q.options.map(option => String(option).trim().toLowerCase())).size, 4,
+    'reviewed question options must be unique: ' + q.text.slice(0,90));
+  assert.ok(q.options.every(option => String(option).trim().length > 0), 'reviewed options must not be empty');
+  assert.ok(q.concept.startsWith('Exam-realism reviewed:'), 'review status must be visible in question metadata');
+}
+const generatedStatementItems = priorityBank.filter(q => /^Consider the following statements:/i.test(q.text));
+const statementTriples = generatedStatementItems.map(q => q.exam_id + '|' + q.subject + '|' + q.text.split('Which of the statements given above are correct?')[0].trim().toLowerCase());
+assert.equal(new Set(statementTriples).size, statementTriples.length,
+  'statement-question builder must not inflate bank size by permuting the same three facts');
+
+
 
 const catalogBank = buildCatalogQuestionBank(EXAMS, TOPICS, BASE_QUESTION_SEED, EXPANDED_QUESTION_SEED);
 const prioritySet = new Set(['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B']);
