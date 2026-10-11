@@ -23,11 +23,11 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   let ar = await api('POST', '/api/auth/signup', { email: adminEmail, password: pw0, confirm_password: pw0 });
   if (ar.status === 409) ar = await api('POST', '/api/auth/login', { email: adminEmail, password: pw0 });
   let seeded = 0;
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 60; i++) {
     const q = await api('POST', '/api/admin/questions', { exam_id: 'SSC_CHSL', subject: 'Quantitative Aptitude', topic: 'Percentage', difficulty: 'easy', text: `Smoke question ${Date.now()}-${i}: what is ${10 + i}% of 200?`, options: [String(2 * (10 + i)), String(3 * (10 + i)), String(4 * (10 + i)), String(5 * (10 + i))], answer: 0, explanation: `${10 + i}% of 200 equals ${10 + i} x 2 = ${2 * (10 + i)}.`, source_type: 'ADMIN_PRACTICE' });
     if (q.status === 200) seeded++;
   }
-  ok(seeded === 20, 'admin can add practice questions (20 seeded)');
+  ok(seeded === 60, 'admin can add practice questions (60 seeded)');
   await api('POST', '/api/auth/logout', {});
   cookie = '';
   const pw = 'Test@12345';
@@ -61,6 +61,8 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   r = await api('GET', '/api/practice/questions?subject=Mathematics'); ok(r.status === 400, 'SSC CHSL cannot pull Mathematics (not in its pattern)');
   r = await api('GET', '/api/practice/questions?subject=Quantitative%20Aptitude&limit=20'); ok(r.data.questions.length > 0 && !('answer' in r.data.questions[0]), 'practice questions hide answers');
   const qs = r.data.questions;
+  const largerPracticeSet = await api('GET', '/api/practice/questions?subject=Quantitative%20Aptitude&limit=30');
+  ok(largerPracticeSet.status === 200 && largerPracticeSet.data.questions.length === 30, 'Practice honors a request for 30 questions instead of always returning 20');
   r = await api('POST', '/api/practice/answer', { question_id: qs[0].id, choice: 0, time_ms: 5000 }); ok(r.status === 200 && r.data.explanation, 'answer returns explanation');
   // force a wrong answer to test mistake analysis
   let wrong; for (const q of qs) { const a = await api('POST', '/api/practice/answer', { question_id: q.id, choice: 3 }); if (!a.data.correct) { wrong = a.data; break; } }
