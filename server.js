@@ -1191,28 +1191,34 @@ async function runCaFeedRefresh() {
   catch (e) { console.error('[ca-feed-refresh]', e.message); }
   finally { caFeedRefreshBusy = false; }
 }
-function msUntilNextDailyCurrentAffairs() {
+function msUntilNextCurrentAffairsRefresh() {
   const localNow = new Date(now() + TZ_MIN * 60000);
   const next = new Date(localNow);
-  next.setUTCHours(7, 0, 0, 0);
-  if (next.getTime() <= localNow.getTime()) next.setUTCDate(next.getUTCDate() + 1);
-  return next.getTime() - localNow.getTime();
+  // Keep a stable three-day cadence at 07:00 IST, anchored to 1 Jan 2026.
+  const anchor = Date.UTC(2026, 0, 1, 7, 0, 0, 0);
+  const current = Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate(), 7, 0, 0, 0);
+  const period = 3 * 24 * 60 * 60 * 1000;
+  let nextRun = anchor + Math.ceil((current - anchor) / period) * period;
+  if (nextRun <= localNow.getTime()) nextRun += period;
+  return nextRun - localNow.getTime();
 }
-function scheduleDailyCurrentAffairs() {
+function scheduleCurrentAffairsEveryThreeDays() {
   setTimeout(async () => {
-    try { await refreshCurrentAffairsAuto(1, 12); }
-    catch (e) { console.error('[ca-daily-refresh]', e.message); }
-    scheduleDailyCurrentAffairs();
-  }, msUntilNextDailyCurrentAffairs());
+    try {
+      await runCaFeedRefresh();
+      await refreshCurrentAffairsAuto(3, 12);
+    } catch (e) { console.error('[ca-three-day-refresh]', e.message); }
+    scheduleCurrentAffairsEveryThreeDays();
+  }, msUntilNextCurrentAffairsRefresh());
 }
 function startCurrentAffairsAutoRefresh() {
-  // Import official PIB/RBI feeds every six hours and create a sourced, exam-relevant digest daily at 07:00 IST when Gemini grounding is configured.
+  // Refresh official PIB/RBI feeds every six hours; build the sourced exam-relevant digest every three days at 07:00 IST when Gemini grounding is configured.
   setTimeout(() => {
     runCaFeedRefresh();
-    refreshCurrentAffairsAuto(1, 12).catch(e => console.error('[ca-startup-digest]', e.message));
+    refreshCurrentAffairsAuto(3, 12).catch(e => console.error('[ca-startup-digest]', e.message));
   }, 15000);
   setInterval(() => runCaFeedRefresh(), 6 * 60 * 60 * 1000);
-  scheduleDailyCurrentAffairs();
+  scheduleCurrentAffairsEveryThreeDays();
 }
 
 // ---------- request hardening ----------
