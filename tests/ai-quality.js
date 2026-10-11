@@ -5,7 +5,7 @@ const EXPANDED_QUESTION_SEED = require('../data/expanded_question_bank');
 const { buildExamQuestionBank } = require('../data/question_bank');
 const { buildPriorityQuestionBank } = require('../data/priority_question_bank');
 const { buildCatalogQuestionBank } = require('../data/catalog_question_bank');
-const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration } = require('../ai');
+const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration, TUTOR_SYSTEM } = require('../ai');
 const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets } = require('../paper-blueprint');
 
 const base = {
@@ -18,6 +18,14 @@ const base = {
   difficulty: 'medium'
 };
 const allowed = { subject: 'Quantitative Aptitude', topic: 'Arithmetic', difficulty: 'medium' };
+const tutorPrompt = TUTOR_SYSTEM({ examName: 'UPSC CSE Prelims', level: 'Intermediate', weak: [], daysLeft: 30 });
+assert.match(tutorPrompt, /official question-paper source and an official answer source/i,
+  'AI Tutor requires both primary question and answer evidence before claiming a verified PYQ');
+assert.match(tutorPrompt, /PYQ-pattern practice question/i,
+  'AI Tutor offers a clearly labelled alternative when PYQ provenance is missing');
+assert.match(tutorPrompt, /coaching solution.*memory alone is not sufficient/i,
+  'AI Tutor rejects unofficial/memory-only proof of PYQ provenance');
+
 assert.ok(validateQuestion(base, allowed), 'valid four-option MCQ accepted');
 assert.equal(validateQuestion({ ...base, options: ['16', '16', '18', '20'] }, allowed), null, 'duplicate options rejected');
 assert.equal(validateQuestion({ ...base, options: ['A-B', 'a b', 'C', 'D'] }, allowed), null, 'punctuation/case-only duplicate options rejected');

@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS questions (
   text TEXT NOT NULL, options TEXT NOT NULL, answer INTEGER NOT NULL, explanation TEXT NOT NULL,
   concept TEXT, tip TEXT, source_type TEXT NOT NULL,
   pyq_year INTEGER, pyq_paper TEXT, pyq_shift TEXT, source_ref TEXT,
+  answer_source_ref TEXT, verification_notes TEXT, verified_by TEXT, verified_at INTEGER,
   owner_user_id INTEGER, created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS q_idx ON questions(subject, topic, source_type);
@@ -87,6 +88,20 @@ CREATE TABLE IF NOT EXISTS plan_done (
   user_id INTEGER NOT NULL, day TEXT NOT NULL, task_key TEXT NOT NULL, PRIMARY KEY(user_id, day, task_key)
 );
 `);
+
+// Backward-compatible PYQ provenance migration for existing Railway databases.
+let questionColumns = db.prepare('PRAGMA table_info(questions)').all();
+for (const [name, type] of [
+  ['answer_source_ref', 'TEXT'],
+  ['verification_notes', 'TEXT'],
+  ['verified_by', 'TEXT'],
+  ['verified_at', 'INTEGER']
+]) {
+  if (!questionColumns.some(c => c.name === name)) {
+    db.exec('ALTER TABLE questions ADD COLUMN ' + name + ' ' + type);
+    questionColumns = db.prepare('PRAGMA table_info(questions)').all();
+  }
+}
 
 // Backward-compatible user schema migrations for existing Railway databases.
 let userColumns = db.prepare('PRAGMA table_info(users)').all();

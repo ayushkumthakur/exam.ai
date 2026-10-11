@@ -608,6 +608,11 @@ function runSession(questions, { mode = 'practice', onFinish, title, examId } = 
     const qn = questions[i]; let chosen = null, locked = false; startedAt = Date.now();
     const fb = h('div'), opts = h('div'), submit = h('button', { class: 'btn primary', disabled: true }, 'Check Answer');
     const letters = 'ABCDEF';
+    const verifiedSourceLinks = qn.pyq?.source_url && qn.pyq?.answer_source_url
+      ? h('div', { class: 'row wrap small muted', style: 'gap:.75rem' },
+          h('a', { href: qn.pyq.source_url, target: '_blank', rel: 'noopener' }, 'Official question paper'),
+          h('a', { href: qn.pyq.answer_source_url, target: '_blank', rel: 'noopener' }, 'Official answer source'))
+      : null;
     const drawOpts = (res) => opts.replaceChildren(...qn.options.map((o, k) => h('button', { class: 'opt' + (res ? (k === res.correct_index ? ' right' : (k === chosen ? ' wrong' : '')) : (k === chosen ? ' sel' : '')), disabled: locked, 'aria-pressed': k === chosen, onclick: () => { chosen = k; submit.disabled = false; drawOpts(); } }, h('span', { class: 'k' }, letters[k]), h('span', {}, o))));
     submit.onclick = async () => {
       locked = true; submit.disabled = true; submit.replaceChildren(h('span', { class: 'spin' }));
@@ -620,7 +625,7 @@ function runSession(questions, { mode = 'practice', onFinish, title, examId } = 
     };
     drawOpts();
     box.replaceChildren(h('div', { class: 'row between' }, h('b', {}, title || 'Practice'), h('span', { class: 'muted small' }, `Question ${i + 1} of ${questions.length}`)), h('div', { class: 'bar' }, h('i', { style: `width:${Math.round(100 * i / questions.length)}%` })),
-      h('div', { class: 'card stack' }, h('div', { class: 'row' }, srcBadge(qn), h('span', { class: 'badge' }, qn.subject + ' · ' + qn.topic), h('span', { class: 'badge' }, qn.difficulty)), h('div', { class: 'q-text' }, qn.text), opts, submit, fb));
+      h('div', { class: 'card stack' }, h('div', { class: 'row' }, srcBadge(qn), h('span', { class: 'badge' }, qn.subject + ' · ' + qn.topic), h('span', { class: 'badge' }, qn.difficulty)), h('div', { class: 'q-text' }, qn.text), verifiedSourceLinks, opts, submit, fb));
   }
   function finish() {
     box.replaceChildren(h('div', { class: 'card center stack' }, h('div', { style: 'font-size:2.5rem' }, correct / questions.length >= .7 ? '🎉' : '💪'), h('h2', {}, `${correct} / ${questions.length} correct`), h('div', { class: 'bar ' + (correct / questions.length >= .7 ? 'ok' : 'warn') }, h('i', { style: `width:${Math.round(100 * correct / questions.length)}%` })),
