@@ -787,20 +787,17 @@ async function pgCA() {
             (data.categories || []).map(cat => h('option', { value: cat, selected: category === cat }, cat)))),
         h('p', { class: 'small muted' }, 'Auto-refresh: official feeds every 6 hours; sourced AI digest daily at 7:00 AM IST when Gemini grounding is configured.'));
       const cards = (data.items || []).map(item => {
-        const sentences = String(item.summary || '').split(/(?:\\n+|(?<=[.!?])\\s+|;\\s+)/).map(s => s.replace(/^\\s*(?:[-•*]|\\d+[.)])\\s*/, '').trim()).filter(Boolean);
+        const sentences = String(item.summary || '').split(/(?:\n+|(?<=[.!?])\s+|;\s+)/).map(s => s.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim()).filter(Boolean);
         const points = sentences.length ? sentences.slice(0, 4) : [String(item.title || '')];
         const source = String(item.source || '');
-        let sourceNode = /^https?:\\/\\//i.test(source)
+        let sourceNode = /^https?:\/\//i.test(source)
           ? h('a', { href: source, target: '_blank', rel: 'noopener noreferrer' }, 'Read original source ↗')
           : h('span', { class: 'small muted' }, source ? 'Source: ' + source : 'Source link unavailable');
         return h('article', { class: 'card stack' },
           h('div', { class: 'row wrap' }, h('span', { class: 'badge' }, item.category || 'Current Affairs'), h('span', { class: 'small muted' }, item.event_date || 'Recent')),
           h('h2', {}, item.title),
           h('ul', { class: 'ca-points' }, points.map(point => h('li', {}, point))),
-          h('div', { class: 'row between wrap' }, sourceNode, h('button', { class: 'btn sm', onclick: async () => {
-            try { await post('/api/library/save-ca', { id: item.id }); toast('Saved to your library'); }
-            catch { toast('Use the bookmark option if available for this item.'); }
-          } }, 'Save for revision')));
+          h('div', { class: 'row between wrap' }, sourceNode));
       });
       root.replaceChildren(controls, ...(cards.length ? cards : [h('div', { class: 'card empty stack' },
         h('h2', {}, 'No items for this period yet'),
