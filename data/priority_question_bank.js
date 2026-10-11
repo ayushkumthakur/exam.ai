@@ -241,7 +241,7 @@ function reasoningQuestions(examId, subject, count, seedBase) {
       correct = start+4*step; topic = "Series"; text = "Find the next number: " + vals.join(", ") + ", ?";
       distractors = [correct+step, correct-step, correct+2]; explanation = "The sequence increases by a constant difference of " + step + "; the next term is " + correct + "."; concept = "Arithmetic number series";
     } else if (family === 1) {
-      const start = 2 + (k%15), vals = [start*start,(start+1)*(start+1),(start+2)*(start+2)];
+      const start = 2 + k, vals = [start*start,(start+1)*(start+1),(start+2)*(start+2)];
       correct = (start+3)*(start+3); topic = "Series"; text = "Find the next number: " + vals.join(", ") + ", ?";
       distractors = [correct+1, (start+3)*2, correct+2*(start+3)]; explanation = "The terms are squares of consecutive integers; the next is " + (start+3) + "² = " + correct + "."; concept = "Square-number series";
     } else if (family === 2) {
@@ -262,9 +262,9 @@ function reasoningQuestions(examId, subject, count, seedBase) {
       distractors = [fmt(north+east),fmt(Math.abs(north-east)),fmt(dist+scale)];
       explanation = "The movements are perpendicular, so distance = √(" + north + "² + " + east + "²) = " + fmt(dist) + " km."; concept = "Direction and distance";
     } else {
-      const nounsA = ["sparrows","roses","squares","whales","mangoes","triangles","planets","oak trees","novels","copper wires","dolphins","rectangles","tulips","comets","poems","eagles","cubes","oranges","bicycles","islands","pines","whales","hexagons","sonnets","satellites","lilies","cylinders","peaches","trains","continents"];
-      const nounsB = ["birds","flowers","polygons","mammals","fruits","shapes","celestial bodies","trees","books","conductors","mammals","quadrilaterals","flowers","celestial bodies","literary works","birds of prey","solids","fruits","vehicles","landforms","trees","mammals","polygons","poetry","artificial objects","flowers","solids","fruits","transport","landmasses"];
-      const nounsC = ["animals","plants","geometric figures","living organisms","food items","mathematical objects","objects in space","plants","written works","materials","animals","geometric figures","plants","objects in space","written works","animals","mathematical objects","food items","machines","geographical features","plants","animals","geometric figures","literary works","objects in orbit","plants","mathematical objects","food items","transport systems","geographical regions"];
+      const nounsA = ["sparrows","roses","squares","whales","mangoes","triangles","planets","oak trees","novels","copper wires","dolphins","rectangles","tulips","comets","poems","eagles","cubes","oranges","bicycles","islands","pines","whales","hexagons","sonnets","satellites","lilies","cylinders","peaches","trains","continents","falcons","orchids","pentagons","haiku poems","rockets","bamboo plants"];
+      const nounsB = ["birds","flowers","polygons","mammals","fruits","shapes","celestial bodies","trees","books","conductors","mammals","quadrilaterals","flowers","celestial bodies","literary works","birds of prey","solids","fruits","vehicles","landforms","trees","mammals","polygons","poetry","artificial objects","flowers","solids","fruits","transport","animals","plants","geometric figures","literary works","vehicles","ecosystems"];
+      const nounsC = ["animals","plants","geometric figures","living organisms","food items","mathematical objects","objects in space","plants","written works","materials","animals","geometric figures","plants","objects in space","written works","animals","mathematical objects","food items","machines","geographical features","plants","animals","geometric figures","literary works","objects in orbit","plants","mathematical objects","food items","transport systems","animals","plants","mathematical objects","literary forms","machines","natural systems"];
       const ix = k % nounsA.length, a = nounsA[ix], b = nounsB[ix], d = nounsC[ix];
       correct = "All " + a + " are " + d;
       topic = "Syllogism";
