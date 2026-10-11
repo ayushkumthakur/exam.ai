@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-10-11",
+  "policy": "A question is VERIFIED_PYQ only after its exact wording, options, exam/year/paper, and official answer are checked against authoritative evidence. An official portal URL alone is not per-question verification.",
+  "current_verified_question_count": 0,
+  "sources": [
+    {
+      "exam_id": "UPSC_CSE",
+      "papers": [
+        {
+          "year": 2025,
+          "paper": "Civil Services (Preliminary) Examination - General Studies Paper I",
+          "question_paper_url": "https://www.upsc.gov.in/sites/default/files/QP-CSP-25-GENERAL-STUDIES-PAPER-I-26052025.pdf",
+          "official_listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+          "status": "official_paper_listed_content_not_item_audited",
+          "notes": "Official UPSC listing confirms the paper is published. Automated retrieval of the 27.8 MB PDF was not available during this audit; no question has been promoted based on the listing alone."
+        },
+        {
+          "year": 2025,
+          "paper": "Civil Services (Preliminary) Examination - General Studies Paper II (CSAT)",
+          "question_paper_url": "https://www.upsc.gov.in/sites/default/files/QP-CSP-25-GENERAL-STUDIES-PAPER-II-26052025.pdf",
+          "official_listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
+          "status": "official_paper_listed_content_not_item_audited",
+          "notes": "Official UPSC listing confirms the paper is published. Automated retrieval of the 30.58 MB PDF was not available during this audit; no question has been promoted based on the listing alone."
+        }
+      ]
+    },
+    {
+      "exam_id": "SSC_CGL",
+      "official_listing_url": "https://ssc.gov.in/",
+      "status": "official_authority_identified_item_level_records_not_audited",
+      "notes": "SSC question/response-sheet and answer-key access may be login- and time-limited. A generic SSC homepage is not sufficient evidence for an individual question. Store an item-specific official reference and answer-key evidence when available."
+    },
+    {
+      "exam_id": "RBI_B",
+      "official_listing_url": "https://opportunities.rbi.org.in/Scripts/CallLetters.aspx",
+      "information_handout_url": "https://opportunities.rbi.org.in/scripts/bs_viewcontent.aspx?Id=4758",
+      "status": "official_handout_available_actual_paper_not_established",
+      "notes": "Official information handouts establish exam format, not that an item appeared in an actual previous paper. Handout/sample questions must not be labelled VERIFIED_PYQ without item-specific past-paper evidence."
+    }
+  ],
+  "question_bank_audit": {
+    "data/seed_questions.js": "ADMIN_PRACTICE authored seed material",
+    "data/expanded_question_bank.js": "ADMIN_PRACTICE authored practice material",
+    "data/priority_question_bank.js": "ADMIN_PRACTICE original exam-style material",
+    "data/csat_questions.js": "ADMIN_PRACTICE original CSAT practice material",
+    "data/catalog_question_bank.js": "ADMIN_PRACTICE generated/adapted practice bank",
+    "data/question_bank.js": "Builder hard-codes source_type=ADMIN_PRACTICE",
+    "result": "No item in these source-code banks has been verified against an exact official paper and official answer key in this audit. Do not seed any of these records as VERIFIED_PYQ."
+  }
+}
