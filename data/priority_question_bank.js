@@ -127,27 +127,32 @@ function maskLabel(mask) {
 function statementQuestions(examId, subject, topic, facts, limit, startSeed) {
   const rows = [];
   let serial = 0;
+  const permutations = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
   for (let a = 0; a < facts.length && rows.length < limit; a++) {
     for (let b = a + 1; b < facts.length && rows.length < limit; b++) {
-      for (let c = b + 1; c < facts.length && rows.length < limit; c++) {
-        const triple = [facts[a], facts[b], facts[c]];
-        const mask = (triple[0][1] ? 1 : 0) | (triple[1][1] ? 2 : 0) | (triple[2][1] ? 4 : 0);
-        const wrongMasks = [];
-        for (const m of [mask ^ 1, mask ^ 2, mask ^ 4, (mask + 3) % 8, (mask + 5) % 8, (mask + 6) % 8]) {
-          if (m !== mask && !wrongMasks.includes(m)) wrongMasks.push(m);
+      for (let d = b + 1; d < facts.length && rows.length < limit; d++) {
+        const base = [facts[a], facts[b], facts[d]];
+        for (const order of permutations) {
+          if (rows.length >= limit) break;
+          const triple = order.map(i => base[i]);
+          const mask = (triple[0][1] ? 1 : 0) | (triple[1][1] ? 2 : 0) | (triple[2][1] ? 4 : 0);
+          const wrongMasks = [];
+          for (const m of [mask ^ 1, mask ^ 2, mask ^ 4, (mask + 3) % 8, (mask + 5) % 8, (mask + 6) % 8]) {
+            if (m !== mask && !wrongMasks.includes(m)) wrongMasks.push(m);
+          }
+          const distractors = wrongMasks.slice(0,3);
+          const built = makeOptions(maskLabel(mask), distractors.map(maskLabel), startSeed + serial);
+          const statementText = triple.map((f, i) => (i + 1) + ". " + f[0]).join("\n");
+          rows.push({
+            exam_id: examId, subject, topic, difficulty: "medium",
+            text: "Consider the following statements:\n" + statementText + "\nWhich of the statements given above are correct?",
+            options: built.options, answer: built.answer,
+            explanation: triple.map((f,i) => "Statement " + (i+1) + " is " + (f[1] ? "correct. " : "incorrect. ") + f[2]).join(" "),
+            concept: topic, tip: "Evaluate each statement independently before matching the correct combination.",
+            source_type: "ADMIN_PRACTICE"
+          });
+          serial++;
         }
-        const distractors = wrongMasks.slice(0,3);
-        const built = makeOptions(maskLabel(mask), distractors.map(maskLabel), startSeed + serial);
-        const statementText = triple.map((f, i) => (i + 1) + ". " + f[0]).join("\n");
-        rows.push({
-          exam_id: examId, subject, topic, difficulty: "medium",
-          text: "Consider the following statements:\n" + statementText + "\nWhich of the statements given above are correct?",
-          options: built.options, answer: built.answer,
-          explanation: triple.map((f,i) => "Statement " + (i+1) + " is " + (f[1] ? "correct. " : "incorrect. ") + f[2]).join(" "),
-          concept: topic, tip: "Evaluate each statement independently before matching the correct combination.",
-          source_type: "ADMIN_PRACTICE"
-        });
-        serial++;
       }
     }
   }
@@ -265,7 +270,10 @@ function reasoningQuestions(examId, subject, count, seedBase) {
       const nounsA = ["sparrows","roses","squares","whales","mangoes","triangles","planets","oak trees","novels","copper wires","dolphins","rectangles","tulips","comets","poems","eagles","cubes","oranges","bicycles","islands","pines","whales","hexagons","sonnets","satellites","lilies","cylinders","peaches","trains","continents","falcons","orchids","pentagons","haiku poems","rockets","bamboo plants"];
       const nounsB = ["birds","flowers","polygons","mammals","fruits","shapes","celestial bodies","trees","books","conductors","mammals","quadrilaterals","flowers","celestial bodies","literary works","birds of prey","solids","fruits","vehicles","landforms","trees","mammals","polygons","poetry","artificial objects","flowers","solids","fruits","transport","animals","plants","geometric figures","literary works","vehicles","ecosystems"];
       const nounsC = ["animals","plants","geometric figures","living organisms","food items","mathematical objects","objects in space","plants","written works","materials","animals","geometric figures","plants","objects in space","written works","animals","mathematical objects","food items","machines","geographical features","plants","animals","geometric figures","literary works","objects in orbit","plants","mathematical objects","food items","transport systems","animals","plants","mathematical objects","literary forms","machines","natural systems"];
-      const ix = k % nounsA.length, a = nounsA[ix], b = nounsB[ix], d = nounsC[ix];
+      const ix = k % nounsA.length;
+      const modifiers = ["red","blue","green","small","large","young","trained","registered","local","senior","junior","certified"];
+      const mod = modifiers[Math.floor(k / nounsA.length) % modifiers.length];
+      const a = mod + " " + nounsA[ix], b = mod + " " + nounsB[ix], d = mod + " " + nounsC[ix];
       correct = "All " + a + " are " + d;
       topic = "Syllogism";
       text = "Statements: All " + a + " are " + b + ". All " + b + " are " + d + ". Which conclusion must follow?";

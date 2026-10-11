@@ -4,6 +4,7 @@ const BASE_QUESTION_SEED = require('../data/seed_questions');
 const EXPANDED_QUESTION_SEED = require('../data/expanded_question_bank');
 const { buildExamQuestionBank } = require('../data/question_bank');
 const { buildPriorityQuestionBank } = require('../data/priority_question_bank');
+const { buildCatalogQuestionBank } = require('../data/catalog_question_bank');
 const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration } = require('../ai');
 const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers } = require('../paper-blueprint');
 
@@ -154,5 +155,28 @@ assert.ok(priorityBank.every(q => TOPICS[q.subject]?.includes(q.topic)), 'priori
 assert.ok(priorityBank.every(q => Array.isArray(q.options) && q.options.length === 4 && new Set(q.options).size === 4), 'every priority MCQ must have four distinct options');
 assert.ok(priorityBank.every(q => Number.isInteger(q.answer) && q.answer >= 0 && q.answer < q.options.length), 'every priority answer key must point to a valid option');
 assert.ok(priorityBank.every(q => typeof q.explanation === 'string' && q.explanation.length >= 20), 'every priority question must have an explanation');
+
+
+const catalogBank = buildCatalogQuestionBank(EXAMS, TOPICS, BASE_QUESTION_SEED, EXPANDED_QUESTION_SEED);
+const prioritySet = new Set(['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B']);
+for (const exam of EXAMS.filter(e => !prioritySet.has(e.id))) {
+  const examRows = catalogBank.filter(q => q.exam_id === exam.id);
+  assert.ok(examRows.length >= 500, exam.id + ' should have at least 500 practice questions');
+  const bySubject = new Map();
+  for (const q of examRows) {
+    assert.ok(TOPICS[q.subject]?.includes(q.topic), exam.id + ' question topic must be in syllabus: ' + q.subject + ' / ' + q.topic);
+    assert.equal(q.source_type, 'ADMIN_PRACTICE', 'catalog-generated questions must not be labelled as verified PYQs');
+    assert.ok(Array.isArray(q.options) && q.options.length === 4 && new Set(q.options).size === 4, 'every catalog MCQ must have four distinct options');
+    assert.ok(Number.isInteger(q.answer) && q.answer >= 0 && q.answer < q.options.length, 'catalog answer index must be valid');
+    assert.ok(typeof q.explanation === 'string' && q.explanation.length >= 20, 'catalog questions must include explanations');
+    const key = q.subject + '|' + q.text;
+    assert.ok(!bySubject.has(key), exam.id + ' should not contain duplicate stems within a subject: ' + q.text.slice(0,90));
+    bySubject.set(key, true);
+  }
+  const subjects = new Set(examRows.map(q => q.subject));
+  for (const section of exam.pattern.sections) {
+    assert.ok(subjects.has(section.subject), exam.id + ' must cover section ' + section.subject);
+  }
+}
 
 console.log('PASS AI quality, paper blueprint, and all-exam question-bank coverage tests');

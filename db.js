@@ -293,4 +293,33 @@ if (qCount === 0) {
   }
 }
 
+
+/*
+ * Broad catalog expansion: populate remaining exams with syllabus-topic mapped
+ * ADMIN_PRACTICE material. This is idempotent and intentionally skips the four
+ * priority banks which are seeded by the dedicated priority bank builder.
+ */
+{
+  const { buildCatalogQuestionBank } = require('./data/catalog_question_bank');
+  const catalogRows = buildCatalogQuestionBank(
+    EXAMS,
+    require('./data/catalog').TOPICS,
+    SEED,
+    require('./data/expanded_question_bank')
+  );
+  const insertCatalog = db.prepare(`INSERT INTO questions
+    (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,
+     pyq_year,pyq_paper,pyq_shift,source_ref,owner_user_id,created_at)
+    SELECT ?,?,?,?,?,?,?,?,?,?,'ADMIN_PRACTICE',NULL,NULL,NULL,NULL,NULL,?
+    WHERE NOT EXISTS (
+      SELECT 1 FROM questions
+      WHERE exam_id=? AND subject=? AND text=? AND source_type='ADMIN_PRACTICE'
+    )`);
+  for (const item of catalogRows) {
+    insertCatalog.run(item.exam_id, item.subject, item.topic, item.difficulty, item.text, JSON.stringify(item.options),
+      item.answer, item.explanation, item.concept || item.topic, item.tip || 'Review each statement and the explanation.',
+      now(), item.exam_id, item.subject, item.text);
+  }
+}
+
 module.exports = db;
