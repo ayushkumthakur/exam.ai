@@ -127,28 +127,34 @@ function maskLabel(mask) {
 function statementQuestions(examId, subject, topic, facts, limit, startSeed) {
   const rows = [];
   let serial = 0;
-  // Use each fact triple once. Permuting the same three statements created six
-  // near-duplicate questions that inflated bank size without adding new practice.
+  const permutations = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+  // Priority banks deliberately use one ordering per fact triple to avoid
+  // inflated near-duplicates. Broad catalogue banks retain variants so every
+  // syllabus section has enough practice coverage while those banks are audited.
+  const variantsPerTriple = ['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B'].includes(examId) ? 1 : 6;
   for (let a = 0; a < facts.length && rows.length < limit; a++) {
     for (let b = a + 1; b < facts.length && rows.length < limit; b++) {
       for (let d = b + 1; d < facts.length && rows.length < limit; d++) {
-        const triple = [facts[a], facts[b], facts[d]];
-        const mask = (triple[0][1] ? 1 : 0) | (triple[1][1] ? 2 : 0) | (triple[2][1] ? 4 : 0);
-        const wrongMasks = [];
-        for (const m of [mask ^ 1, mask ^ 2, mask ^ 4, (mask + 3) % 8, (mask + 5) % 8, (mask + 6) % 8]) {
-          if (m !== mask && !wrongMasks.includes(m)) wrongMasks.push(m);
+        const base = [facts[a], facts[b], facts[d]];
+        for (let variant = 0; variant < variantsPerTriple && rows.length < limit; variant++) {
+          const triple = permutations[variant].map(i => base[i]);
+          const mask = (triple[0][1] ? 1 : 0) | (triple[1][1] ? 2 : 0) | (triple[2][1] ? 4 : 0);
+          const wrongMasks = [];
+          for (const m of [mask ^ 1, mask ^ 2, mask ^ 4, (mask + 3) % 8, (mask + 5) % 8, (mask + 6) % 8]) {
+            if (m !== mask && !wrongMasks.includes(m)) wrongMasks.push(m);
+          }
+          const built = makeOptions(maskLabel(mask), wrongMasks.slice(0,3).map(maskLabel), startSeed + serial);
+          const statementText = triple.map((f, i) => (i + 1) + ". " + f[0]).join("\\n");
+          rows.push({
+            exam_id: examId, subject, topic, difficulty: "medium",
+            text: "Consider the following statements:\\n" + statementText + "\\nWhich of the statements given above are correct?",
+            options: built.options, answer: built.answer,
+            explanation: triple.map((f,i) => "Statement " + (i+1) + " is " + (f[1] ? "correct. " : "incorrect. ") + f[2]).join(" "),
+            concept: topic, tip: "Evaluate each statement independently before matching the correct combination.",
+            source_type: "ADMIN_PRACTICE"
+          });
+          serial++;
         }
-        const built = makeOptions(maskLabel(mask), wrongMasks.slice(0,3).map(maskLabel), startSeed + serial);
-        const statementText = triple.map((f, i) => (i + 1) + ". " + f[0]).join("\n");
-        rows.push({
-          exam_id: examId, subject, topic, difficulty: "medium",
-          text: "Consider the following statements:\n" + statementText + "\nWhich of the statements given above are correct?",
-          options: built.options, answer: built.answer,
-          explanation: triple.map((f,i) => "Statement " + (i+1) + " is " + (f[1] ? "correct. " : "incorrect. ") + f[2]).join(" "),
-          concept: topic, tip: "Evaluate each statement independently before matching the correct combination.",
-          source_type: "ADMIN_PRACTICE"
-        });
-        serial++;
       }
     }
   }
