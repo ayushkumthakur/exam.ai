@@ -234,7 +234,7 @@ async function callClaude(opts) {
   if (!primary) return { ok: false, error: 'AI_NOT_CONFIGURED' };
   const call = { gemini: callGemini, groq: callGroq, anthropic: callAnthropic };
   const retryable = error => error === 'AI_TIMEOUT' || error === 'AI_NETWORK' ||
-    ['AI_HTTP_401', 'AI_HTTP_403', 'AI_HTTP_429'].includes(error) || /^AI_HTTP_5\\d\\d$/.test(error || '');
+    ['AI_HTTP_401', 'AI_HTTP_403', 'AI_HTTP_429'].includes(error) || /^AI_HTTP_5\d\d$/.test(error || '');
   const hasNonTextContent = (opts.messages || []).some(m => Array.isArray(m.content) &&
     m.content.some(part => part && part.type !== 'text'));
   const providerOrder = [primary, ...['gemini', 'groq', 'anthropic'].filter(p => p !== primary && configuredProviders().includes(p))]
