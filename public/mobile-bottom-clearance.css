@@ -1,105 +1,109 @@
 /* Mobile-first usability and lightweight motion; preserve app DOM, routes and handlers. */
 @media (max-width: 820px) {
-  body {
-    padding-bottom: calc(136px + env(safe-area-inset-bottom)) !important;
-    -webkit-text-size-adjust: 100%;
-  }
-  .page {
-    padding-bottom: calc(136px + env(safe-area-inset-bottom)) !important;
-    scroll-padding-bottom: calc(136px + env(safe-area-inset-bottom));
-    min-width: 0;
-  }
-  .bottom {
-    padding-bottom: max(7px, env(safe-area-inset-bottom)) !important;
-    z-index: 80 !important;
-    pointer-events: auto !important;
-    background: #ffffff !important;
+  body { padding-bottom: calc(136px + env(safe-area-inset-bottom)) !important; -webkit-text-size-adjust: 100%; }
+  .page { padding-bottom: calc(136px + env(safe-area-inset-bottom)) !important; scroll-padding-bottom: calc(136px + env(safe-area-inset-bottom)); min-width: 0; }
+
+  /* Fully opaque bottom bar: avoid inherited glass/opacity effects on phones. */
+  .shell > .bottom,
+  body #app .bottom {
+    position: fixed !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    z-index: 1000 !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    padding: 6px 5px !important;
+    background-color: #ffffff !important;
     background-image: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+    border: 1px solid #d4e0f2 !important;
+    border-radius: 20px !important;
+    box-shadow: 0 -8px 28px rgba(24, 65, 128, .16) !important;
     opacity: 1 !important;
-    box-shadow: 0 -8px 28px rgba(24, 65, 128, .14) !important;
-  }
-  .bottom .nav {
-    color: #42536b !important;
-    opacity: 1 !important;
-    font-weight: 700 !important;
-  }
-  .bottom .nav.on {
-    color: #1558c8 !important;
-    background: #e4efff !important;
-    box-shadow: inset 0 0 0 1px #c9dcff !important;
-  }
-  .mobile-nav-scrim {
-    z-index: 70 !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
     filter: none !important;
-    background: rgba(9, 26, 56, .38) !important;
-    touch-action: manipulation;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+    isolation: isolate !important;
+    pointer-events: auto !important;
   }
-  .top { z-index: 75 !important; }
-  .side.mobile-open {
-    z-index: 90 !important;
+  body #app .bottom .nav {
+    min-width: 0 !important;
+    min-height: 52px !important;
+    color: #334761 !important;
+    background: transparent !important;
+    opacity: 1 !important;
+    filter: none !important;
+    font-weight: 750 !important;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+    position: relative !important;
+    z-index: 1 !important;
+  }
+  body #app .bottom .nav.on {
+    color: #124fb7 !important;
+    background: #e1edff !important;
+    box-shadow: inset 0 0 0 1px #bfd5fb !important;
+  }
+
+  /* Keep scrim behind the actual drawer and do not blur the page. */
+  body #app .mobile-nav-scrim {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 998 !important;
+    background: rgba(9, 26, 56, .34) !important;
+    background-image: none !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    transition: opacity .16s ease !important;
+  }
+  body #app .mobile-nav-scrim.is-open {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  body #app .side.mobile-open {
+    position: fixed !important;
+    z-index: 999 !important;
     pointer-events: auto !important;
     filter: none !important;
     opacity: 1 !important;
     visibility: visible !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
-  .side.mobile-open a, .side.mobile-open button, .mobile-menu-toggle {
+  body #app .side.mobile-open a,
+  body #app .side.mobile-open button,
+  body #app .mobile-menu-toggle {
     pointer-events: auto !important;
-    touch-action: manipulation;
+    touch-action: manipulation !important;
   }
+  body #app .top { z-index: 75 !important; }
   #app, .shell, .main, .page, .card, .dashboard, .stack, .grid, .split,
-  .row, .col, .form-row, .field, .panel {
-    min-width: 0;
-    max-width: 100%;
-  }
-  .page img, .page video, .page canvas, .page iframe {
-    max-width: 100%;
-    height: auto;
-  }
-  .page button, .page a, .page input, .page select, .page textarea,
-  .side a, .bottom .nav {
-    touch-action: manipulation;
-  }
+  .row, .col, .form-row, .field, .panel { min-width: 0; max-width: 100%; }
+  .page img, .page video, .page canvas, .page iframe { max-width: 100%; height: auto; }
+  .page button, .page a, .page input, .page select, .page textarea { touch-action: manipulation; }
   .page button, .page .btn, .page .chip, .page .opt, .page select { min-height: 44px; }
-  .page input, .page select, .page textarea, .top input {
-    font-size: 16px !important;
-    max-width: 100%;
-  }
-  .page input[type="checkbox"], .page input[type="radio"] {
-    width: 20px; height: 20px; min-height: 20px; flex: 0 0 auto;
-  }
+  .page input, .page select, .page textarea, .top input { font-size: 16px !important; max-width: 100%; }
+  .page input[type="checkbox"], .page input[type="radio"] { width: 20px; height: 20px; min-height: 20px; flex: 0 0 auto; }
   .page :is(h1,h2,h3,p,label,button,a,td,th,li) { overflow-wrap: anywhere; }
-  .page pre, .page code, .page .code, .page table {
-    max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;
-  }
+  .page pre, .page code, .page .code, .page table { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .page table { display: block; width: 100%; }
   .page .row { flex-wrap: wrap; }
   .page .row.between { align-items: flex-start; }
   .page .btn, .page button { white-space: normal; }
-  .bottom .nav { min-height: 52px; }
   .side { will-change: transform; backface-visibility: hidden; }
-  .mobile-nav-scrim { transition: opacity .16s ease !important; }
-  .card, .dash-panel, .dash-recent-panel, .quick-item, .exam, .opt, .btn {
-    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease !important;
-  }
-  .card:hover, .dash-panel:hover, .dash-recent-panel:hover, .quick-item:hover,
-  .exam:hover, .opt:hover, .btn:hover { transform: none !important; }
+  .card, .dash-panel, .dash-recent-panel, .quick-item, .exam, .opt, .btn { transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease !important; }
+  .card:hover, .dash-panel:hover, .dash-recent-panel:hover, .quick-item:hover, .exam:hover, .opt:hover, .btn:hover { transform: none !important; }
 }
 @media (max-width: 420px) {
   .page { padding-left: 10px; padding-right: 10px; }
   .page .card { padding: 13px; }
-  .page .g2, .page .g3, .page .grid.g2, .page .grid.g3 {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .bottom { left: 5px; right: 5px; }
+  .page .g2, .page .g3, .page .grid.g2, .page .grid.g3 { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .side, .mobile-nav-scrim, .page * {
-    scroll-behavior: auto !important;
-    transition-duration: .01ms !important;
-    animation-duration: .01ms !important;
-  }
+  .side, .mobile-nav-scrim, .page * { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
