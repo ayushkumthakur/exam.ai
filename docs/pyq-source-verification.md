@@ -25,6 +25,13 @@ This register records official-source discovery and audit limitations. It does *
 
 A case-insensitive literal search was run across `data/priority_question_bank.js`, `data/seed_questions.js`, `data/expanded_question_bank.js`, `data/csat_questions.js`, `data/catalog_question_bank.js`, and `data/question_bank.js` for 30 distinctive topic terms drawn from the official 2023 GS-I paper (including Wular/Kolleru/Kanwar lakes, major ports, selected tree species, mineral sands, wildlife and corridor names). **0/30 literal terms were found.** This is a narrow coverage-gap signal, not a semantic audit or proof that all related concepts are absent. It does not establish PYQ provenance for any item and must not be used to label existing questions `VERIFIED_PYQ`.
 
+## Fuzzy lexical triage added
+
+- The automated static-bank audit now also computes a simple lexical-overlap score between 30 short fragments from UPSC CSE Prelims 2023 GS Paper I and the question text in each bank.
+- It prints the highest-scoring candidates for human inspection, with bank name, source-paper question number, shared distinctive terms, and score.
+- This is intentionally a review queue only. Lexical overlap can produce false positives for common syllabus concepts and miss paraphrases with different vocabulary; it does not confirm that a question is the same question, does not check options or the official answer, and cannot set `VERIFIED_PYQ`.
+- The exact phrase screen remains a separate regression guard. Both outputs must be interpreted within the stated sample of 30 fragments, not as a complete paper-to-bank audit.
+
 ## Import and verification rules
 
 1. Keep newly written or AI-generated questions as `ADMIN_PRACTICE`.
