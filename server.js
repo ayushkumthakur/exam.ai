@@ -8,7 +8,7 @@ const { TOPICS, syllabusFor, NOTES } = require('./data/catalog');
 const ai = require('./ai');
 const aiMetrics = require('./ai-metrics');
 const dbBackup = require('./db-backup');
-const { validateOfficialPyqSource } = require('./pyq-source-policy');
+const { validateOfficialPyqSource, validatePyqVerification } = require('./pyq-source-policy');
 const { allocateSectionTargets, createPaperBlueprint, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets } = require('./paper-blueprint');
 
 const PORT = +process.env.PORT || 3000;
@@ -71,9 +71,19 @@ function visible(user, exam, alias = 'q') {
   params.push(exam.id, user.id);
   return { sql, params };
 }
-const pubQ = r => ({ id: r.id, subject: r.subject, topic: r.topic, difficulty: r.difficulty, text: r.text, options: J(r.options),
-  source_type: r.source_type, pyq: r.source_type === 'VERIFIED_PYQ' ? { year: r.pyq_year, paper: r.pyq_paper, shift: r.pyq_shift } : null });
-const fullQ = r => ({ ...pubQ(r), answer: r.answer, explanation: r.explanation, concept: r.concept, tip: r.tip, source_ref: r.source_ref });
+const VERIFIED_PYQ_WHERE = "source_type='VERIFIED_PYQ' AND source_ref IS NOT NULL AND answer_source_ref IS NOT NULL AND verification_notes IS NOT NULL AND length(trim(verification_notes)) >= 20 AND verified_by IS NOT NULL AND verified_at IS NOT NULL";
+const isVerifiedPyq = r => r.source_type === 'VERIFIED_PYQ' && !!r.source_ref && !!r.answer_source_ref &&
+  String(r.verification_notes || '').trim().length >= 20 && !!r.verified_by && !!r.verified_at;
+const pubQ = r => {
+  const verified = isVerifiedPyq(r);
+  return { id: r.id, subject: r.subject, topic: r.topic, difficulty: r.difficulty, text: r.text, options: J(r.options),
+    source_type: verified ? 'VERIFIED_PYQ' : (r.source_type === 'VERIFIED_PYQ' ? 'ADMIN_PRACTICE' : r.source_type),
+    pyq: verified ? { year: r.pyq_year, paper: r.pyq_paper, shift: r.pyq_shift,
+      source_url: r.source_ref, answer_source_url: r.answer_source_ref } : null };
+};
+const fullQ = r => ({ ...pubQ(r), answer: r.answer, explanation: r.explanation, concept: r.concept, tip: r.tip,
+  source_ref: r.source_ref, answer_source_ref: r.answer_source_ref, verification_notes: r.verification_notes,
+  verified_by: r.verified_by, verified_at: r.verified_at });
 
 // ---------- auth ----------
 const mem = { sendLog: new Map(), inflight: new Set() };
@@ -346,7 +356,7 @@ async function buildTest(user, exam, b) {
   } else if (kind === 'pyq') {
     const year = b.year ? +b.year : null;
     if (!year || !b.paper) throw bad('Choose a specific year and paper from Verified Papers. Mixing papers from different years is not allowed.');
-    let sql = "SELECT * FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=? AND pyq_year=? AND pyq_paper=?"; const p = [exam.id, year, String(b.paper)];
+    let sql = 'SELECT * FROM questions WHERE ' + VERIFIED_PYQ_WHERE + ' AND exam_id=? AND pyq_year=? AND pyq_paper=?'; const p = [exam.id, year, String(b.paper)];
     if (b.shift) { sql += ' AND pyq_shift=?'; p.push(String(b.shift)); }
     else sql += " AND (pyq_shift IS NULL OR pyq_shift='')";
     qs = db.prepare(sql + ' ORDER BY id').all(...p);
@@ -759,7 +769,7 @@ route('GET', '/api/revision/content', ONB, async (c) => {
   const exam = loadExam(c.user.exam_id), { subject, topic } = c.query;
   const s = exam.syllabus.find(x => x.subject === subject); if (!s || !s.topics.includes(topic)) throw bad('Topic not in your syllabus.');
   const mistakes = db.prepare(`SELECT q.id,q.text,q.explanation,q.concept FROM mistakes m JOIN questions q ON q.id=m.question_id WHERE m.user_id=? AND m.exam_id=? AND q.subject=? AND q.topic=? AND m.resolved=0 ORDER BY m.weakness DESC LIMIT 5`).all(c.user.id, exam.id, subject, topic);
-  const pyq = db.prepare("SELECT text,concept FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=? AND subject=? AND topic=? LIMIT 5").all(exam.id, subject, topic);
+  const pyq = db.prepare(`SELECT text,concept FROM questions WHERE ${VERIFIED_PYQ_WHERE} AND exam_id=? AND subject=? AND topic=? LIMIT 5`).all(exam.id, subject, topic);
   const notes = NOTES[subject + '|' + topic] || null;
   return { subject, topic, notes, notes_source: notes ? 'curated' : null, mistakes, pyq_concepts: pyq, ai_available: ai.aiEnabled() };
 });
@@ -825,7 +835,7 @@ route('POST', '/api/tests/:id/submit', ONB, (c) => {
 // PYQs
 route('GET', '/api/pyq/papers', ONB, (c) => {
   const exam = loadExam(c.user.exam_id);
-  const papers = db.prepare("SELECT pyq_year year, pyq_paper paper, pyq_shift shift, COUNT(*) questions FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=? GROUP BY 1,2,3 ORDER BY 1 DESC").all(c.user.exam_id);
+  const papers = db.prepare(`SELECT pyq_year year, pyq_paper paper, pyq_shift shift, COUNT(*) questions FROM questions WHERE ${VERIFIED_PYQ_WHERE} AND exam_id=? GROUP BY 1,2,3 ORDER BY 1 DESC`).all(c.user.exam_id);
   return { papers: papers.map(p => {
     const name = String(p.paper || '').toLowerCase();
     const expected = exam.id === 'SSC_CGL' ? 100
@@ -835,11 +845,11 @@ route('GET', '/api/pyq/papers', ONB, (c) => {
   }) };
 });
 route('GET', '/api/pyq/analysis', ONB, (c) => {
-  const total = db.prepare("SELECT COUNT(*) c FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=?").get(c.user.exam_id).c;
+  const total = db.prepare(`SELECT COUNT(*) c FROM questions WHERE ${VERIFIED_PYQ_WHERE} AND exam_id=?`).get(c.user.exam_id).c;
   if (total < 30) return { sufficient: false, total, message: `Only ${total} verified PYQ(s) are available for your exam. Trend analysis needs at least 30, so no trends are shown.` };
-  const bySubject = db.prepare("SELECT subject, COUNT(*) n FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=? GROUP BY subject ORDER BY n DESC").all(c.user.exam_id);
-  const byTopic = db.prepare("SELECT subject,topic, COUNT(*) n FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=? GROUP BY 1,2 ORDER BY n DESC LIMIT 15").all(c.user.exam_id);
-  const byYear = db.prepare("SELECT pyq_year y, COUNT(*) n FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=? GROUP BY 1 ORDER BY 1").all(c.user.exam_id);
+  const bySubject = db.prepare(`SELECT subject, COUNT(*) n FROM questions WHERE ${VERIFIED_PYQ_WHERE} AND exam_id=? GROUP BY subject ORDER BY n DESC`).all(c.user.exam_id);
+  const byTopic = db.prepare(`SELECT subject,topic, COUNT(*) n FROM questions WHERE ${VERIFIED_PYQ_WHERE} AND exam_id=? GROUP BY 1,2 ORDER BY n DESC LIMIT 15`).all(c.user.exam_id);
+  const byYear = db.prepare(`SELECT pyq_year y, COUNT(*) n FROM questions WHERE ${VERIFIED_PYQ_WHERE} AND exam_id=? GROUP BY 1 ORDER BY 1`).all(c.user.exam_id);
   return { sufficient: true, total, by_subject: bySubject, top_topics: byTopic, papers_covered: byYear };
 });
 
@@ -925,7 +935,7 @@ route('GET', '/api/search', ONB, (c) => {
   const topics = []; for (const s of exam.syllabus) for (const t of s.topics) if (t.toLowerCase().includes(low) || s.subject.toLowerCase().includes(low)) topics.push({ subject: s.subject, topic: t });
   const v = visible(c.user, exam);
   const questions = db.prepare(`SELECT q.* FROM questions q WHERE ${v.sql} AND q.source_type!='VERIFIED_PYQ' AND (q.text LIKE ? OR q.topic LIKE ?) LIMIT 8`).all(...v.params, like, like).map(pubQ);
-  const pyqs = db.prepare("SELECT * FROM questions WHERE source_type='VERIFIED_PYQ' AND exam_id=? AND (text LIKE ? OR topic LIKE ?) LIMIT 8").all(exam.id, like, like).map(pubQ);
+  const pyqs = db.prepare(`SELECT * FROM questions WHERE ${VERIFIED_PYQ_WHERE} AND exam_id=? AND (text LIKE ? OR topic LIKE ?) LIMIT 8`).all(exam.id, like, like).map(pubQ);
   const ca = db.prepare("SELECT id,title,category FROM current_affairs WHERE (exams='ALL' OR (',' || exams || ',') LIKE ?) AND (title LIKE ? OR summary LIKE ?) LIMIT 8").all('%,' + exam.id + ',%', like, like);
   const tests = db.prepare('SELECT id,title,status FROM tests WHERE user_id=? AND exam_id=? AND title LIKE ? ORDER BY id DESC LIMIT 5').all(c.user.id, exam.id, like);
   const library = db.prepare('SELECT id,kind,title FROM bookmarks WHERE user_id=? AND (title LIKE ? OR body LIKE ?) LIMIT 8').all(c.user.id, like, like);
@@ -1050,7 +1060,10 @@ route('POST', '/api/admin/exams', ADM, (c) => {
 route('POST', '/api/admin/questions', ADM, (c) => {
   const list = Array.isArray(c.body.questions) ? c.body.questions : [c.body], meta = Array.isArray(c.body.questions) ? c.body : {};
   if (list.length > 300) throw bad('Add at most 300 questions per request.');
-  const ins = db.prepare(`INSERT INTO questions (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,pyq_year,pyq_paper,pyq_shift,source_ref,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  const ins = db.prepare(`INSERT INTO questions
+    (exam_id,subject,topic,difficulty,text,options,answer,explanation,concept,tip,source_type,
+     pyq_year,pyq_paper,pyq_shift,source_ref,answer_source_ref,verification_notes,verified_by,verified_at,created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
   const added = [], errors = [];
   list.forEach((x, i) => {
     const m = { ...meta, ...x }, type = m.source_type || 'ADMIN_PRACTICE';
@@ -1059,15 +1072,30 @@ route('POST', '/api/admin/questions', ADM, (c) => {
       const v = ai.validateQuestion({ ...m, difficulty: m.difficulty || 'medium' }, {}); if (!v) throw new Error('invalid question (need text, 2-6 distinct options, valid answer index, explanation, subject, topic, difficulty)');
       if (m.exam_id && !loadExam(m.exam_id)) throw new Error('unknown exam_id');
       if (type !== 'ADMIN_PRACTICE' && !m.exam_id) throw new Error('exam_id required for PYQ / PYQ-pattern questions');
+      let answerSourceRef = null, verificationNotes = null, verifiedBy = null, verifiedAt = null;
       if (type === 'VERIFIED_PYQ') {
-        if (!(m.pyq_year && m.pyq_paper && m.source_ref)) throw new Error('VERIFIED_PYQ needs pyq_year, pyq_paper and source_ref');
+        if (!(m.pyq_year && m.pyq_paper && m.source_ref)) throw new Error('VERIFIED_PYQ needs pyq_year, pyq_paper and official question-paper source_ref');
         const year = Number(m.pyq_year);
         if (!Number.isInteger(year) || year < 2000 || year > new Date().getFullYear() + 1) throw new Error('PYQ year must be a valid year from 2000 through next year');
         if (String(m.source_ref).length > 2000) throw new Error('source_ref must be 2000 characters or fewer');
-        const sourceCheck = validateOfficialPyqSource(m.exam_id, m.source_ref);
+        answerSourceRef = String(m.answer_source_ref || '').trim();
+        verificationNotes = String(m.verification_notes || '').trim();
+        const sourceCheck = validatePyqVerification({
+          examId: m.exam_id,
+          questionSourceUrl: m.source_ref,
+          answerSourceUrl: answerSourceRef,
+          reviewConfirmed: m.review_confirmed,
+          verificationNotes
+        });
         if (!sourceCheck.valid) throw new Error(sourceCheck.reason);
+        if (answerSourceRef.length > 2000) throw new Error('answer_source_ref must be 2000 characters or fewer');
+        verifiedBy = String(c.user.email || '').trim().toLowerCase();
+        if (!verifiedBy) throw new Error('Could not record the authenticated reviewer identity.');
+        verifiedAt = now();
       }
-      const id = ins.run(m.exam_id || null, v.subject, v.topic, v.difficulty, v.text, JSON.stringify(v.options), v.answer, v.explanation, v.concept, v.tip, type, m.pyq_year ? +m.pyq_year : null, m.pyq_paper || null, m.pyq_shift || null, m.source_ref || null, now()).lastInsertRowid;
+      const id = ins.run(m.exam_id || null, v.subject, v.topic, v.difficulty, v.text, JSON.stringify(v.options), v.answer, v.explanation, v.concept, v.tip, type,
+        m.pyq_year ? +m.pyq_year : null, m.pyq_paper || null, m.pyq_shift || null, m.source_ref || null,
+        answerSourceRef, verificationNotes, verifiedBy, verifiedAt, now()).lastInsertRowid;
       added.push(Number(id));
     } catch (e) { errors.push({ index: i, error: e.message }); }
   });
