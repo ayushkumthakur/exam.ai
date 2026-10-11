@@ -77,7 +77,7 @@
     "result": "No item in these source-code banks has been verified against an exact official paper and official answer key in this audit. Do not seed any of these records as VERIFIED_PYQ. Production database questions have not been directly queried and are outside this static-bank count."
   },
   "spot_checks": {
-    "scope": "Targeted wording probes only; not a full question-by-question audit.",
+    "scope": "Targeted wording probes against one official paper (UPSC CSE Prelims 2023 GS-I); this is not a full question-by-question or multi-year audit.",
     "official_paper": "UPSC CSE Prelims 2023 GS Paper I, Test Booklet Series A",
     "results": [
       {
@@ -99,9 +99,42 @@
       {
         "bank_prompt": "World Environment Day is observed on 5 June.",
         "result": "No occurrence of 'World Environment Day' found in the official PDF text."
+      },
+      {
+        "bank_prompt": "The Indian National Congress was founded in 1885.",
+        "result": "No exact wording match established in the official 2023 GS-I PDF text; remains ADMIN_PRACTICE."
+      },
+      {
+        "bank_prompt": "The RBI began operations in 1935.",
+        "result": "No exact wording match established in the official 2023 GS-I PDF text; remains ADMIN_PRACTICE."
+      },
+      {
+        "bank_prompt": "The Constitution of India came into force on 26 January 1950.",
+        "result": "The official paper includes a different Constitution Day/Drafting Committee question, not this bank wording; conceptual proximity is not an exact match."
+      },
+      {
+        "bank_prompt": "The Battle of Plassey was fought in 1757.",
+        "result": "No exact wording match established in the official 2023 GS-I PDF text; remains ADMIN_PRACTICE."
+      },
+      {
+        "bank_prompt": "The United Nations was founded in 1945.",
+        "result": "No exact wording match established in the official 2023 GS-I PDF text; remains ADMIN_PRACTICE."
       }
     ],
     "verified_matches": 0,
-    "interpretation": "These spot checks do not prove that a concept never appeared in any year. They show that these exact bank prompts have not been matched to this specific official 2023 paper. Keep all such records ADMIN_PRACTICE until exact wording/options/year/paper and official answer evidence are matched."
+    "interpretation": "These spot checks do not prove that a concept never appeared in any year. They show that these exact bank prompts have not been matched to this specific official 2023 paper. Keep all such records ADMIN_PRACTICE until exact wording/options/year/paper and official answer evidence are matched.",
+    "official_paper_notes": [
+      {
+        "question_numbers": "85–88 (official PDF text extraction excerpt)",
+        "official_question_topics": [
+          "Constitution Day and the Drafting Committee",
+          "US–EU Trade and Technology Council",
+          "Switzerland as a gold exporter and gold reserves",
+          "India's share of global goods exports and Production-Linked Incentive scheme"
+        ],
+        "comparison_result": "These actual official-paper items were confirmed from the official PDF's indexed text. No exact wording/options match was found among the sampled static-bank prompts. Topic overlap is not sufficient for VERIFIED_PYQ status.",
+        "source": "https://www.upsc.gov.in/sites/default/files/QP_CS_Pre_Exam_2023_280523.pdf"
+      }
+    ]
   }
 }
