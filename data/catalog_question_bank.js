@@ -388,7 +388,10 @@ function ensureValidOptions(question) {
     const filler = 'Alternative option ' + suffix++;
     if (!unique.includes(filler)) unique.push(filler);
   }
-  return { ...question, options: unique.slice(0,4), answer: 0 };
+  const base = unique.slice(0,4);
+  const shift = (String(question.text || '').length % 4);
+  const rotated = base.slice(shift).concat(base.slice(0,shift));
+  return { ...question, options: rotated, answer: rotated.indexOf(correct) };
 }
 function buildCatalogQuestionBank(exams, topics, baseQuestions, expandedQuestions, priorityRows) {
   const rows = [];
