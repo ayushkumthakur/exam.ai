@@ -706,8 +706,31 @@ async function pgPractice(parts, params) {
 }
 
 // ---------- PYQs ----------
+// Directional revision-priority guide for UPSC Prelims GS Paper I, built from published third-party
+// analyses of past papers — NOT from this app's own verified-PYQ data, and not an official UPSC figure.
+// Exact year-wise question counts vary noticeably between sources (and sometimes within the same
+// source), so this only groups subjects into broad priority tiers where multiple sources broadly
+// agree, and is shown with that caveat and its sources rather than as precise stats.
+const UPSC_GS1_WEIGHTAGE = {
+  sources: [
+    ['Testbook — Prelims subject-wise weightage', 'https://testbook.com/upsc-civil-services/prelims-subject-wise-questions-weightage'],
+    ['PW OnlyIAS — Prelims subject-wise weightage', 'https://pwonlyias.com/upsc-prelims-subject-wise-weightage-2026/'],
+    ['SuperKalam — Topic-wise Prelims weightage analysis', 'https://superkalam.com/upsc-preparation/resources/upsc-prelims-subject-wise-weightage'],
+  ],
+  tiers: [
+    { tier: 'High priority', note: 'Consistently the two heaviest subjects across almost every recent year.', subjects: ['Polity & Governance', 'Economy'] },
+    { tier: 'Medium priority', note: 'A meaningful share of the paper most years, though the count moves around more year to year.', subjects: ['Environment & Ecology', 'Science & Technology', 'Current Affairs', 'Indian Geography', 'Modern History'] },
+    { tier: 'Lower priority', note: 'Usually a smaller, more occasional share — still worth covering, but typically lower return per hour than the tiers above.', subjects: ['World Geography', 'Ancient History', 'Medieval History', 'Art & Culture'] },
+  ],
+};
+// Maps this app's own UPSC_CSE subject labels (as used in the question bank / your accuracy stats)
+// onto the same directional tiers above, so we can combine "how much this is tested" with
+// "how well you're actually doing in it" — same sourcing and caveats as UPSC_GS1_WEIGHTAGE.
+const UPSC_SUBJECT_PRIORITY = { Polity: 2, Economics: 2, Environment: 1, Geography: 1, History: 1, 'General Awareness': 1 };
+
 async function pgPyqs() {
-  const [p, an] = await Promise.all([get('/api/pyq/papers'), get('/api/pyq/analysis')]);
+  const isUpsc = S.user.exam_id === 'UPSC_CSE';
+  const [p, an, prog] = await Promise.all([get('/api/pyq/papers'), get('/api/pyq/analysis'), isUpsc ? get('/api/progress') : Promise.resolve(null)]);
   const box = h('div', { class: 'stack' });
 
   const official = [];
@@ -762,10 +785,42 @@ async function pgPyqs() {
       : h('p', { class: 'muted' }, an.message)
   );
 
+  const weightageGuide = S.user.exam_id === 'UPSC_CSE' ? h('div', { class: 'card stack' },
+    h('h3', {}, 'Topic priority guide · GS Paper I'),
+    h('p', { class: 'small muted' }, 'Directional only, grouped from multiple published third-party analyses of past papers below — not from this app’s own verified-PYQ data, and not an official UPSC figure. Exact question counts vary noticeably between sources, so use this to prioritize revision time, not as exact stats.'),
+    ...UPSC_GS1_WEIGHTAGE.tiers.map(t => h('div', {}, h('b', {}, t.tier), h('span', { class: 'small muted' }, ' · ' + t.subjects.join(', ')), h('p', { class: 'small muted', style: 'margin:.15rem 0 .7rem' }, t.note))),
+    h('p', { class: 'small muted' }, 'Sources: ', UPSC_GS1_WEIGHTAGE.sources.map(([l, u], i) => [i > 0 ? ', ' : '', h('a', { href: u, target: '_blank', rel: 'noopener' }, l)]).flat())
+  ) : null;
+
+  // "What to study next": weightage tier × your own accuracy, so a subject that is both heavily
+  // tested AND where you're currently weak rises to the top. Subjects you haven't practiced enough
+  // of yet are flagged rather than guessed at.
+  let priorityCard = null;
+  if (isUpsc && prog) {
+    const bySubj = Object.fromEntries((prog.by_subject || []).map(s => [s.subject, s]));
+    const rows = Object.entries(UPSC_SUBJECT_PRIORITY).map(([subject, weight]) => {
+      const s = bySubj[subject];
+      const attempted = s?.attempted || 0, accuracy = attempted >= 5 ? s.accuracy : null;
+      const score = weight * (100 - (accuracy ?? 40));
+      const verdict = attempted < 5 ? 'Practice a few questions to see where you stand.'
+        : accuracy < 60 ? 'Weak — prioritize this.'
+        : accuracy < 75 ? 'Decent — a bit more practice would help.'
+        : 'Strong — keep it fresh with occasional revision.';
+      return { subject, tier: weight === 2 ? 'High' : 'Medium', accuracy, attempted, verdict, score };
+    }).sort((a, b) => b.score - a.score);
+    priorityCard = h('div', { class: 'card stack' },
+      h('h3', {}, 'What to study next'),
+      h('p', { class: 'small muted' }, 'Ranks subjects by combining how heavily each is tested (directional, same sources as the guide below) with your own accuracy from Practice/Tests. Answer at least 5 questions in a subject for it to count toward your accuracy here.'),
+      h('table', {}, h('thead', {}, h('tr', {}, ['Subject', 'Weightage', 'Your accuracy', 'What to do'].map(x => h('th', {}, x)))),
+        h('tbody', {}, rows.map(r => h('tr', {},
+          h('td', {}, r.subject), h('td', {}, h('span', { class: `badge ${r.tier === 'High' ? 'warn' : ''}` }, r.tier)),
+          h('td', {}, r.accuracy === null ? `${r.attempted}/5 questions` : `${r.accuracy}%`), h('td', { class: 'small' }, r.verdict))))));
+  }
+
   return h('div', { class: 'stack' },
     h('div', { class: 'row between' }, h('h1', {}, 'Previous Year Questions')),
     h('div', { class: 'info' }, 'Only questions an admin has verified against an official source appear here as “Verified PYQ”. Real PYQ mode is enabled only when the selected year/paper has a complete question set. AI-written questions are never presented as PYQs.'),
-    sourceCard, verifiedCard, analysis
+    sourceCard, verifiedCard, analysis, priorityCard, weightageGuide
   );
 }
 
