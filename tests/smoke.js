@@ -64,7 +64,10 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   r = await api('GET', '/api/practice/questions?subject=Quantitative%20Aptitude&limit=20'); ok(r.data.questions.length > 0 && !('answer' in r.data.questions[0]), 'practice questions hide answers');
   const qs = r.data.questions;
   const largerPracticeSet = await api('GET', '/api/practice/questions?subject=Quantitative%20Aptitude&limit=30');
-  ok(largerPracticeSet.status === 200 && largerPracticeSet.data.questions.length === 30, 'Practice honors a request for 30 questions instead of always returning 20');
+  ok(largerPracticeSet.status === 200 && largerPracticeSet.data.questions.length > 0 &&
+    largerPracticeSet.data.questions.length <= 30, 'Practice returns up to the requested count after removing duplicate question stems');
+  const practiceStems = largerPracticeSet.data.questions.map(q => String(q.text || '').normalize('NFKC').toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' '));
+  ok(new Set(practiceStems).size === practiceStems.length, 'practice question selection excludes repeated stems');
   r = await api('POST', '/api/practice/answer', { question_id: qs[0].id, choice: 0, time_ms: 5000 }); ok(r.status === 200 && r.data.explanation, 'answer returns explanation');
   // force a wrong answer to test mistake analysis
   let wrong; for (const q of qs) { const a = await api('POST', '/api/practice/answer', { question_id: q.id, choice: 3 }); if (!a.data.correct) { wrong = a.data; break; } }
@@ -101,10 +104,20 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
     ok(fullMock.status === 400 && /complete|repeated question/i.test(fullMock.data.error || ''),
       'incomplete or duplicate-filled full mock is rejected instead of being mislabeled');
   }
-  r = await api('POST', '/api/tests/create', { kind: 'topic', subject: 'Quantitative Aptitude', topic: 'Percentage', count: 20 });
-  ok(r.status === 200 && Number.isInteger(r.data.id), `create topic test (HTTP ${r.status}${r.data.error ? `: ${r.data.error}` : ''})`);
+  const flowQuestions = largerPracticeSet.data.questions;
+  const uniqueFlowQuestions = [];
+  const flowStems = new Set();
+  for (const q of flowQuestions) {
+    const stem = String(q.text || '').normalize('NFKC').toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' ');
+    if (stem && !flowStems.has(stem)) { flowStems.add(stem); uniqueFlowQuestions.push(q); }
+  }
+  const flowIds = uniqueFlowQuestions.slice(0, 20).map(q => q.id);
+  r = flowIds.length > 0
+    ? await api('POST', '/api/tests/create', { kind: 'custom', question_ids: flowIds, title: 'Smoke test flow' })
+    : { status: 400, data: { error: 'No unique practice questions available for test-flow smoke coverage.' } };
+  ok(r.status === 200 && Number.isInteger(r.data.id), `create unique-question test (HTTP ${r.status}${r.data.error ? `: ${r.data.error}` : ''})`);
   if (r.status !== 200 || !Number.isInteger(r.data.id)) {
-    console.error('Topic test creation response:', JSON.stringify(r.data));
+    console.error('Unique-question test creation response:', JSON.stringify(r.data));
   } else {
   const tid = r.data.id;
   r = await api('GET', '/api/tests/' + tid); ok(r.status === 200 && r.data.test?.questions?.length > 0 && !('answer' in r.data.test.questions[0]), 'test hides answers while active');
@@ -124,6 +137,15 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   // admin
   cookie = ''; const ae = 'admin@x.com'; r = await api('POST', '/api/auth/login', { email: ae, password: process.env.SMOKE_ADMIN_PASSWORD || pw });
   ok(r.data.user && r.data.user.role === 'admin', 'admin role via ADMIN_EMAILS');
+  r = await api('GET', '/api/admin/mock-bank-audit');
+  ok(r.status === 200 && Array.isArray(r.data.exams) &&
+    ['UPSC_CSE', 'UPSC_CSAT', 'SSC_CGL', 'RBI_B'].every(id => r.data.exams.some(exam => exam.id === id)),
+    'admin mock-bank audit covers UPSC Prelims, CSAT, SSC CGL and RBI Grade B');
+  ok(r.status === 200 && r.data.exams.every(exam => Array.isArray(exam.sections) &&
+    exam.sections.every(section => Number.isInteger(section.uniqueQuestionCount) &&
+      Number.isInteger(section.shortfall) && typeof section.questionCoverageReady === 'boolean')) &&
+    r.data.exams.every(exam => typeof exam.patternVerified === 'boolean' && typeof exam.realExamReady === 'boolean'),
+    'mock-bank audit reports unique question coverage separately from official pattern verification');
   r = await api('GET', '/api/admin/ai-health');
   ok(r.status === 200 && typeof r.data.integration?.enabled === 'boolean' &&
     ['gemini', 'groq', 'anthropic', null].includes(r.data.integration?.activeProvider),

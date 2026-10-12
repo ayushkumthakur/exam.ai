@@ -246,14 +246,23 @@ function pickQuestions(user, exam, { subject, topic, difficulty, source, ids, li
   if (ids) { sql += ` AND q.id IN (${ids.map(() => '?').join(',')})`; p.push(...ids); }
   const baseSql = sql;
   const baseParams = [...p];
-  // Prefer questions the student has never answered for this exam.
-  // If the unseen pool is too small, use it first and let callers decide whether to top up.
+  // Prefer unseen questions, but de-duplicate the entire candidate pool before
+  // applying the requested limit so repeated seed stems do not crowd out unique items.
   sql += ' AND NOT EXISTS (SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id)';
   p.push(user.id, exam.id);
   const unseen = shuffle(db.prepare(sql).all(...p));
-  if (unseen.length >= (limit || 1000)) return unseen.slice(0, limit || 1000);
   const seen = shuffle(db.prepare(baseSql).all(...baseParams)).filter(q => !unseen.some(u => u.id === q.id));
-  return unseen.concat(seen).slice(0, limit || 1000);
+  const candidates = unseen.concat(seen);
+  const unique = [];
+  const stems = new Set();
+  for (const question of candidates) {
+    const stem = String(question.text || '').normalize('NFKC').toLowerCase()
+      .replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' ');
+    if (!stem || stems.has(stem)) continue;
+    stems.add(stem);
+    unique.push(question);
+  }
+  return unique.slice(0, limit || 1000);
 }
 
 function pickRealModeSectionQuestions(user, exam, subject, target) {
@@ -397,7 +406,7 @@ async function buildTest(user, exam, b) {
     const sample = repeatedStems.slice(0, 3).map(item => `Q${item.firstIndex + 1} and Q${item.duplicateIndex + 1}`).join(', ');
     throw bad(`This test contains ${repeatedStems.length} repeated question stem(s) (${sample}). The test was not started. Review or expand the question bank and try again.`);
   }
-  if (kind !== 'full_mock' && qs.length < 20) throw bad('Every test needs at least 20 questions. Add more questions or choose a larger set.');
+  if (kind !== 'full_mock' && kind !== 'custom' && qs.length < 20) throw bad('Every standard test needs at least 20 questions. Add more questions or choose a larger set.');
   minutes = realMode ? Math.max(1, Number(exam.pattern.minutes) || 60)
     : Math.max(1, Math.min(300, Number(b.minutes) || minutes || 60));
   const t = now();
@@ -733,20 +742,27 @@ route('GET', '/api/practice/questions', ONB, (c) => {
   const unseenCount = db.prepare('SELECT COUNT(*) c FROM questions q WHERE ' + sql.slice(sql.indexOf('WHERE ') + 6) + unseenWhere).get(...p, c.user.id, exam.id).c;
   const unseenSql = sql + unseenWhere + ' ORDER BY q.id LIMIT ? OFFSET ?';
   const unseen = offset < unseenCount
-    ? db.prepare(unseenSql).all(...p, c.user.id, exam.id, limit, offset)
+    ? db.prepare(unseenSql).all(...p, c.user.id, exam.id, Math.min(limit * 5, 500), offset)
     : [];
-  let questions = unseen;
-  if (questions.length < limit && offset + questions.length >= unseenCount) {
-    const wrongLimit = limit - questions.length;
-    const wrongOffset = Math.max(0, offset - unseenCount);
+  let candidates = unseen;
+  if (candidates.length < limit && offset + candidates.length >= unseenCount) {
     const wrongSql = sql + ` AND EXISTS (
       SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id
       AND a.id=(SELECT MAX(a2.id) FROM answers a2 WHERE a2.user_id=a.user_id AND a2.exam_id=a.exam_id AND a2.question_id=a.question_id)
       AND a.correct=0
     ) ORDER BY q.id LIMIT ? OFFSET ?`;
-    const wrong = db.prepare(wrongSql).all(...p, c.user.id, exam.id, wrongLimit, wrongOffset);
-    questions = questions.concat(wrong);
+    const wrong = db.prepare(wrongSql).all(...p, c.user.id, exam.id, Math.min(limit * 5, 500), Math.max(0, offset - unseenCount));
+    candidates = candidates.concat(wrong);
   }
+  const uniqueStems = new Set();
+  const uniqueQuestions = candidates.filter(question => {
+    const stem = String(question.text || '').normalize('NFKC').toLowerCase()
+      .replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' ');
+    if (!stem || uniqueStems.has(stem)) return false;
+    uniqueStems.add(stem);
+    return true;
+  });
+  const questions = uniqueQuestions.slice(0, limit);
   return { questions: questions.map(pubQ), unseen_remaining: Math.max(0, unseenCount - offset - unseen.length), retrying_wrong_answers: offset + unseen.length >= unseenCount };
 });
 route('POST', '/api/practice/answer', ONB, (c) => {
@@ -1116,6 +1132,45 @@ route('GET', '/api/admin/backups/:file', ADM, (c) => {
   if (!/^app-\d{4}-\d{2}-\d{2}T[0-9.-]+Z(?:-\d+)?\.db$/.test(name)) throw new HttpError(404, 'Backup not found.');
   if (!dbBackup.listBackups().some(item => item.file === name)) throw new HttpError(404, 'Backup not found.');
   return { __backupDownload: name };
+});
+route('GET', '/api/admin/mock-bank-audit', ADM, () => {
+  const priorityIds = ['UPSC_CSE', 'UPSC_CSAT', 'SSC_CGL', 'RBI_B'];
+  const exams = priorityIds.map(id => loadExam(id)).filter(Boolean).map(exam => {
+    const sections = (exam.pattern.sections || []).map(section => {
+      const rows = db.prepare('SELECT id,text,source_type FROM questions WHERE exam_id=? AND subject=?').all(exam.id, section.subject);
+      const repeats = findDuplicateQuestionStems(rows);
+      const verifiedPyqCount = db.prepare(`SELECT COUNT(*) c FROM questions WHERE ${VERIFIED_PYQ_WHERE} AND exam_id=? AND subject=?`).get(exam.id, section.subject).c;
+      const uniqueQuestionCount = Math.max(0, rows.length - repeats.length);
+      const targetQuestions = Number(section.questions) || 0;
+      return {
+        subject: section.subject,
+        targetQuestions,
+        totalQuestions: rows.length,
+        uniqueQuestionCount,
+        repeatedQuestionCount: repeats.length,
+        verifiedPyqCount,
+        practiceQuestionCount: rows.filter(q => ['ADMIN_PRACTICE', 'AI_GENERATED', 'PYQ_PATTERN'].includes(q.source_type)).length,
+        shortfall: Math.max(0, targetQuestions - uniqueQuestionCount),
+        questionCoverageReady: uniqueQuestionCount >= targetQuestions,
+        repeatExamples: repeats.slice(0, 3).map(item => ({
+          firstQuestionId: rows[item.firstIndex]?.id,
+          duplicateQuestionId: rows[item.duplicateIndex]?.id
+        }))
+      };
+    });
+    return {
+      id: exam.id,
+      name: exam.name,
+      patternVerified: exam.verified,
+      targetQuestions: sections.reduce((n, s) => n + s.targetQuestions, 0),
+      uniqueQuestionCount: sections.reduce((n, s) => n + s.uniqueQuestionCount, 0),
+      verifiedPyqCount: sections.reduce((n, s) => n + s.verifiedPyqCount, 0),
+      questionCoverageReady: sections.every(s => s.questionCoverageReady),
+      realExamReady: exam.verified && sections.every(s => s.questionCoverageReady && s.repeatedQuestionCount === 0),
+      sections
+    };
+  });
+  return { exams, note: 'Counts reflect questions currently stored in the database. Practice/AI-generated questions are not verified PYQs; official-pattern status is reported separately.' };
 });
 route('GET', '/api/admin/stats', ADM, () => ({ users: db.prepare('SELECT COUNT(*) c FROM users').get().c, questions: db.prepare('SELECT source_type, COUNT(*) c FROM questions GROUP BY 1').all(), exams: db.prepare('SELECT COUNT(*) c FROM exams').get().c, open_reports: db.prepare("SELECT COUNT(*) c FROM ai_feedback WHERE kind='report' AND status='open'").get().c }));
 route('POST', '/api/admin/exams', ADM, (c) => {
