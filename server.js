@@ -1071,7 +1071,28 @@ route('POST', '/api/ai/feedback', ONB, (c) => {
 
 // ---------- admin ----------
 route('GET', '/api/admin/ai-health', ADM, () => aiMetrics.snapshot());
-route('GET', '/api/admin/backups', ADM, () => ({ backups: dbBackup.listBackups(), policy: { intervalHours: 24, retention: Math.max(1, Math.min(30, Number(process.env.DB_BACKUP_KEEP) || 7)), storage: 'persistent DATA_DIR volume; off-site copy not configured' } }));
+route('GET', '/api/admin/backups', ADM, () => {
+  const backups = dbBackup.listBackups();
+  const latest = backups[0] || null;
+  const latestAgeHours = latest ? Math.max(0, (now() - Date.parse(latest.createdAt)) / 3600000) : null;
+  const freshWithinHours = 26; // daily job plus a small scheduling/startup grace window
+  const freshness = !latest ? 'missing' : latestAgeHours <= freshWithinHours ? 'fresh' : 'stale';
+  return {
+    backups,
+    health: {
+      freshness,
+      latestFile: latest?.file || null,
+      latestAgeHours: latestAgeHours === null ? null : Math.round(latestAgeHours * 10) / 10,
+      freshWithinHours,
+      offsiteConfigured: false
+    },
+    policy: {
+      intervalHours: 24,
+      retention: Math.max(1, Math.min(30, Number(process.env.DB_BACKUP_KEEP) || 7)),
+      storage: 'persistent DATA_DIR volume; off-site copy not configured'
+    }
+  };
+});
 route('GET', '/api/admin/stats', ADM, () => ({ users: db.prepare('SELECT COUNT(*) c FROM users').get().c, questions: db.prepare('SELECT source_type, COUNT(*) c FROM questions GROUP BY 1').all(), exams: db.prepare('SELECT COUNT(*) c FROM exams').get().c, open_reports: db.prepare("SELECT COUNT(*) c FROM ai_feedback WHERE kind='report' AND status='open'").get().c }));
 route('POST', '/api/admin/exams', ADM, (c) => {
   const b = c.body, id = String(b.id || '').toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 30);
