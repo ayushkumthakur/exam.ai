@@ -246,14 +246,23 @@ function pickQuestions(user, exam, { subject, topic, difficulty, source, ids, li
   if (ids) { sql += ` AND q.id IN (${ids.map(() => '?').join(',')})`; p.push(...ids); }
   const baseSql = sql;
   const baseParams = [...p];
-  // Prefer questions the student has never answered for this exam.
-  // If the unseen pool is too small, use it first and let callers decide whether to top up.
+  // Prefer unseen questions, but de-duplicate the entire candidate pool before
+  // applying the requested limit so repeated seed stems do not crowd out unique items.
   sql += ' AND NOT EXISTS (SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id)';
   p.push(user.id, exam.id);
   const unseen = shuffle(db.prepare(sql).all(...p));
-  if (unseen.length >= (limit || 1000)) return unseen.slice(0, limit || 1000);
   const seen = shuffle(db.prepare(baseSql).all(...baseParams)).filter(q => !unseen.some(u => u.id === q.id));
-  return unseen.concat(seen).slice(0, limit || 1000);
+  const candidates = unseen.concat(seen);
+  const unique = [];
+  const stems = new Set();
+  for (const question of candidates) {
+    const stem = String(question.text || '').normalize('NFKC').toLowerCase()
+      .replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' ');
+    if (!stem || stems.has(stem)) continue;
+    stems.add(stem);
+    unique.push(question);
+  }
+  return unique.slice(0, limit || 1000);
 }
 
 function pickRealModeSectionQuestions(user, exam, subject, target) {
