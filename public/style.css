@@ -619,3 +619,8 @@ details>summary{cursor:pointer;font-weight:650}
 .upsc-paper-card:hover .upsc-paper-arrow{transform:translate(2px,-2px)}
 @media(max-width:640px){.upsc-mock-picker{gap:1rem}.upsc-mock-hero{padding:1.25rem 1.1rem;border-radius:20px}.upsc-mock-hero p{font-size:.94rem}.upsc-mock-pills{gap:.4rem}.upsc-mock-pills span{font-size:.72rem}.upsc-mock-grid{grid-template-columns:minmax(0,1fr);gap:.85rem}.upsc-paper-card{padding:1.15rem;border-radius:18px;gap:.72rem}.upsc-paper-card>p{font-size:.93rem}.upsc-mock-section-head h2{font-size:1.1rem}}
 @media(prefers-reduced-motion:reduce){.upsc-paper-card,.upsc-paper-arrow{transition:none}}
+
+/* UPSC mock picker: readable hero text and safe spacing above mobile navigation */
+.upsc-mock-picker .upsc-mock-hero .upsc-mock-hero-content h1{color:#fff !important;text-shadow:0 2px 12px rgba(5,20,45,.22)}
+.upsc-mock-picker .upsc-mock-hero .upsc-mock-hero-content p{color:rgba(255,255,255,.92) !important}
+@media(max-width:820px){.page{padding-bottom:calc(9rem + env(safe-area-inset-bottom))}}
