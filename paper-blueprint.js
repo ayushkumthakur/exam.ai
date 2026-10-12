@@ -154,8 +154,11 @@ function createPaperBlueprint({ exam, kind, mode = 'practice', questions, minute
 function activeSectionIndex(blueprint, elapsedSeconds) {
   const timed = (blueprint?.sections || []).filter(section => Number.isFinite(section.durationSeconds) && section.durationSeconds > 0);
   if (!timed.length) return -1;
-  const active = timed.find(section => elapsedSeconds < section.endsAtOffsetSeconds);
-  return active ? active.index : timed[timed.length - 1].index;
+  const elapsed = Math.max(0, Number(elapsedSeconds) || 0);
+  const finalEnd = Math.max(...timed.map(section => Number(section.endsAtOffsetSeconds) || 0));
+  if (elapsed >= finalEnd) return -1;
+  const active = timed.find(section => elapsed < section.endsAtOffsetSeconds);
+  return active ? active.index : -1;
 }
 
 function mergeBlueprintAnswers(blueprint, storedAnswers, incomingAnswers, elapsedSeconds) {
