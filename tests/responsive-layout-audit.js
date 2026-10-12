@@ -25,7 +25,7 @@ assert.match(mobile, /env\(safe-area-inset-bottom\)/);
 assert.match(desktop, /@media\s*\(min-width:\s*821px\)/);
 assert.match(desktop, /\.dashboard-hero/);
 assert.match(base, /\.shell\s*\{/);
-assert.match(html, /mock-test-responsive\\.css\\?v=\\d+/);
+assert.match(html, /mock-test-responsive\.css\?v=\d+/);
 assert.match(mockTest, /\.test-sticky-header/);
 assert.match(mockTest, /\.test-palette-summary/);
 assert.match(mockTest, /\.pal\s*\{[\s\S]*grid-template-columns/);
