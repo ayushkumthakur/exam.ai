@@ -72,9 +72,7 @@ function visible(user, exam, alias = 'q') {
   params.push(exam.id, user.id);
   return { sql, params };
 }
-const VERIFIED_PYQ_WHERE = "source_type='VERIFIED_PYQ' AND source_ref IS NOT NULL AND answer_source_ref IS NOT NULL AND verification_notes IS NOT NULL AND length(trim(verification_notes)) >= 20 AND verified_by IS NOT NULL AND verified_at IS NOT NULL";
-const isVerifiedPyq = r => r.source_type === 'VERIFIED_PYQ' && !!r.source_ref && !!r.answer_source_ref &&
-  String(r.verification_notes || '').trim().length >= 20 && !!r.verified_by && !!r.verified_at;
+const { VERIFIED_PYQ_WHERE, isVerifiedPyq } = require('./pyq-record-policy');
 const pubQ = r => {
   const verified = isVerifiedPyq(r);
   return { id: r.id, subject: r.subject, topic: r.topic, difficulty: r.difficulty, text: r.text, options: J(r.options),
