@@ -72,9 +72,7 @@ function visible(user, exam, alias = 'q') {
   params.push(exam.id, user.id);
   return { sql, params };
 }
-const VERIFIED_PYQ_WHERE = "source_type='VERIFIED_PYQ' AND source_ref IS NOT NULL AND answer_source_ref IS NOT NULL AND verification_notes IS NOT NULL AND length(trim(verification_notes)) >= 20 AND verified_by IS NOT NULL AND verified_at IS NOT NULL";
-const isVerifiedPyq = r => r.source_type === 'VERIFIED_PYQ' && !!r.source_ref && !!r.answer_source_ref &&
-  String(r.verification_notes || '').trim().length >= 20 && !!r.verified_by && !!r.verified_at;
+const { VERIFIED_PYQ_WHERE, isVerifiedPyq } = require('./pyq-record-policy');
 const pubQ = r => {
   const verified = isVerifiedPyq(r);
   return { id: r.id, subject: r.subject, topic: r.topic, difficulty: r.difficulty, text: r.text, options: J(r.options),
@@ -1122,10 +1120,11 @@ route('POST', '/api/admin/questions', ADM, (c) => {
       if (type !== 'ADMIN_PRACTICE' && !m.exam_id) throw new Error('exam_id required for PYQ / PYQ-pattern questions');
       let answerSourceRef = null, verificationNotes = null, verifiedBy = null, verifiedAt = null;
       if (type === 'VERIFIED_PYQ') {
-        if (!(m.pyq_year && m.pyq_paper && m.source_ref)) throw new Error('VERIFIED_PYQ needs pyq_year, pyq_paper and official question-paper source_ref');
+        if (!(m.pyq_year && String(m.pyq_paper || '').trim() && String(m.source_ref || '').trim())) throw new Error('VERIFIED_PYQ needs pyq_year, a non-empty pyq_paper, and official question-paper source_ref');
         const year = Number(m.pyq_year);
         if (!Number.isInteger(year) || year < 2000 || year > new Date().getFullYear() + 1) throw new Error('PYQ year must be a valid year from 2000 through next year');
-        if (String(m.source_ref).length > 2000) throw new Error('source_ref must be 2000 characters or fewer');
+        if (String(m.pyq_paper).trim().length > 250) throw new Error('pyq_paper must be 250 characters or fewer');
+        if (String(m.source_ref).trim().length > 2000) throw new Error('source_ref must be 2000 characters or fewer');
         answerSourceRef = String(m.answer_source_ref || '').trim();
         verificationNotes = String(m.verification_notes || '').trim();
         const sourceCheck = validatePyqVerification({
