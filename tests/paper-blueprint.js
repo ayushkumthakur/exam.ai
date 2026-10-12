@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { EXAMS, TOPICS } = require('../data/catalog');
 const {
   allocateSectionTargets,
   createPaperBlueprint,
@@ -99,4 +100,19 @@ run('CBSE full mock respects selected school subjects', () => {
   assert.deepEqual(configuredSections.map(section => section.subject), ['Science']);
   assert.equal(configuredSections.reduce((sum, section) => sum + section.questions, 0), 80);
   assert.equal(exam.pattern.sections.reduce((sum, section) => sum + section.questions, 0), 320);
+});
+
+run('CTET Paper I uses the five-section 150-question baseline', () => {
+  const exam = EXAMS.find(item => item.id === 'CTET');
+  assert.ok(exam, 'CTET catalog entry must exist');
+  const sections = exam.pattern.sections;
+  assert.deepEqual(sections.map(section => section.subject), [
+    'Child Development and Pedagogy', 'Language I', 'Language II',
+    'Mathematics', 'Environmental Studies'
+  ]);
+  assert.ok(sections.every(section => section.questions === 30 && section.marks === 1 && section.negative === 0));
+  assert.equal(sections.reduce((sum, section) => sum + section.questions, 0), 150);
+  assert.equal(sections.reduce((sum, section) => sum + section.questions * section.marks, 0), 150);
+  assert.equal(exam.pattern.minutes, 150);
+  for (const section of sections) assert.ok(TOPICS[section.subject], 'Missing topic tree for ' + section.subject);
 });
