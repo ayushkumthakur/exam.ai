@@ -1091,6 +1091,7 @@ route('GET', '/api/admin/backups', ADM, () => {
     }
   };
 });
+route('POST', '/api/admin/backups/create', ADM, () => dbBackup.createBackup());
 route('GET', '/api/admin/backups/:file', ADM, (c) => {
   const name = String(c.params.file || '');
   // Backup downloads are admin-only and limited to snapshots already reported by dbBackup.
