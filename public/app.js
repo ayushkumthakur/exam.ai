@@ -62,7 +62,7 @@ function runCleanups() { while (cleanups.length) { try { cleanups.pop()(); } cat
 
 // ---------- state ----------
 const S = { user: null, config: {}, exams: [], exam: null };
-const NAV = [['home', 'Home'], ['practice', 'Practice'], ['revision', 'Revision'], ['pyqs', 'PYQs'], ['tests', 'Tests'], ['ca', 'Current Affairs'], ['tutor', 'AI Tutor'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['profile', 'Profile']];
+const NAV = [['home', 'Home'], ['practice', 'Practice'], ['revision', 'Revision'], ['pyqs', 'PYQs'], ['tests', 'Tests'], ['ca', 'Current Affairs'], ['vocabulary', 'Vocabulary Lab'], ['tutor', 'AI Tutor'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['profile', 'Profile']];
 const MOBILE = [['home', 'Home'], ['practice', 'Practice'], ['tests', 'Tests'], ['tutor', 'AI Tutor'], ['more', 'More']];
 
 function getTheme() {
@@ -369,6 +369,7 @@ function renderShell(page, parts, params) {
     { label: 'PYQs', icon: 'pyqs', href: '#/pyqs', active: page === 'pyqs' },
     { label: 'Leaderboard', icon: 'leaderboard', href: '#/progress', active: page === 'progress' },
     { label: 'Current Affairs', icon: 'ca', href: '#/ca', active: page === 'ca' },
+    { label: 'Vocabulary Lab', icon: 'vocabulary', href: '#/vocabulary', active: page === 'vocabulary' },
     { label: 'Study Plan', icon: 'plan', href: '#/plan', active: page === 'plan' },
     { label: 'Bookmarks', icon: 'bookmarks', href: '#/library', active: page === 'library' },
     { label: 'AI Assistant', icon: 'tutor', href: '#/tutor', active: page === 'tutor' && params.get('mode') !== 'doubt' },
@@ -424,12 +425,99 @@ function renderShell(page, parts, params) {
         profile),
       main)),
     h('nav', { class: 'bottom', 'aria-label': 'Primary' }, MOBILE.map(i => navItem(i))));
-  const pages = { home: pgHome, practice: pgPractice, revision: pgRevision, pyqs: pgPyqs, tests: pgTests, test: pgTestTake, result: pgResult, tutor: pgTutor, plan: pgPlan, progress: pgProgress, profile: pgProfile, library: pgLibrary, search: pgSearch, ca: pgCA, more: pgMore, admin: pgAdmin };
+  const pages = { home: pgHome, practice: pgPractice, revision: pgRevision, pyqs: pgPyqs, tests: pgTests, test: pgTestTake, result: pgResult, tutor: pgTutor, plan: pgPlan, progress: pgProgress, profile: pgProfile, library: pgLibrary, search: pgSearch, ca: pgCA, vocabulary: pgVocabulary, more: pgMore, admin: pgAdmin };
   const fn = pages[page] || pgHome; window.scrollTo(0, 0);
   load(main, () => fn(parts, params));
 }
 function pgMore() {
   return h('div', { class: 'stack' }, h('h1', {}, 'More'), h('div', { class: 'grid g2' }, [['revision', 'Revision'], ['pyqs', 'PYQs'], ['ca', 'Current Affairs'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['library', 'My Library'], ['profile', 'Profile'], ...(S.user.role === 'admin' ? [['admin', 'Admin']] : [])].map(([k, l]) => h('a', { class: 'card nav', href: '#/' + k }, svg(ICONS[k] || ICONS.more), l))));
+}
+
+// ---------- Vocabulary Lab: original exam-focused word learning ----------
+const VOCAB_WORDS = [
+  {word:'Misogynist',type:'noun',pronunciation:'mi-soj-uh-nist',meaning:'A person who hates or is prejudiced against women.',hindi:'स्त्री-द्वेषी व्यक्ति',example:'The article criticised the speaker for his misogynistic remarks.',synonyms:['woman-hater','sexist (related, not identical)'],antonyms:['supporter of gender equality'],root:'Greek misos (hatred) + gynē (woman)',memory:'MIS + GYNE: hatred directed at women.',category:'Attitudes & behaviour'},
+  {word:'Misanthrope',type:'noun',pronunciation:'mis-an-throhp',meaning:'A person who dislikes or distrusts humankind.',hindi:'मानव-द्वेषी व्यक्ति',example:'The misanthrope preferred solitude to crowded social events.',synonyms:['cynic (sometimes related)','people-hater'],antonyms:['humanitarian','philanthropist'],root:'Greek misos (hatred) + anthrōpos (human)',memory:'ANTHRO means human, as in anthropology.',category:'Attitudes & behaviour'},
+  {word:'Altruist',type:'noun',pronunciation:'al-troo-ist',meaning:'A person who cares about others and acts for their benefit, often without personal gain.',hindi:'परोपकारी व्यक्ति',example:'The altruist volunteered every weekend at the community kitchen.',synonyms:['humanitarian','selfless person'],antonyms:['egoist'],root:'French altrui, meaning other people',memory:'An altruist puts others first.',category:'Personality'},
+  {word:'Narcissist',type:'noun',pronunciation:'nar-suh-sist',meaning:'A person excessively focused on themselves or their own importance.',hindi:'आत्ममुग्ध व्यक्ति',example:'The story portrays a narcissist who constantly seeks admiration.',synonyms:['self-centred person','egotist'],antonyms:['humble person'],root:'From Narcissus, a figure in Greek mythology',memory:'Narcissus became absorbed in his own reflection.',category:'Personality'},
+  {word:'Benevolent',type:'adjective',pronunciation:'buh-nev-uh-luhnt',meaning:'Kind, generous and wishing to do good.',hindi:'दयालु और परोपकारी',example:'A benevolent donor funded the village library.',synonyms:['kind','charitable','generous'],antonyms:['malevolent','unkind'],root:'Latin bene (well/good) + velle (to wish)',memory:'BEN = good; benevolent wishes good for others.',category:'Personality'},
+  {word:'Malevolent',type:'adjective',pronunciation:'muh-lev-uh-luhnt',meaning:'Wishing harm or evil to others.',hindi:'दुर्भावनापूर्ण',example:'The villain concealed his malevolent intentions.',synonyms:['malicious','spiteful'],antonyms:['benevolent','kind-hearted'],root:'Latin male (badly) + velle (to wish)',memory:'MALE here means bad, not the opposite of female.',category:'Attitudes & behaviour'},
+  {word:'Pessimist',type:'noun',pronunciation:'pes-uh-mist',meaning:'A person who tends to expect negative outcomes.',hindi:'निराशावादी व्यक्ति',example:'The pessimist expected delays, even before the journey began.',synonyms:['negative thinker','defeatist'],antonyms:['optimist'],root:'Latin pessimus, meaning worst',memory:'A pessimist expects the worst.',category:'Personality'},
+  {word:'Optimist',type:'noun',pronunciation:'op-tuh-mist',meaning:'A person who tends to expect positive outcomes.',hindi:'आशावादी व्यक्ति',example:'The optimist believed the team could recover from its early setback.',synonyms:['hopeful person','positive thinker'],antonyms:['pessimist'],root:'Latin optimus, meaning best',memory:'An optimist looks for the best possible outcome.',category:'Personality'},
+  {word:'Omniscient',type:'adjective',pronunciation:'om-nish-uhnt',meaning:'Knowing everything; having unlimited knowledge.',hindi:'सर्वज्ञ',example:'The novel uses an omniscient narrator who knows every character’s thoughts.',synonyms:['all-knowing','all-wise'],antonyms:['ignorant','uninformed'],root:'Latin omni (all) + scient (knowing)',memory:'OMNI = all; SCIENCE comes from knowing.',category:'Knowledge & ability'},
+  {word:'Misogamy',type:'noun',pronunciation:'mi-sog-uh-mee',meaning:'A dislike of or aversion to marriage.',hindi:'विवाह के प्रति अरुचि',example:'The essay explores his declared misogamy and preference for remaining unmarried.',synonyms:['aversion to marriage'],antonyms:['desire for marriage'],root:'Greek misos (hatred) + gamos (marriage)',memory:'GAMY relates to marriage, as in monogamy.',category:'Relationships'},
+  {word:'Philant​hropist'.replace('\u200b',''),type:'noun',pronunciation:'fi-lan-thruh-pist',meaning:'A person who seeks to promote the welfare of others, often through donations or service.',hindi:'मानव-कल्याण के लिए काम करने वाला व्यक्ति',example:'The philanthropist supported scholarships for students from low-income families.',synonyms:['benefactor','humanitarian'],antonyms:['misanthrope (contrast in outlook)'],root:'Greek philos (loving) + anthrōpos (human)',memory:'PHIL = love; ANTHRO = human.',category:'Personality'},
+  {word:'Eloquent',type:'adjective',pronunciation:'el-uh-kwuhnt',meaning:'Fluent, persuasive and effective in speaking or writing.',hindi:'वाक्पटु; प्रभावशाली ढंग से बोलने वाला',example:'Her eloquent answer impressed the interview panel.',synonyms:['articulate','expressive','persuasive'],antonyms:['inarticulate','hesitant'],root:'Latin eloqui, meaning to speak out',memory:'An eloquent speaker expresses ideas clearly and powerfully.',category:'Communication'},
+  {word:'Taciturn',type:'adjective',pronunciation:'tas-i-turn',meaning:'Quiet and not inclined to speak much.',hindi:'कम बोलने वाला; मितभाषी',example:'Usually taciturn, he spoke at length about his favourite subject.',synonyms:['reserved','reticent'],antonyms:['talkative','garrulous'],root:'Latin tacitus, meaning silent',memory:'Taciturn people tend to talk little.',category:'Personality'},
+  {word:'Garrulous',type:'adjective',pronunciation:'gar-uh-lus',meaning:'Excessively talkative, especially about trivial matters.',hindi:'बहुत अधिक बोलने वाला',example:'The garrulous passenger chatted throughout the train journey.',synonyms:['loquacious','chatty'],antonyms:['taciturn','reticent'],root:'Latin garrire, meaning to chatter',memory:'Garrulous = goes on and on talking.',category:'Communication'},
+  {word:'Pragmatic',type:'adjective',pronunciation:'prag-mat-ik',meaning:'Practical and focused on what will work in real situations.',hindi:'व्यावहारिक',example:'The committee adopted a pragmatic solution to the budget problem.',synonyms:['practical','realistic'],antonyms:['impractical','idealistic (in some contexts)'],root:'Greek pragma, meaning deed or action',memory:'A pragmatic person asks: what works in practice?',category:'Thinking & decisions'},
+  {word:'Ubiquitous',type:'adjective',pronunciation:'yoo-bik-wi-tus',meaning:'Present or found almost everywhere.',hindi:'सर्वव्यापी; हर जगह मौजूद',example:'Smartphones have become ubiquitous in urban life.',synonyms:['omnipresent','widespread'],antonyms:['rare','scarce'],root:'Latin ubique, meaning everywhere',memory:'UBIQUITOUS = found everywhere.',category:'Knowledge & description'},
+  {word:'Ephemeral',type:'adjective',pronunciation:'ih-fem-er-uhl',meaning:'Lasting for a very short time.',hindi:'क्षणिक; अल्पकालिक',example:'The beauty of the rainbow was ephemeral.',synonyms:['fleeting','transitory','short-lived'],antonyms:['permanent','enduring'],root:'Greek ephēmeros, meaning lasting a day',memory:'An ephemeral moment disappears quickly.',category:'Time & change'},
+  {word:'Fastidious',type:'adjective',pronunciation:'fa-stid-ee-us',meaning:'Very attentive to detail and difficult to please about standards.',hindi:'बारीकियों पर अत्यधिक ध्यान देने वाला',example:'The fastidious editor checked every punctuation mark.',synonyms:['meticulous','scrupulous'],antonyms:['careless','sloppy'],root:'Latin fastidium, meaning disdain or aversion',memory:'Fastidious people notice tiny details.',category:'Personality'},
+  {word:'Prudent',type:'adjective',pronunciation:'proo-dnt',meaning:'Showing careful judgement and thinking about possible consequences.',hindi:'विवेकपूर्ण; समझदारी भरा',example:'Saving part of each salary is a prudent financial habit.',synonyms:['wise','cautious','judicious'],antonyms:['reckless','imprudent'],root:'Latin prudens, meaning foresighted',memory:'A prudent person thinks before acting.',category:'Thinking & decisions'},
+  {word:'Inevitable',type:'adjective',pronunciation:'in-ev-i-tuh-buhl',meaning:'Certain to happen; impossible to avoid.',hindi:'अपरिहार्य; जिसे टाला न जा सके',example:'With the deadline approaching, some changes were inevitable.',synonyms:['unavoidable','certain'],antonyms:['avoidable','preventable'],root:'Latin in (not) + evitare (to avoid)',memory:'If you cannot avoid it, it is inevitable.',category:'Time & change'}
+];
+function pgVocabulary() {
+  let selected = 0, category = 'All', query = '', quiz = false, quizIndex = 0, score = 0, picked = null, showAnswer = false;
+  const root = h('div', { class: 'stack vocab-lab' });
+  const categories = ['All', ...new Set(VOCAB_WORDS.map(w => w.category))];
+  function filtered() {
+    const q = query.toLowerCase().trim();
+    return VOCAB_WORDS.map((w,i)=>({...w,_i:i})).filter(w => (category === 'All' || w.category === category) && (!q || [w.word,w.meaning,w.hindi,w.root,w.category,...w.synonyms,...w.antonyms].join(' ').toLowerCase().includes(q)));
+  }
+  function draw() {
+    root.replaceChildren();
+    const items = filtered();
+    if (selected >= items.length) selected = 0;
+    const hero = h('section', { class: 'vocab-hero' },
+      h('div', { class: 'vocab-eyebrow' }, 'ENGLISH • EXAM VOCABULARY'),
+      h('h1', {}, 'Vocabulary Lab'),
+      h('p', {}, 'Learn powerful words. Understand their roots. Remember them for exams.'),
+      h('div', { class: 'vocab-stats' },
+        h('div', {}, h('strong', {}, String(VOCAB_WORDS.length)), h('span', {}, 'Starter words')),
+        h('div', {}, h('strong', {}, String(categories.length - 1)), h('span', {}, 'Categories')),
+        h('div', {}, h('strong', {}, '5'), h('span', {}, 'Quiz questions'))),
+      h('div', { class: 'vocab-actions' },
+        h('button', { class: 'btn primary', onclick: () => { quiz = false; draw(); } }, 'Explore words'),
+        h('button', { class: 'btn', onclick: () => { quiz = true; quizIndex = 0; score = 0; picked = null; showAnswer = false; draw(); } }, 'Start quiz')));
+    root.append(hero);
+    if (quiz) {
+      const quizWords = VOCAB_WORDS.slice(0,5);
+      const word = quizWords[quizIndex];
+      const options = [word.meaning, ...VOCAB_WORDS.filter(w=>w.word!==word.word).slice(quizIndex,quizIndex+3).map(w=>w.meaning)].sort(()=>0.5-Math.random());
+      const card = h('section', { class: 'card vocab-quiz stack' },
+        h('div', { class: 'row between' }, h('span', { class: 'badge' }, 'Question '+(quizIndex+1)+' of '+quizWords.length), h('span', { class: 'small muted' }, 'Score: '+score)),
+        h('h2', {}, 'What does “'+word.word+'” mean?'));
+      const answers = h('div', { class: 'vocab-options' });
+      options.forEach((opt,i)=>answers.append(h('button',{class:'vocab-option',onclick:()=>{if(picked!==null)return;picked=opt;if(opt===word.meaning)score++;showAnswer=true;draw();}},String.fromCharCode(65+i)+'. '+opt)));
+      card.append(answers);
+      if(showAnswer) card.append(h('div',{class:'vocab-feedback '+(picked===word.meaning?'correct':'incorrect')},(picked===word.meaning?'Correct! ':'Not quite. ')+word.meaning),h('button',{class:'btn primary',onclick:()=>{if(quizIndex<quizWords.length-1){quizIndex++;picked=null;showAnswer=false;}else{quiz=false;toast('Quiz complete: '+score+'/'+quizWords.length);picked=null;showAnswer=false;}draw();}},quizIndex<quizWords.length-1?'Next question':'Finish quiz'));
+      root.append(card); return root;
+    }
+    const search = h('input', { class:'vocab-search', type:'search', placeholder:'Search a word, meaning or root…', value:query, 'aria-label':'Search vocabulary', oninput:e=>{const value=e.target.value;query=value;selected=0;draw();const next=root.querySelector('.vocab-search');if(next){next.focus();next.setSelectionRange(value.length,value.length);}} });
+    const chips = h('div',{class:'vocab-chips'});
+    categories.forEach(c=>chips.append(h('button',{class:'chip'+(category===c?' on':''),onclick:()=>{category=c;selected=0;draw();}},c)));
+    root.append(h('div',{class:'card stack'},search,chips));
+    if (!items.length) {root.append(h('div',{class:'card'},'No words match that search. Try another word or category.'));return root;}
+    const item=items[selected];
+    const list=h('div',{class:'vocab-word-list'});
+    items.forEach((w,i)=>list.append(h('button',{class:'vocab-word'+(i===selected?' on':''),onclick:()=>{selected=i;draw();}},h('strong',{},w.word),h('span',{},w.type+' · '+w.category))));
+    const detail=h('article',{class:'card vocab-detail stack'},
+      h('div',{class:'row between'},h('span',{class:'badge'},item.type),h('span',{class:'small muted'},item.pronunciation)),
+      h('h2',{},item.word),h('p',{class:'vocab-meaning'},item.meaning),
+      h('p',{class:'vocab-hindi'},item.hindi),
+      h('div',{class:'vocab-example'},h('strong',{},'Example'),h('p',{},item.example)),
+      h('div',{class:'vocab-two-col'},
+        h('div',{},h('strong',{},'Synonyms'),h('p',{},item.synonyms.join(', '))),
+        h('div',{},h('strong',{},'Antonyms / contrasts'),h('p',{},item.antonyms.join(', ')))),
+      h('div',{class:'vocab-root'},h('strong',{},'Root / origin'),h('p',{},item.root)),
+      h('div',{class:'vocab-memory'},h('strong',{},'Memory trick'),h('p',{},item.memory)),
+      h('div',{class:'row',style:'flex-wrap:wrap;gap:.5rem'},
+        h('button',{class:'btn primary',onclick:()=>{selected=(selected+1)%items.length;draw();}},'Next word'),
+        h('button',{class:'btn',onclick:()=>{query=item.word;category='All';draw();toast('Word selected for focused study.');}},'Focus this word')));
+    root.append(h('div',{class:'vocab-layout'},list,detail));
+    return root;
+  }
+  draw(); return root;
 }
 
 // ---------- action router (recommendation CTAs) ----------
