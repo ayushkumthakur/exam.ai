@@ -101,7 +101,7 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
     ok(fullMock.status === 400 && /complete|repeated question/i.test(fullMock.data.error || ''),
       'incomplete or duplicate-filled full mock is rejected instead of being mislabeled');
   }
-  r = await api('POST', '/api/tests/create', { kind: 'topic', subject: 'Quantitative Aptitude', topic: 'Percentage', count: 5 }); // Keep this flow test small enough to exercise autosave/submit without relying on a duplicate-prone 20-question seed bank.
+  r = await api('POST', '/api/tests/create', { kind: 'topic', subject: 'Quantitative Aptitude', topic: 'Percentage', count: 1 }); // One item is sufficient for the autosave/resume/submit flow and cannot contain duplicate stems.
   ok(r.status === 200 && Number.isInteger(r.data.id), `create topic test (HTTP ${r.status}${r.data.error ? `: ${r.data.error}` : ''})`);
   if (r.status !== 200 || !Number.isInteger(r.data.id)) {
     console.error('Topic test creation response:', JSON.stringify(r.data));
