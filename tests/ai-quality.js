@@ -6,7 +6,7 @@ const { buildExamQuestionBank } = require('../data/question_bank');
 const { buildPriorityQuestionBank } = require('../data/priority_question_bank');
 const { buildCatalogQuestionBank } = require('../data/catalog_question_bank');
 const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration, TUTOR_SYSTEM } = require('../ai');
-const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets } = require('../paper-blueprint');
+const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets, findDuplicateQuestionStems } = require('../paper-blueprint');
 
 const base = {
   text: 'A sample exam question asks which value is correct?',
@@ -62,6 +62,18 @@ assert.equal(areDuplicateQuestions(base, [{ ...base, text: 'A sample exam questi
 assert.equal(areDuplicateQuestions({ text: 'A train travels 120 kilometres in 2 hours. What is its average speed in kilometres per hour?' }, [{ text: 'A train travels 150 kilometres in 3 hours. What is its average speed in kilometres per hour?' }]), true, 'numeric variants of the same question template are detected');
 assert.equal(areDuplicateQuestions({ text: 'A train travels 120 kilometres in 2 hours. What is its average speed in kilometres per hour?' }, [{ text: 'A shopkeeper sells 12 pens at a profit of 15 percent. Calculate the selling price of one pen.' }]), false, 'different questions from the same subject are retained');
 assert.equal(areDuplicateQuestions('Which planet is known as the Red Planet?', ['Which planet is known as the Red Planet?']), true, 'short exact duplicates are detected');
+
+assert.deepEqual(findDuplicateQuestionStems([
+  { text: 'Which planet is known as the Red Planet?' },
+  { text: '  WHICH planet is known as the Red Planet?! ' },
+  { text: 'Which planet has prominent rings?' }
+]).map(item => [item.firstIndex, item.duplicateIndex]), [[0, 1]],
+  'mock-level repeat guard detects case/punctuation/spacing variants but keeps different questions');
+assert.deepEqual(findDuplicateQuestionStems([
+  { text: 'भारत का संविधान कब लागू हुआ?' },
+  { text: 'भारत का संविधान कब लागू हुआ' }
+]).map(item => [item.firstIndex, item.duplicateIndex]), [[0, 1]],
+  'mock-level repeat guard supports non-Latin question text');
 
 assert.match(priorityExamCalibration('UPSC CSE Prelims — Paper I (General Studies)', 'Polity', 'Fundamental Rights'), /two\/three-statement questions/i, 'UPSC GS uses real prelims question construction');
 assert.match(priorityExamCalibration('UPSC CSAT — Prelims Paper II (Qualifying)', 'Quantitative Aptitude', 'Percentages'), /80 questions, 200 marks, 120 minutes/i, 'UPSC CSAT uses its separate qualifying paper style');

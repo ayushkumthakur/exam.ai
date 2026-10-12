@@ -10,7 +10,7 @@ const { xmlField, isEnglishText } = require('./current-affairs-feed');
 const aiMetrics = require('./ai-metrics');
 const dbBackup = require('./db-backup');
 const { validateOfficialPyqSource, validatePyqVerification } = require('./pyq-source-policy');
-const { allocateSectionTargets, createPaperBlueprint, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets } = require('./paper-blueprint');
+const { allocateSectionTargets, createPaperBlueprint, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets, findDuplicateQuestionStems } = require('./paper-blueprint');
 
 const PORT = +process.env.PORT || 3000;
 const PROD = process.env.NODE_ENV === 'production';
@@ -392,6 +392,11 @@ async function buildTest(user, exam, b) {
   } else throw bad('Unknown test type.');
 
   if (!qs.length) throw bad('No questions are available yet for this selection. Try another subject/topic, or generate questions with the AI Tutor.');
+  const repeatedStems = findDuplicateQuestionStems(qs);
+  if (repeatedStems.length) {
+    const sample = repeatedStems.slice(0, 3).map(item => `Q${item.firstIndex + 1} and Q${item.duplicateIndex + 1}`).join(', ');
+    throw bad(`This test contains ${repeatedStems.length} repeated question stem(s) (${sample}). The test was not started. Review or expand the question bank and try again.`);
+  }
   if (kind !== 'full_mock' && qs.length < 20) throw bad('Every test needs at least 20 questions. Add more questions or choose a larger set.');
   minutes = realMode ? Math.max(1, Number(exam.pattern.minutes) || 60)
     : Math.max(1, Math.min(300, Number(b.minutes) || minutes || 60));
