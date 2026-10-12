@@ -1,0 +1,95 @@
+/* Prep Tutor visual direction: distinctive blue/cyan study cockpit.
+   Presentation-only overrides; preserve route, data, component and event contracts. */
+:root {
+  --bg: #f3f8ff;
+  --surface: #ffffff;
+  --ink: #12264b;
+  --muted: #627493;
+  --line: #dbe7f5;
+  --brand: #155eef;
+  --brand-2: #155eef;
+  --accent: #12b8d8;
+  --accent-soft: #e4faff;
+  --info-soft: #edf5ff;
+  --shadow: 0 10px 30px rgba(17, 55, 112, .07);
+}
+:root[data-theme="light"] {
+  --bg: #f3f8ff; --surface: #fff; --ink: #12264b; --muted: #627493;
+  --line: #dbe7f5; --brand: #155eef; --brand-2: #155eef;
+  --accent: #12b8d8; --accent-soft: #e4faff; --info-soft: #edf5ff;
+  --shadow: 0 10px 30px rgba(17, 55, 112, .07);
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #091426; --surface: #111f35; --ink: #eaf3ff; --muted: #a5bad5;
+  --line: #263b58; --brand: #75a7ff; --brand-2: #75a7ff;
+  --accent: #4bd6e8; --accent-soft: #123747; --info-soft: #162c49;
+  --shadow: 0 12px 32px rgba(0,0,0,.24); color-scheme: dark;
+}
+body {
+  background:
+    radial-gradient(ellipse at 88% 0%, rgba(18,184,216,.11), transparent 27%),
+    radial-gradient(ellipse at 5% 18%, rgba(21,94,239,.07), transparent 25%),
+    var(--bg);
+}
+.side {
+  border-right: 1px solid var(--line) !important;
+}
+.side .brand {
+  padding-bottom: 22px !important;
+}
+.side .brand svg {
+  filter: drop-shadow(0 5px 9px rgba(21,94,239,.16));
+}
+.nav.on, .side-nav.on {
+  background: linear-gradient(115deg, #155eef, #12a9d6) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px rgba(21,94,239,.18);
+}
+.nav.on svg, .side-nav.on svg { color: #fff !important; }
+.nav:not(.on):hover, .side-nav:not(.on):hover {
+  background: var(--info-soft) !important;
+  color: var(--brand) !important;
+}
+.btn.primary {
+  background: linear-gradient(115deg, #155eef, #0daecb) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: 0 7px 18px rgba(21,94,239,.18);
+}
+.btn.accent {
+  background: var(--accent-soft) !important;
+  border-color: #bceef5 !important;
+  color: #087b9c !important;
+}
+.chip.on {
+  background: linear-gradient(115deg, #155eef, #0daecb) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+}
+.card, .dash-panel, .dash-recent-panel, .quick-item, .recommendation-row {
+  border-color: var(--line) !important;
+  box-shadow: var(--shadow);
+}
+.card:hover, .quick-item:hover, .recommendation-row:hover {
+  border-color: rgba(18,184,216,.48) !important;
+}
+.bar > i { background: linear-gradient(90deg, #155eef, #12b8d8); }
+.badge.ai { background: #e4faff; color: #087b9c; }
+.badge.pyq { background: #e7f8ee; color: #167448; }
+:root[data-theme="dark"] .badge.ai { background: #123747; color: #78e3f0; }
+:root[data-theme="dark"] .badge.pyq { background: #123629; color: #86e0ae; }
+:root[data-theme="dark"] .btn.accent { border-color: #245469 !important; color: #8be7f2 !important; }
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .dash-panel,
+:root[data-theme="dark"] .dash-recent-panel,
+:root[data-theme="dark"] .quick-item,
+:root[data-theme="dark"] .recommendation-row { background: var(--surface) !important; }
+@media (prefers-reduced-motion: no-preference) {
+  .card, .quick-item, .recommendation-row { transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+  .card:hover { transform: translateY(-1px); }
+}
+@media (max-width: 820px) {
+  body { background: var(--bg); }
+  .side { border-right: 0 !important; }
+}
