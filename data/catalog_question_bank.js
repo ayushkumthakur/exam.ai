@@ -431,6 +431,25 @@ function buildCatalogQuestionBank(exams, topics, baseQuestions, expandedQuestion
       let questions = [];
       if (['Mathematics','Applied Mathematics','Quantitative Aptitude'].includes(subject)) {
         questions = quantitativeQuestions(exam.id,subject,targetPerSection,15000 + si*1000 + exam.id.length*17);
+      } else if (subject === 'Language I' || subject === 'Language II') {
+        questions = englishQuestions(exam.id,subject,targetPerSection,21500 + si*1000 + exam.id.length*23,'school');
+      } else if (subject === 'Child Development and Pedagogy') {
+        const pedagogyFacts = [
+          ['Child-centred learning recognises learner needs and active participation.',true,'Child-centred learning adapts instruction to learners and encourages participation.'],
+          ['Inclusive education aims to reduce barriers so diverse learners can participate.',true,'Inclusion focuses on access, participation and support.'],
+          ['Formative assessment provides feedback during learning.',true,'Formative assessment helps teachers adjust instruction before final evaluation.'],
+          ['A learner develops at exactly the same rate in every domain.',false,'Development varies across domains and among individuals.'],
+          ['Prior knowledge can influence how a learner understands a new concept.',true,'Learning builds on existing knowledge and experience.'],
+          ['Constructivist teaching encourages learners to build understanding through activity and reflection.',true,'Constructivism treats learners as active participants in making meaning.'],
+          ['A single teaching method is equally effective for every learner.',false,'Learners differ in readiness, background, interests and support needs.'],
+          ['Positive feedback should identify useful progress and next steps.',true,'Specific feedback supports improvement more effectively than vague praise.'],
+          ['Errors can provide evidence about a learner’s current understanding.',true,'Teachers can use errors diagnostically to plan instruction.'],
+          ['Rote memorisation alone guarantees conceptual understanding.',false,'Recall and conceptual understanding are related but not identical.']
+        ];
+        questions = statementQuestions(exam.id,subject,allowed[0] || 'Child Development',pedagogyFacts,targetPerSection,26500 + si*1000 + exam.id.length*29);
+      } else if (subject === 'Environmental Studies') {
+        const evsFacts = FACTS.Environment.concat(EXTRA_FACTS.Biology, EXTRA_FACTS.GeneralAwareness || []);
+        questions = statementQuestions(exam.id,subject,allowed[0] || 'Family and Friends',evsFacts,targetPerSection,27500 + si*1000 + exam.id.length*29);
       } else if (subject === 'Reasoning') {
         questions = reasoningQuestions(exam.id,subject,targetPerSection,18000 + si*1000 + exam.id.length*19);
       } else if (['English','English Core','English Language & Literature'].includes(subject)) {
