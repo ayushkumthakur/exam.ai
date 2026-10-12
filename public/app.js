@@ -481,16 +481,30 @@ function pgVocabulary() {
         h('button', { class: 'btn', onclick: () => { quiz = true; quizIndex = 0; score = 0; picked = null; showAnswer = false; draw(); } }, 'Start quiz')));
     root.append(hero);
     if (quiz) {
-      const quizWords = VOCAB_WORDS.slice(0,5);
+      const quizWords = VOCAB_WORDS;
       const word = quizWords[quizIndex];
-      const options = [word.meaning, ...VOCAB_WORDS.filter(w=>w.word!==word.word).slice(quizIndex,quizIndex+3).map(w=>w.meaning)].sort(()=>0.5-Math.random());
+      const distractors = VOCAB_WORDS.filter(w=>w.word!==word.word && w.meaning!==word.meaning)
+        .sort((a,b)=>((a.word.charCodeAt(0)*17+quizIndex*13)%97)-((b.word.charCodeAt(0)*17+quizIndex*13)%97))
+        .slice(0,3).map(w=>w.meaning);
+      const options = [word.meaning, ...distractors].sort((a,b)=>((a.length*7+quizIndex*11)%31)-((b.length*7+quizIndex*11)%31));
       const card = h('section', { class: 'card vocab-quiz stack' },
         h('div', { class: 'row between' }, h('span', { class: 'badge' }, 'Question '+(quizIndex+1)+' of '+quizWords.length), h('span', { class: 'small muted' }, 'Score: '+score)),
+        h('div', { class: 'vocab-progress-track' }, h('div', { class:'vocab-progress-fill', style:'width:'+Math.round((quizIndex/quizWords.length)*100)+'%' })),
+        h('p', { class:'small muted' }, 'Choose the meaning first. The definition and explanation appear after your answer.'),
         h('h2', {}, 'What does “'+word.word+'” mean?'));
       const answers = h('div', { class: 'vocab-options' });
-      options.forEach((opt,i)=>answers.append(h('button',{class:'vocab-option',onclick:()=>{if(picked!==null)return;picked=opt;if(opt===word.meaning)score++;showAnswer=true;draw();}},String.fromCharCode(65+i)+'. '+opt)));
+      options.forEach((opt,i)=>answers.append(h('button',{class:'vocab-option'+(showAnswer && opt===word.meaning?' correct-option':'')+(showAnswer && picked===opt && opt!==word.meaning?' wrong-option':''),disabled:showAnswer,onclick:()=>{if(picked!==null)return;picked=opt;if(opt===word.meaning)score++;showAnswer=true;draw();}},String.fromCharCode(65+i)+'. '+opt)));
       card.append(answers);
-      if(showAnswer) card.append(h('div',{class:'vocab-feedback '+(picked===word.meaning?'correct':'incorrect')},(picked===word.meaning?'Correct! ':'Not quite. ')+word.meaning),h('button',{class:'btn primary',onclick:()=>{if(quizIndex<quizWords.length-1){quizIndex++;picked=null;showAnswer=false;}else{quiz=false;toast('Quiz complete: '+score+'/'+quizWords.length);picked=null;showAnswer=false;}draw();}},quizIndex<quizWords.length-1?'Next question':'Finish quiz'));
+      if(showAnswer) {
+        card.append(
+          h('div',{class:'vocab-feedback '+(picked===word.meaning?'correct':'incorrect')},(picked===word.meaning?'Correct! ':'Not quite. ')+'Definition: '+word.meaning),
+          h('div',{class:'vocab-answer-explain stack'},
+            h('div',{},h('strong',{},'Hindi meaning'),h('p',{},word.hindi||'Use the English definition above to learn this word.')),
+            h('div',{},h('strong',{},'Example'),h('p',{},word.example||('The word “'+word.word+'” is used in this sense.'))),
+            h('div',{},h('strong',{},'Synonyms'),h('p',{},(word.synonyms||[]).join(', ')||'—')),
+            h('div',{},h('strong',{},'Memory trick / root'),h('p',{},word.memory||word.root||'Connect the word with its definition.'))),
+          h('button',{class:'btn primary',onclick:()=>{if(quizIndex<quizWords.length-1){quizIndex++;picked=null;showAnswer=false;}else{quiz=false;toast('Quiz complete: '+score+'/'+quizWords.length);picked=null;showAnswer=false;quizIndex=0;}draw();}},quizIndex<quizWords.length-1?'Next word':'Finish quiz'));
+      }
       root.append(card); return root;
     }
     const search = h('input', { class:'vocab-search', type:'search', placeholder:'Search a word, meaning or root…', value:query, 'aria-label':'Search vocabulary', oninput:e=>{const value=e.target.value;query=value;selected=0;draw();const next=root.querySelector('.vocab-search');if(next){next.focus();next.setSelectionRange(value.length,value.length);}} });
