@@ -89,7 +89,8 @@ assert.equal(cgl.sections.reduce((sum, section) => sum + section.questions, 0), 
 assert.equal(cgl.sections.reduce((sum, section) => sum + section.questions * section.marks, 0), 200, 'SSC CGL Tier-I totals 200 marks');
 assert.equal(cgl.minutes, 60, 'SSC CGL Tier-I duration is 60 minutes');
 assert.equal(cgl.sections[0].negative, 0.5, 'SSC CGL Tier-I negative marking is 0.50');
-assert.ok(cgl.audit.runtimeLimitations.some(item => item.includes('section') && item.includes('timers')), 'SSC CGL sectional-timer limitation is disclosed');
+assert.equal(cgl.audit.sectionTimingMinutes, 15, 'SSC CGL Tier-I pattern specifies 15-minute sectional timers');
+assert.ok(cgl.audit.runtimeLimitations.some(item => item.includes('Tier-II')), 'SSC CGL Tier-II limitation remains disclosed separately');
 const rbi = examPattern('RBI_B');
 assert.equal(rbi.sections.reduce((sum, section) => sum + section.questions, 0), 200, 'RBI Grade B Phase-I totals 200 questions');
 assert.equal(rbi.sections.reduce((sum, section) => sum + section.questions * section.marks, 0), 200, 'RBI Grade B Phase-I totals 200 marks');
