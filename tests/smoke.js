@@ -124,6 +124,15 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   // admin
   cookie = ''; const ae = 'admin@x.com'; r = await api('POST', '/api/auth/login', { email: ae, password: process.env.SMOKE_ADMIN_PASSWORD || pw });
   ok(r.data.user && r.data.user.role === 'admin', 'admin role via ADMIN_EMAILS');
+  r = await api('GET', '/api/admin/mock-bank-audit');
+  ok(r.status === 200 && Array.isArray(r.data.exams) &&
+    ['UPSC_CSE', 'UPSC_CSAT', 'SSC_CGL', 'RBI_B'].every(id => r.data.exams.some(exam => exam.id === id)),
+    'admin mock-bank audit covers UPSC Prelims, CSAT, SSC CGL and RBI Grade B');
+  ok(r.status === 200 && r.data.exams.every(exam => Array.isArray(exam.sections) &&
+    exam.sections.every(section => Number.isInteger(section.uniqueQuestionCount) &&
+      Number.isInteger(section.shortfall) && typeof section.questionCoverageReady === 'boolean')) &&
+    r.data.exams.every(exam => typeof exam.patternVerified === 'boolean' && typeof exam.realExamReady === 'boolean'),
+    'mock-bank audit reports unique question coverage separately from official pattern verification');
   r = await api('GET', '/api/admin/ai-health');
   ok(r.status === 200 && typeof r.data.integration?.enabled === 'boolean' &&
     ['gemini', 'groq', 'anthropic', null].includes(r.data.integration?.activeProvider),
