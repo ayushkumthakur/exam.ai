@@ -406,7 +406,7 @@ async function buildTest(user, exam, b) {
     const sample = repeatedStems.slice(0, 3).map(item => `Q${item.firstIndex + 1} and Q${item.duplicateIndex + 1}`).join(', ');
     throw bad(`This test contains ${repeatedStems.length} repeated question stem(s) (${sample}). The test was not started. Review or expand the question bank and try again.`);
   }
-  if (kind !== 'full_mock' && qs.length < 20) throw bad('Every test needs at least 20 questions. Add more questions or choose a larger set.');
+  if (kind !== 'full_mock' && kind !== 'custom' && qs.length < 20) throw bad('Every standard test needs at least 20 questions. Add more questions or choose a larger set.');
   minutes = realMode ? Math.max(1, Number(exam.pattern.minutes) || 60)
     : Math.max(1, Math.min(300, Number(b.minutes) || minutes || 60));
   const t = now();
@@ -742,20 +742,27 @@ route('GET', '/api/practice/questions', ONB, (c) => {
   const unseenCount = db.prepare('SELECT COUNT(*) c FROM questions q WHERE ' + sql.slice(sql.indexOf('WHERE ') + 6) + unseenWhere).get(...p, c.user.id, exam.id).c;
   const unseenSql = sql + unseenWhere + ' ORDER BY q.id LIMIT ? OFFSET ?';
   const unseen = offset < unseenCount
-    ? db.prepare(unseenSql).all(...p, c.user.id, exam.id, limit, offset)
+    ? db.prepare(unseenSql).all(...p, c.user.id, exam.id, Math.min(limit * 5, 500), offset)
     : [];
-  let questions = unseen;
-  if (questions.length < limit && offset + questions.length >= unseenCount) {
-    const wrongLimit = limit - questions.length;
-    const wrongOffset = Math.max(0, offset - unseenCount);
+  let candidates = unseen;
+  if (candidates.length < limit && offset + candidates.length >= unseenCount) {
     const wrongSql = sql + ` AND EXISTS (
       SELECT 1 FROM answers a WHERE a.user_id=? AND a.exam_id=? AND a.question_id=q.id
       AND a.id=(SELECT MAX(a2.id) FROM answers a2 WHERE a2.user_id=a.user_id AND a2.exam_id=a.exam_id AND a2.question_id=a.question_id)
       AND a.correct=0
     ) ORDER BY q.id LIMIT ? OFFSET ?`;
-    const wrong = db.prepare(wrongSql).all(...p, c.user.id, exam.id, wrongLimit, wrongOffset);
-    questions = questions.concat(wrong);
+    const wrong = db.prepare(wrongSql).all(...p, c.user.id, exam.id, Math.min(limit * 5, 500), Math.max(0, offset - unseenCount));
+    candidates = candidates.concat(wrong);
   }
+  const uniqueStems = new Set();
+  const uniqueQuestions = candidates.filter(question => {
+    const stem = String(question.text || '').normalize('NFKC').toLowerCase()
+      .replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' ');
+    if (!stem || uniqueStems.has(stem)) return false;
+    uniqueStems.add(stem);
+    return true;
+  });
+  const questions = uniqueQuestions.slice(0, limit);
   return { questions: questions.map(pubQ), unseen_remaining: Math.max(0, unseenCount - offset - unseen.length), retrying_wrong_answers: offset + unseen.length >= unseenCount };
 });
 route('POST', '/api/practice/answer', ONB, (c) => {
