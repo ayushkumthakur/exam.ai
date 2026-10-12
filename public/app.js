@@ -62,7 +62,7 @@ function runCleanups() { while (cleanups.length) { try { cleanups.pop()(); } cat
 
 // ---------- state ----------
 const S = { user: null, config: {}, exams: [], exam: null };
-const NAV = [['home', 'Home'], ['practice', 'Practice'], ['revision', 'Revision'], ['pyqs', 'PYQs'], ['tests', 'Tests'], ['ca', 'Current Affairs'], ['tutor', 'AI Tutor'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['profile', 'Profile']];
+const NAV = [['home', 'Home'], ['practice', 'Practice'], ['revision', 'Revision'], ['pyqs', 'PYQs'], ['tests', 'Tests'], ['ca', 'Current Affairs'], ['vocabulary', 'Vocabulary Lab'], ['tutor', 'AI Tutor'], ['plan', 'Study Plan'], ['progress', 'Progress'], ['profile', 'Profile']];
 const MOBILE = [['home', 'Home'], ['practice', 'Practice'], ['tests', 'Tests'], ['tutor', 'AI Tutor'], ['more', 'More']];
 
 function getTheme() {
@@ -369,6 +369,7 @@ function renderShell(page, parts, params) {
     { label: 'PYQs', icon: 'pyqs', href: '#/pyqs', active: page === 'pyqs' },
     { label: 'Leaderboard', icon: 'leaderboard', href: '#/progress', active: page === 'progress' },
     { label: 'Current Affairs', icon: 'ca', href: '#/ca', active: page === 'ca' },
+    { label: 'Vocabulary Lab', icon: 'vocabulary', href: '#/vocabulary', active: page === 'vocabulary' },
     { label: 'Study Plan', icon: 'plan', href: '#/plan', active: page === 'plan' },
     { label: 'Bookmarks', icon: 'bookmarks', href: '#/library', active: page === 'library' },
     { label: 'AI Assistant', icon: 'tutor', href: '#/tutor', active: page === 'tutor' && params.get('mode') !== 'doubt' },
@@ -424,7 +425,7 @@ function renderShell(page, parts, params) {
         profile),
       main)),
     h('nav', { class: 'bottom', 'aria-label': 'Primary' }, MOBILE.map(i => navItem(i))));
-  const pages = { home: pgHome, practice: pgPractice, revision: pgRevision, pyqs: pgPyqs, tests: pgTests, test: pgTestTake, result: pgResult, tutor: pgTutor, plan: pgPlan, progress: pgProgress, profile: pgProfile, library: pgLibrary, search: pgSearch, ca: pgCA, more: pgMore, admin: pgAdmin };
+  const pages = { home: pgHome, practice: pgPractice, revision: pgRevision, pyqs: pgPyqs, tests: pgTests, test: pgTestTake, result: pgResult, tutor: pgTutor, plan: pgPlan, progress: pgProgress, profile: pgProfile, library: pgLibrary, search: pgSearch, ca: pgCA, vocabulary: pgVocabulary, more: pgMore, admin: pgAdmin };
   const fn = pages[page] || pgHome; window.scrollTo(0, 0);
   load(main, () => fn(parts, params));
 }
