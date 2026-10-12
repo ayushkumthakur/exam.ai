@@ -493,7 +493,7 @@ function pgVocabulary() {
       if(showAnswer) card.append(h('div',{class:'vocab-feedback '+(picked===word.meaning?'correct':'incorrect')},(picked===word.meaning?'Correct! ':'Not quite. ')+word.meaning),h('button',{class:'btn primary',onclick:()=>{if(quizIndex<quizWords.length-1){quizIndex++;picked=null;showAnswer=false;}else{quiz=false;toast('Quiz complete: '+score+'/'+quizWords.length);picked=null;showAnswer=false;}draw();}},quizIndex<quizWords.length-1?'Next question':'Finish quiz'));
       root.append(card); return root;
     }
-    const search = h('input', { class:'vocab-search', type:'search', placeholder:'Search a word, meaning or root…', value:query, 'aria-label':'Search vocabulary', oninput:e=>{query=e.target.value;selected=0;draw();} });
+    const search = h('input', { class:'vocab-search', type:'search', placeholder:'Search a word, meaning or root…', value:query, 'aria-label':'Search vocabulary', oninput:e=>{const value=e.target.value;query=value;selected=0;draw();const next=root.querySelector('.vocab-search');if(next){next.focus();next.setSelectionRange(value.length,value.length);}} });
     const chips = h('div',{class:'vocab-chips'});
     categories.forEach(c=>chips.append(h('button',{class:'chip'+(category===c?' on':''),onclick:()=>{category=c;selected=0;draw();}},c)));
     root.append(h('div',{class:'card stack'},search,chips));
