@@ -49,3 +49,12 @@ assert.match(styles, /\.vocab-layout/);
 assert.match(styles, /\.vocab-options/);
 assert.match(styles, /@media\(max-width:760px\)/);
 console.log('PASS responsive + Vocabulary Lab regression audit: viewport, mobile breakpoints, Mock Test Arena wrapping, safe-area spacing, mock timer/header wrapping, responsive question palette, desktop styling.');
+
+assert.match(app, /upsc-mock-hero/);
+assert.match(app, /upsc-paper-card/);
+assert.match(app, /upsc-paper-gs/);
+assert.match(app, /upsc-paper-csat/);
+assert.match(styles, /\.upsc-mock-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\)/);
+assert.match(styles, /upsc-mock-grid[\s\S]*grid-template-columns:minmax\(0,1fr\)/);
+assert.match(styles, /\.upsc-paper-card:focus-visible/);
+console.log('PASS UPSC mock picker premium cards + responsive mobile layout audit.');

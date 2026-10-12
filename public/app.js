@@ -1010,18 +1010,29 @@ async function pgTests(parts, params) {
   const paperId = params.get('paper') || '';
   if (S.user.exam_id === 'UPSC_CSE' && !paperId) {
     const choose = (id) => go('#/tests' + q({ paper: id }));
-    return h('div', { class: 'stack' },
-      h('h1', {}, 'UPSC CSE Mock Tests'),
-      h('p', { class: 'muted' }, 'Choose a paper to build a mock test. Both papers remain under your UPSC CSE account.'),
-      h('div', { class: 'grid g2' },
-        h('button', { class: 'card stack', style: 'text-align:left;cursor:pointer', onclick: () => choose('UPSC_CSE') },
-          h('span', { class: 'badge' }, 'Paper I'), h('h2', {}, 'General Studies'),
-          h('p', { class: 'muted' }, 'Full-length Prelims Paper I mock'),
-          h('b', {}, '100 questions · 120 minutes'), h('span', { class: 'btn primary' }, 'Create Paper I Mock →')),
-        h('button', { class: 'card stack', style: 'text-align:left;cursor:pointer', onclick: () => choose('UPSC_CSAT') },
-          h('span', { class: 'badge' }, 'Paper II · Qualifying'), h('h2', {}, 'CSAT'),
-          h('p', { class: 'muted' }, 'Full-length aptitude, reasoning and comprehension mock'),
-          h('b', {}, '80 questions · 120 minutes'), h('span', { class: 'btn primary' }, 'Create CSAT Mock →'))));
+    return h('div', { class: 'stack upsc-mock-picker' },
+      h('section', { class: 'upsc-mock-hero' },
+        h('div', { class: 'upsc-mock-orb orb-one' }), h('div', { class: 'upsc-mock-orb orb-two' }),
+        h('div', { class: 'upsc-mock-hero-content' },
+          h('span', { class: 'upsc-mock-eyebrow' }, 'PRELIMS • MOCK TEST ARENA'),
+          h('h1', {}, 'UPSC CSE Mock Tests'),
+          h('p', {}, 'Choose your paper. Simulate exam conditions. Build consistency.'),
+          h('div', { class: 'upsc-mock-pills' }, h('span', {}, '⏱ Timed practice'), h('span', {}, '✓ Exam-style format'), h('span', {}, '↗ Track progress')))),
+      h('div', { class: 'upsc-mock-section-head' }, h('div', {}, h('h2', {}, 'Choose your paper'), h('p', { class: 'muted' }, 'Both papers remain under your UPSC CSE account.')),
+        h('span', { class: 'upsc-mock-count' }, '2 PAPERS')),
+      h('div', { class: 'upsc-mock-grid' },
+        h('button', { class: 'upsc-paper-card upsc-paper-gs', onclick: () => choose('UPSC_CSE') },
+          h('div', { class: 'upsc-paper-card-top' }, h('span', { class: 'upsc-paper-icon' }, '📚'), h('span', { class: 'upsc-paper-tag' }, 'PAPER I')),
+          h('h3', {}, 'General Studies'),
+          h('p', {}, 'Full-length Prelims Paper I mock covering the core General Studies paper.'),
+          h('div', { class: 'upsc-paper-meta' }, h('span', {}, '☷ 100 questions'), h('span', {}, '◷ 120 minutes')),
+          h('div', { class: 'upsc-paper-footer' }, h('span', {}, 'Explore Paper I'), h('span', { class: 'upsc-paper-arrow' }, '↗'))),
+        h('button', { class: 'upsc-paper-card upsc-paper-csat', onclick: () => choose('UPSC_CSAT') },
+          h('div', { class: 'upsc-paper-card-top' }, h('span', { class: 'upsc-paper-icon' }, '🧠'), h('span', { class: 'upsc-paper-tag' }, 'PAPER II · QUALIFYING')),
+          h('h3', {}, 'CSAT'),
+          h('p', {}, 'Full-length aptitude, logical reasoning and comprehension practice.'),
+          h('div', { class: 'upsc-paper-meta' }, h('span', {}, '☷ 80 questions'), h('span', {}, '◷ 120 minutes')),
+          h('div', { class: 'upsc-paper-footer' }, h('span', {}, 'Explore CSAT'), h('span', { class: 'upsc-paper-arrow' }, '↗')))));
   }
   const examId = S.user.exam_id === 'UPSC_CSE' && ['UPSC_CSE','UPSC_CSAT'].includes(paperId) ? paperId : S.user.exam_id;
   const [list, ex] = await Promise.all([get('/api/tests' + q({ exam_id: examId })), get('/api/exams/' + examId)]); const exam = ex.exam;

@@ -578,3 +578,44 @@ details>summary{cursor:pointer;font-weight:650}
 .vocab-feedback.incorrect{background:#fff0e8;color:#8a3415}
 @media(max-width:760px){.vocab-layout{grid-template-columns:minmax(0,1fr)}.vocab-word-list{display:flex;max-height:none;overflow-x:auto;padding-bottom:.3rem}.vocab-word{min-width:145px;max-width:190px;flex:0 0 auto}.vocab-detail{width:100%}}
 @media(max-width:520px){.vocab-hero{border-radius:18px}.vocab-stats{gap:.8rem}.vocab-stats>div{min-width:76px}.vocab-options,.vocab-two-col{grid-template-columns:minmax(0,1fr)}.vocab-chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:.35rem}.vocab-chips .chip{flex:0 0 auto}.vocab-actions .btn{flex:1 1 auto}}
+
+
+/* Premium UPSC CSE paper picker */
+.upsc-mock-picker{gap:1.35rem}
+.upsc-mock-hero{position:relative;isolation:isolate;overflow:hidden;padding:clamp(1.35rem,4vw,2.2rem);border-radius:24px;background:linear-gradient(125deg,#102b59 0%,#1558a6 52%,#087eaa 100%);color:#fff;box-shadow:0 18px 42px rgba(21,88,166,.2)}
+.upsc-mock-hero:after{content:"";position:absolute;z-index:-1;width:270px;height:270px;right:-65px;top:-110px;border:1px solid rgba(255,255,255,.22);border-radius:50%;box-shadow:0 0 0 28px rgba(255,255,255,.045),0 0 0 58px rgba(255,255,255,.035)}
+.upsc-mock-hero-content{position:relative;z-index:1;max-width:680px}
+.upsc-mock-eyebrow{display:inline-flex;align-items:center;padding:.42rem .7rem;border:1px solid rgba(255,255,255,.25);border-radius:999px;background:rgba(255,255,255,.11);font-size:.72rem;font-weight:800;letter-spacing:.1em}
+.upsc-mock-hero h1{margin:.9rem 0 .5rem;color:#fff;font-size:clamp(1.65rem,4vw,2.25rem);line-height:1.15}
+.upsc-mock-hero p{max-width:540px;margin:0;color:rgba(255,255,255,.82);font-size:1rem;line-height:1.65}
+.upsc-mock-orb{position:absolute;z-index:-1;border-radius:50%;pointer-events:none}
+.upsc-mock-orb.orb-one{width:160px;height:160px;right:13%;bottom:-110px;background:rgba(42,212,220,.2);filter:blur(2px)}
+.upsc-mock-orb.orb-two{width:75px;height:75px;right:7%;top:35%;background:rgba(255,255,255,.08)}
+.upsc-mock-pills{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:1.15rem}
+.upsc-mock-pills span{display:inline-flex;align-items:center;padding:.42rem .68rem;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;font-size:.78rem;font-weight:650}
+.upsc-mock-section-head{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.upsc-mock-section-head h2{margin:0;font-size:1.25rem}
+.upsc-mock-section-head p{margin:.25rem 0 0}
+.upsc-mock-count{flex:0 0 auto;padding:.45rem .7rem;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font-size:.72rem;font-weight:800;letter-spacing:.08em}
+.upsc-mock-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.upsc-paper-card{position:relative;display:flex;min-width:0;flex-direction:column;align-items:stretch;gap:.85rem;padding:clamp(1rem,2.5vw,1.45rem);overflow:hidden;text-align:left;border:1px solid var(--line);border-radius:22px;background:var(--surface);color:var(--ink);box-shadow:0 8px 25px rgba(24,45,80,.055);cursor:pointer;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.upsc-paper-card:before{content:"";position:absolute;left:0;top:0;right:0;height:5px;background:linear-gradient(90deg,#2463eb,#16b6c8)}
+.upsc-paper-csat:before{background:linear-gradient(90deg,#7547d7,#d56bb7)}
+.upsc-paper-card:hover{transform:translateY(-3px);border-color:#8bb7ee;box-shadow:0 16px 32px rgba(24,65,125,.12)}
+.upsc-paper-card:focus-visible{outline:3px solid #60a5fa;outline-offset:3px}
+.upsc-paper-card-top{display:flex;align-items:center;justify-content:space-between;gap:.65rem}
+.upsc-paper-icon{display:grid;place-items:center;width:52px;height:52px;flex:0 0 auto;border-radius:16px;background:linear-gradient(145deg,#e8f0ff,#dceaff);font-size:1.55rem}
+.upsc-paper-csat .upsc-paper-icon{background:linear-gradient(145deg,#f0e9ff,#fbe7f4)}
+.upsc-paper-tag{max-width:70%;padding:.4rem .58rem;border-radius:999px;background:#edf4ff;color:#2059ae;font-size:.7rem;font-weight:850;letter-spacing:.035em;text-align:center}
+.upsc-paper-csat .upsc-paper-tag{background:#f4eefe;color:#7042b8}
+.upsc-paper-card h3{margin:.1rem 0 0;font-size:clamp(1.2rem,2.5vw,1.6rem);line-height:1.25}
+.upsc-paper-card>p{flex:1;margin:0;color:var(--muted);line-height:1.65;font-size:.96rem}
+.upsc-paper-meta{display:flex;flex-wrap:wrap;gap:.5rem}
+.upsc-paper-meta span{padding:.48rem .6rem;border:1px solid var(--line);border-radius:10px;background:var(--bg,var(--surface));font-size:.79rem;font-weight:750}
+.upsc-paper-footer{display:flex;align-items:center;justify-content:space-between;gap:.7rem;padding-top:.9rem;border-top:1px solid var(--line);font-weight:800;color:#2463c8}
+.upsc-paper-csat .upsc-paper-footer{color:#7745b9}
+.upsc-paper-arrow{display:grid;place-items:center;width:35px;height:35px;border-radius:11px;background:#eaf2ff;font-size:1.15rem;transition:transform .2s ease}
+.upsc-paper-csat .upsc-paper-arrow{background:#f3eaff}
+.upsc-paper-card:hover .upsc-paper-arrow{transform:translate(2px,-2px)}
+@media(max-width:640px){.upsc-mock-picker{gap:1rem}.upsc-mock-hero{padding:1.25rem 1.1rem;border-radius:20px}.upsc-mock-hero p{font-size:.94rem}.upsc-mock-pills{gap:.4rem}.upsc-mock-pills span{font-size:.72rem}.upsc-mock-grid{grid-template-columns:minmax(0,1fr);gap:.85rem}.upsc-paper-card{padding:1.15rem;border-radius:18px;gap:.72rem}.upsc-paper-card>p{font-size:.93rem}.upsc-mock-section-head h2{font-size:1.1rem}}
+@media(prefers-reduced-motion:reduce){.upsc-paper-card,.upsc-paper-arrow{transition:none}}
