@@ -81,3 +81,22 @@ run('duplicate stem detection normalizes case, punctuation and Unicode compatibi
   ]);
   assert.equal(duplicates.length, 2);
 });
+run('CBSE full mock respects selected school subjects', () => {
+  const exam = {
+    id: 'CBSE_X',
+    name: 'CBSE Class X',
+    pattern: { minutes: 180, sections: [
+      { subject: 'English Language & Literature', questions: 80, marks: 1, negative: 0 },
+      { subject: 'Mathematics', questions: 80, marks: 1, negative: 0 },
+      { subject: 'Science', questions: 80, marks: 1, negative: 0 },
+      { subject: 'Social Science', questions: 80, marks: 1, negative: 0 }
+    ] }
+  };
+  const selectedSubjects = ['Science'];
+  const configuredSections = selectedSubjects.length
+    ? exam.pattern.sections.filter(section => selectedSubjects.includes(section.subject))
+    : exam.pattern.sections;
+  assert.deepEqual(configuredSections.map(section => section.subject), ['Science']);
+  assert.equal(configuredSections.reduce((sum, section) => sum + section.questions, 0), 80);
+  assert.equal(exam.pattern.sections.reduce((sum, section) => sum + section.questions, 0), 320);
+});
