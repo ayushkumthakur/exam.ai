@@ -13,6 +13,28 @@ function run(name, fn) {
   console.log('PASS', name);
 }
 
+run('SSC CGL sectional timer expires cleanly and locks previous/future answers', () => {
+  const blueprint = {
+    timedSections: true,
+    sections: [
+      { index: 0, durationSeconds: 900, startsAtOffsetSeconds: 0, endsAtOffsetSeconds: 900, questionIds: ['1', '2'] },
+      { index: 1, durationSeconds: 900, startsAtOffsetSeconds: 900, endsAtOffsetSeconds: 1800, questionIds: ['3', '4'] },
+      { index: 2, durationSeconds: 900, startsAtOffsetSeconds: 1800, endsAtOffsetSeconds: 2700, questionIds: ['5', '6'] },
+      { index: 3, durationSeconds: 900, startsAtOffsetSeconds: 2700, endsAtOffsetSeconds: 3600, questionIds: ['7', '8'] }
+    ]
+  };
+  const { activeSectionIndex } = require('../paper-blueprint');
+  assert.equal(activeSectionIndex(blueprint, 0), 0);
+  assert.equal(activeSectionIndex(blueprint, 899), 0);
+  assert.equal(activeSectionIndex(blueprint, 900), 1);
+  assert.equal(activeSectionIndex(blueprint, 3599), 3);
+  assert.equal(activeSectionIndex(blueprint, 3600), -1);
+  assert.equal(activeSectionIndex(blueprint, 7200), -1);
+  assert.deepEqual(mergeBlueprintAnswers(blueprint, { '1': 1, '3': 2 }, { '2': 3, '5': 1 }, 901), {
+    '1': 1, '3': 2, '4': undefined
+  });
+});
+
 run('section allocation preserves requested total', () => {
   for (const total of [1, 2, 10, 100]) {
     const sections = [{ questions: 25 }, { questions: 25 }, { questions: 50 }];
