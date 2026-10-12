@@ -320,9 +320,16 @@ async function buildTest(user, exam, b) {
   const practiceOnly = ['ADMIN_PRACTICE', 'AI_GENERATED', 'PYQ_PATTERN'];
 
   if (kind === 'full_mock' || kind === 'sectional') {
-    const secs = kind === 'sectional'
-      ? (needSubject(), exam.pattern.sections.filter(s => s.subject === b.subject))
+    // CBSE school exams are subject-wise. Respect the subjects chosen during onboarding
+    // instead of accidentally building one 610-question paper from every catalog subject.
+    const selectedSubjects = Array.isArray(J(user.selected_subjects)) ? J(user.selected_subjects) : [];
+    const configuredSections = exam.id.startsWith('CBSE_') && selectedSubjects.length
+      ? exam.pattern.sections.filter(section => selectedSubjects.includes(section.subject))
       : exam.pattern.sections;
+    const secs = kind === 'sectional'
+      ? (needSubject(), configuredSections.filter(s => s.subject === b.subject))
+      : configuredSections;
+    if (!secs.length) throw bad('No valid subjects are selected for this paper. Open your profile and choose at least one subject from your syllabus.');
     const patternTotal = secs.reduce((a, s) => a + s.questions, 0);
     const requestedTotal = kind === 'sectional' ? Math.max(20, patternTotal) : patternTotal;
     const targets = kind === 'full_mock' && realMode
