@@ -465,6 +465,7 @@ async function pgAdmin() {
     try {
       const d = await get('/api/admin/ai-health');
       const t = d.totals || {}, ps = d.providers || {};
+      const integration = d.integration || {};
       const metric = (label, value) => h('div', { class: 'card' }, h('div', { class: 'small muted' }, label), h('h2', {}, String(value ?? 0)));
       const keyCards = (d.geminiKeys || []).map(k => h('div', { class: 'row between' },
         h('b', {}, 'Gemini key slot ' + k.slot),
@@ -482,6 +483,12 @@ async function pgAdmin() {
           h('span', { class: 'small' }, e.type === 'rotation' ? ('Key slot ' + e.fromSlot + ' → ' + e.toSlot + ' · ' + e.reason) : (e.error || (e.keySlot ? 'Key slot ' + e.keySlot : '')))),
         h('span', { class: 'badge ' + (e.type === 'success' ? 'ok' : e.type === 'error' ? 'bad' : e.type === 'rotation' ? 'warn' : '') }, e.type)))) : h('p', { class: 'muted' }, 'No AI requests recorded since this server process started.');
       health.replaceChildren(
+        h('div', { class: 'card stack' },
+          h('h3', {}, 'Provider integration status'),
+          h('div', { class: 'row between', style: 'flex-wrap:wrap' }, h('span', {}, 'AI enabled'), h('span', { class: 'badge ' + (integration.enabled ? 'ok' : 'bad') }, integration.enabled ? 'YES' : 'NO')),
+          h('p', { class: 'small muted' }, 'Selected provider: ' + String(integration.activeProvider || 'none') + ' · Model: ' + String(integration.activeModel || 'not configured')),
+          ...['gemini','groq','anthropic'].map(name => h('div', { class: 'row between' }, h('span', {}, name.toUpperCase()), h('span', { class: 'badge ' + (integration.providers?.[name] ? 'ok' : '') }, integration.providers?.[name] ? 'Configured · secret hidden' : 'Not configured'))),
+          h('p', { class: 'small muted' }, integration.fallbackPolicy || 'Provider fallback policy not reported.')),
         h('div', { class: 'grid g3' }, metric('AI requests', t.requests), metric('Successful', t.successes), metric('Failed', t.failures), metric('Key rotations', t.rotations), metric('Uptime', Math.floor((d.uptimeSeconds || 0) / 60) + ' min'), metric('Total tokens', t.totalTokens || 0)),
         h('div', { class: 'card stack' }, h('h3', {}, 'Gemini key status'), h('p', { class: 'small muted' }, 'Only configured/not-configured status is shown. API key values are never displayed.'), ...keyCards),
         ...providerCards,

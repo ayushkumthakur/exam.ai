@@ -1068,7 +1068,20 @@ route('POST', '/api/ai/feedback', ONB, (c) => {
 });
 
 // ---------- admin ----------
-route('GET', '/api/admin/ai-health', ADM, () => aiMetrics.snapshot());
+route('GET', '/api/admin/ai-health', ADM, () => ({
+  ...aiMetrics.snapshot(),
+  integration: {
+    enabled: ai.aiEnabled(),
+    activeProvider: ai.aiProvider(),
+    activeModel: ai.aiModel(),
+    providers: {
+      gemini: !!String(process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY_3 || '').trim(),
+      groq: !!String(process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2 || '').trim(),
+      anthropic: !!String(process.env.ANTHROPIC_API_KEY || '').trim()
+    },
+    fallbackPolicy: 'Text requests use configured providers; Gemini grounded current affairs remain Gemini-only.'
+  }
+}));
 route('GET', '/api/admin/backups', ADM, () => {
   const backups = dbBackup.listBackups();
   const latest = backups[0] || null;
