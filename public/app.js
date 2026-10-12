@@ -457,9 +457,31 @@ const VOCAB_WORDS = [
   {word:'Inevitable',type:'adjective',pronunciation:'in-ev-i-tuh-buhl',meaning:'Certain to happen; impossible to avoid.',hindi:'अपरिहार्य; जिसे टाला न जा सके',example:'With the deadline approaching, some changes were inevitable.',synonyms:['unavoidable','certain'],antonyms:['avoidable','preventable'],root:'Latin in (not) + evitare (to avoid)',memory:'If you cannot avoid it, it is inevitable.',category:'Time & change'}
 ];
 function pgVocabulary() {
-  let selected = 0, category = 'All', query = '', quiz = false, quizIndex = 0, score = 0, picked = null, showAnswer = false;
+  let selected = 0, category = 'All', query = '', quiz = false, quizIndex = 0, score = 0, picked = null, showAnswer = false, quizWords = [];
   const root = h('div', { class: 'stack vocab-lab' });
   const categories = ['All', ...new Set(VOCAB_WORDS.map(w => w.category))];
+  const VOCAB_SEEN_KEY = 'cea-vocabulary-seen-v1';
+  function shuffleWords(words) {
+    const copy = [...words];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+  function startQuiz() {
+    let seen = [];
+    try { seen = JSON.parse(localStorage.getItem(VOCAB_SEEN_KEY) || '[]'); } catch (_) { seen = []; }
+    if (!Array.isArray(seen)) seen = [];
+    const available = VOCAB_WORDS.filter(w => !seen.includes(w.word.toLowerCase()));
+    // Start a fresh cycle only after every word in the current bank has been attempted.
+    const pool = available.length ? available : (seen = [], VOCAB_WORDS);
+    quizWords = shuffleWords(pool).slice(0, Math.min(5, pool.length));
+    const nextSeen = [...new Set([...seen, ...quizWords.map(w => w.word.toLowerCase())])];
+    try { localStorage.setItem(VOCAB_SEEN_KEY, JSON.stringify(nextSeen)); } catch (_) {}
+    quiz = true; quizIndex = 0; score = 0; picked = null; showAnswer = false;
+    draw();
+  }
   function filtered() {
     const q = query.toLowerCase().trim();
     return VOCAB_WORDS.map((w,i)=>({...w,_i:i})).filter(w => (category === 'All' || w.category === category) && (!q || [w.word,w.meaning,w.hindi,w.root,w.category,...w.synonyms,...w.antonyms].join(' ').toLowerCase().includes(q)));
@@ -478,15 +500,13 @@ function pgVocabulary() {
         h('div', {}, h('strong', {}, '5'), h('span', {}, 'Quiz questions'))),
       h('div', { class: 'vocab-actions' },
         h('button', { class: 'btn primary', onclick: () => { quiz = false; draw(); } }, 'Explore words'),
-        h('button', { class: 'btn', onclick: () => { quiz = true; quizIndex = 0; score = 0; picked = null; showAnswer = false; draw(); } }, 'Start quiz')));
+        h('button', { class: 'btn', onclick: startQuiz }, 'Start quiz')));
     root.append(hero);
     if (quiz) {
-      const quizWords = VOCAB_WORDS;
       const word = quizWords[quizIndex];
-      const distractors = VOCAB_WORDS.filter(w=>w.word!==word.word && w.meaning!==word.meaning)
-        .sort((a,b)=>((a.word.charCodeAt(0)*17+quizIndex*13)%97)-((b.word.charCodeAt(0)*17+quizIndex*13)%97))
+      const distractors = shuffleWords(VOCAB_WORDS.filter(w=>w.word.toLowerCase()!==word.word.toLowerCase() && w.meaning!==word.meaning))
         .slice(0,3).map(w=>w.meaning);
-      const options = [word.meaning, ...distractors].sort((a,b)=>((a.length*7+quizIndex*11)%31)-((b.length*7+quizIndex*11)%31));
+      const options = shuffleWords([word.meaning, ...distractors]);
       const card = h('section', { class: 'card vocab-quiz stack' },
         h('div', { class: 'row between' }, h('span', { class: 'badge' }, 'Question '+(quizIndex+1)+' of '+quizWords.length), h('span', { class: 'small muted' }, 'Score: '+score)),
         h('div', { class: 'vocab-progress-track' }, h('div', { class:'vocab-progress-fill', style:'width:'+Math.round((quizIndex/quizWords.length)*100)+'%' })),
