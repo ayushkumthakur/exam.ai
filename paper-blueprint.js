@@ -5,7 +5,7 @@ function findDuplicateQuestionStems(questions) {
   for (let index = 0; index < (questions || []).length; index++) {
     const text = String(questions[index]?.text || '')
       .normalize('NFKC').toLowerCase()
-      .replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' ');
+      .replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
     if (!text) continue;
     if (firstByStem.has(text)) duplicates.push({ firstIndex: firstByStem.get(text), duplicateIndex: index, text });
     else firstByStem.set(text, index);
