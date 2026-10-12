@@ -14,6 +14,10 @@ const SOURCE_ALIASES = {
   "Quantitative Aptitude": ["Quantitative Aptitude", "Mathematics"],
   "English": ["English", "English Core", "English Language & Literature"],
   "Polity": ["Polity", "Political Science"],
+  "Child Development and Pedagogy": ["Child Pedagogy"],
+  "Language I": ["English", "Hindi"],
+  "Language II": ["English", "Hindi"],
+  "Environmental Studies": ["Environment", "Science"],
 };
 
 function topicFor(target, item, allowed) {
