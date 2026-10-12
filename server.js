@@ -323,7 +323,10 @@ async function buildTest(user, exam, b) {
     // CBSE school exams are subject-wise. Respect the subjects chosen during onboarding
     // instead of accidentally building one 610-question paper from every catalog subject.
     const selectedSubjects = Array.isArray(J(user.selected_subjects)) ? J(user.selected_subjects) : [];
-    const configuredSections = exam.id.startsWith('CBSE_') && selectedSubjects.length
+    if (exam.id.startsWith('CBSE_') && selectedSubjects.length === 0) {
+      throw bad('Choose at least one subject in your profile before starting a CBSE mock test.');
+    }
+    const configuredSections = exam.id.startsWith('CBSE_')
       ? exam.pattern.sections.filter(section => selectedSubjects.includes(section.subject))
       : exam.pattern.sections;
     const secs = kind === 'sectional'
