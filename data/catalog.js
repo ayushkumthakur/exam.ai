@@ -46,6 +46,10 @@ const TOPICS = {
   Defence: ['Armed Forces','Defence Exercises','Defence Technology'],
   Environment: ['Ecology','Climate Change','Biodiversity'],
   'Child Pedagogy': ['Development','Learning','Inclusive Education'],
+  'Child Development and Pedagogy': ['Child Development','Learning and Pedagogy','Inclusive Education'],
+  'Language I': ['Language Comprehension','Pedagogy of Language Development'],
+  'Language II': ['Comprehension','Pedagogy of Language Development'],
+  'Environmental Studies': ['Family and Friends','Food','Shelter','Water','Travel','Things We Make and Do','Environmental Studies Pedagogy'],
   'Legal Aptitude': ['Legal Reasoning','Constitutional Law','Torts & Contracts'],
 };
 
@@ -152,7 +156,9 @@ const EXAMS = [
   ['RPF_CONST','RPF Constable','Railway',P(90,[S('Mathematics',35,1,0.333),S('Reasoning',35,1,0.333),S('General Awareness',50,1,0.333)])],
   ['RPF_SI','RPF SI','Railway',P(90,[S('Mathematics',35,1,0.333),S('Reasoning',35,1,0.333),S('General Awareness',50,1,0.333)])],
   // Teaching
-  ['CTET','CTET (Paper 1)','Teaching',P(150,[S('Child Pedagogy',30,1,0),S('English',30,1,0),S('Mathematics',30,1,0),S('General Awareness',30,1,0)])],
+  // CTET Paper I: five compulsory sections, 30 questions/30 marks each, 150 minutes; no negative marking.
+  // Language I and II are candidate-selected language papers; these labels remain neutral in the catalog.
+  ['CTET','CTET (Paper 1)','Teaching',P(150,[S('Child Development and Pedagogy',30,1,0),S('Language I',30,1,0),S('Language II',30,1,0),S('Mathematics',30,1,0),S('Environmental Studies',30,1,0)], 'CTET Paper I baseline: 150 MCQs, 150 marks, 150 minutes, no negative marking. Language I and Language II are chosen by the candidate; this generic pattern does not enforce the candidate language choice yet.')],
   ['STATE_TET','State TET','Teaching',P(150,[S('Child Pedagogy',30,1,0),S('English',30,1,0),S('Mathematics',30,1,0),S('General Awareness',60,1,0)])],
   ['KVS','KVS','Teaching',P(180,[S('General Awareness',20,1,0.25),S('English',20,1,0.25),S('Reasoning',20,1,0.25),S('Child Pedagogy',40,1,0.25)])],
   ['NVS','NVS','Teaching',P(180,[S('General Awareness',20,1,0.25),S('English',20,1,0.25),S('Reasoning',20,1,0.25),S('Child Pedagogy',40,1,0.25)])],

@@ -14,6 +14,10 @@ const SOURCE_ALIASES = {
   "Quantitative Aptitude": ["Quantitative Aptitude", "Mathematics"],
   "English": ["English", "English Core", "English Language & Literature"],
   "Polity": ["Polity", "Political Science"],
+  "Child Development and Pedagogy": ["Child Pedagogy"],
+  "Language I": ["English", "Hindi"],
+  "Language II": ["English", "Hindi"],
+  "Environmental Studies": ["Environment", "Science"],
 };
 
 function topicFor(target, item, allowed) {
@@ -50,6 +54,20 @@ function topicFor(target, item, allowed) {
   }
   if (target === "English Core") {
     if (String(item.topic).toLowerCase().includes("read") || String(item.topic).toLowerCase().includes("comprehension")) return "Reading Comprehension";
+  }
+  if (target === "Child Development and Pedagogy" && item.subject === "Child Pedagogy") {
+    return String(item.topic).toLowerCase().includes("inclus") ? "Inclusive Education" : "Child Development";
+  }
+  if ((target === "Language I" || target === "Language II") && ["English", "Hindi"].includes(item.subject)) {
+    return String(item.topic).toLowerCase().includes("read") || String(item.topic).toLowerCase().includes("comprehension")
+      ? "Language Comprehension" : "Pedagogy of Language Development";
+  }
+  if (target === "Environmental Studies") {
+    const t = String(item.topic).toLowerCase();
+    if (t.includes("water")) return "Water";
+    if (t.includes("food") || t.includes("ecolog") || t.includes("environment")) return "Food";
+    if (t.includes("climate") || t.includes("biodiversity")) return "Environmental Studies Pedagogy";
+    return "Family and Friends";
   }
   if (target === "Polity" && item.subject === "Political Science") {
     const t = String(item.topic).toLowerCase();
