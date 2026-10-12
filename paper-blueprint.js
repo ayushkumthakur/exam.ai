@@ -1,4 +1,17 @@
 // Real-paper blueprint utilities. Pure functions are intentionally testable without a database.
+function findDuplicateQuestionStems(questions) {
+  const firstByStem = new Map();
+  const duplicates = [];
+  for (let index = 0; index < (questions || []).length; index++) {
+    const text = String(questions[index]?.text || '')
+      .normalize('NFKC').toLowerCase()
+      .replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' ');
+    if (!text) continue;
+    if (firstByStem.has(text)) duplicates.push({ firstIndex: firstByStem.get(text), duplicateIndex: index, text });
+    else firstByStem.set(text, index);
+  }
+  return duplicates;
+}
 function allocateSectionTargets(sections, total) {
   const weightTotal = sections.reduce((sum, section) => sum + Math.max(0, Number(section.questions) || 0), 0);
   if (!sections.length || !weightTotal || !Number.isFinite(total) || total < 1) return sections.map(() => 0);
@@ -160,4 +173,4 @@ function mergeBlueprintAnswers(blueprint, storedAnswers, incomingAnswers, elapse
   return result;
 }
 
-module.exports = { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets };
+module.exports = { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets, findDuplicateQuestionStems };
