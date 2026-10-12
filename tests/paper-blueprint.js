@@ -31,7 +31,7 @@ run('SSC CGL sectional timer expires cleanly and locks previous/future answers',
   assert.equal(activeSectionIndex(blueprint, 3600), -1);
   assert.equal(activeSectionIndex(blueprint, 7200), -1);
   assert.deepEqual(mergeBlueprintAnswers(blueprint, { '1': 1, '3': 2 }, { '2': 3, '5': 1 }, 901), {
-    '1': 1, '3': 2, '4': undefined
+    '1': 1, '3': 2
   });
 });
 
