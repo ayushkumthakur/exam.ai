@@ -64,7 +64,10 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   r = await api('GET', '/api/practice/questions?subject=Quantitative%20Aptitude&limit=20'); ok(r.data.questions.length > 0 && !('answer' in r.data.questions[0]), 'practice questions hide answers');
   const qs = r.data.questions;
   const largerPracticeSet = await api('GET', '/api/practice/questions?subject=Quantitative%20Aptitude&limit=30');
-  ok(largerPracticeSet.status === 200 && largerPracticeSet.data.questions.length === 30, 'Practice honors a request for 30 questions instead of always returning 20');
+  ok(largerPracticeSet.status === 200 && largerPracticeSet.data.questions.length > 0 &&
+    largerPracticeSet.data.questions.length <= 30, 'Practice returns up to the requested count after removing duplicate question stems');
+  const practiceStems = largerPracticeSet.data.questions.map(q => String(q.text || '').normalize('NFKC').toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' '));
+  ok(new Set(practiceStems).size === practiceStems.length, 'practice question selection excludes repeated stems');
   r = await api('POST', '/api/practice/answer', { question_id: qs[0].id, choice: 0, time_ms: 5000 }); ok(r.status === 200 && r.data.explanation, 'answer returns explanation');
   // force a wrong answer to test mistake analysis
   let wrong; for (const q of qs) { const a = await api('POST', '/api/practice/answer', { question_id: q.id, choice: 3 }); if (!a.data.correct) { wrong = a.data; break; } }
