@@ -535,3 +535,46 @@ details>summary{cursor:pointer;font-weight:650}
   border-color:var(--brand-2)!important;
 }
 :root[data-theme="dark"] .auth .chips .chip.on{color:#10234a!important}
+
+
+/* Vocabulary Lab — responsive original exam-learning module */
+.vocab-lab{gap:1rem;min-width:0}
+.vocab-hero{position:relative;overflow:hidden;padding:clamp(1.25rem,3vw,2rem);border-radius:24px;background:linear-gradient(125deg,#102d45,#174f58 62%,#237a70);color:#f6fffe;box-shadow:0 14px 34px rgba(18,58,70,.16)}
+.vocab-hero:after{content:"Aa";position:absolute;right:1.4rem;top:-1.5rem;font-family:Georgia,serif;font-size:clamp(7rem,18vw,12rem);font-weight:700;color:rgba(255,255,255,.065);pointer-events:none}
+.vocab-eyebrow{font-size:.74rem;letter-spacing:.16em;font-weight:800;color:#a9e9d8}
+.vocab-hero h1{font-size:clamp(1.8rem,4vw,2.7rem);line-height:1.08;margin:.7rem 0}
+.vocab-hero p{max-width:40rem;color:#d6eceb;line-height:1.6}
+.vocab-stats{display:flex;gap:1rem;flex-wrap:wrap;margin:1.25rem 0}
+.vocab-stats>div{display:flex;flex-direction:column;gap:.1rem;min-width:90px}
+.vocab-stats strong{font-size:1.3rem;color:#fff}
+.vocab-stats span{font-size:.8rem;color:#c8e1e0}
+.vocab-actions{display:flex;gap:.6rem;flex-wrap:wrap}
+.vocab-hero .btn{min-height:44px;border-color:rgba(255,255,255,.3)}
+.vocab-hero .btn:not(.primary){color:#fff;background:rgba(255,255,255,.08)}
+.vocab-search{width:100%;min-height:46px;border:1px solid var(--line);border-radius:12px;padding:.7rem .9rem;background:var(--surface);color:var(--ink);font:inherit}
+.vocab-chips{display:flex;gap:.45rem;flex-wrap:wrap;padding-top:.25rem}
+.vocab-chips .chip{min-height:40px}
+.vocab-layout{display:grid;grid-template-columns:minmax(210px,.72fr) minmax(0,1.7fr);gap:1rem;align-items:start}
+.vocab-word-list{display:grid;gap:.4rem;max-height:690px;overflow:auto}
+.vocab-word{display:flex;flex-direction:column;align-items:flex-start;gap:.25rem;text-align:left;padding:.8rem .9rem;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);cursor:pointer;min-height:62px}
+.vocab-word strong{font-size:.96rem}
+.vocab-word span{font-size:.76rem;color:var(--muted)}
+.vocab-word.on{border-color:#2b9b89;background:color-mix(in srgb,#2b9b89 9%,var(--surface));box-shadow:inset 3px 0 #2b9b89}
+.vocab-detail{min-width:0}
+.vocab-detail h2{font-size:clamp(1.8rem,4vw,2.5rem);margin:.2rem 0}
+.vocab-meaning{font-size:1.06rem;line-height:1.65;margin:.1rem 0}
+.vocab-hindi{padding:.65rem .8rem;background:var(--bg);border-radius:10px;line-height:1.6}
+.vocab-example,.vocab-root,.vocab-memory{padding:.8rem .9rem;border-radius:12px;background:var(--bg);line-height:1.6}
+.vocab-example p,.vocab-root p,.vocab-memory p{margin:.35rem 0 0}
+.vocab-two-col{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
+.vocab-two-col>div{padding:.8rem;border:1px solid var(--line);border-radius:12px;overflow-wrap:anywhere}
+.vocab-two-col p{margin:.35rem 0 0;line-height:1.55}
+.vocab-memory{border-left:3px solid #e2a746}
+.vocab-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+.vocab-option{min-height:58px;padding:.75rem;text-align:left;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);cursor:pointer;line-height:1.45}
+.vocab-option:hover{border-color:#2b9b89}
+.vocab-feedback{padding:.85rem;border-radius:10px;line-height:1.5}
+.vocab-feedback.correct{background:#e4f7ec;color:#14532d}
+.vocab-feedback.incorrect{background:#fff0e8;color:#8a3415}
+@media(max-width:760px){.vocab-layout{grid-template-columns:minmax(0,1fr)}.vocab-word-list{display:flex;max-height:none;overflow-x:auto;padding-bottom:.3rem}.vocab-word{min-width:145px;max-width:190px;flex:0 0 auto}.vocab-detail{width:100%}}
+@media(max-width:520px){.vocab-hero{border-radius:18px}.vocab-stats{gap:.8rem}.vocab-stats>div{min-width:76px}.vocab-options,.vocab-two-col{grid-template-columns:minmax(0,1fr)}.vocab-chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:.35rem}.vocab-chips .chip{flex:0 0 auto}.vocab-actions .btn{flex:1 1 auto}}
