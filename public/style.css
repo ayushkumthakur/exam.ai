@@ -623,3 +623,6 @@ details>summary{cursor:pointer;font-weight:650}
 /* Ensure the hero heading remains readable over the dark gradient in every theme. */
 .upsc-mock-picker .upsc-mock-hero .upsc-mock-hero-content h1{color:#fff !important;text-shadow:0 2px 12px rgba(5,20,45,.22)}
 .upsc-mock-picker .upsc-mock-hero .upsc-mock-hero-content p{color:rgba(255,255,255,.92) !important}
+
+/* Keep the last paper card/action clear of the fixed mobile bottom navigation. */
+@media(max-width:820px){.page{padding-bottom:calc(9rem + env(safe-area-inset-bottom))}}
