@@ -1030,6 +1030,23 @@ route('POST', '/api/ai/solve-question', ONB, (c) => guarded(c.user, 'solveq', as
   if (!r.ok) throw new HttpError(502, ai.friendlyError(r.error), { retry: true });
   return { reply: r.text };
 }));
+route('POST', '/api/ai/evaluate-answer', ONB, (c) => guarded(c.user, 'evalans', async () => {
+  const exam = loadExam(c.user.exam_id);
+  const question = String(c.body.question || '').trim().slice(0, 1000);
+  const answerText = String(c.body.answer_text || '').trim().slice(0, 4000);
+  const files = mediaBlocks(c.body.files);
+  const wordLimit = Math.min(Math.max(Math.round(+c.body.word_limit) || 150, 50), 400);
+  if (!question) throw bad('Enter the question you are answering.');
+  if (!answerText && !files.length) throw bad('Write your answer or upload a photo of it.');
+  const textPrompt = `Question: ${question}\nWord limit: ${wordLimit} words\n${files.length ? 'My handwritten answer is in the attached image(s); read it carefully first.\n' : ''}${answerText ? `My answer:\n${answerText}` : ''}`;
+  const messages = [{ role: 'user', content: files.length ? [...files, { type: 'text', text: textPrompt }] : textPrompt }];
+  const r = await ai.callClaude({ system: ai.ANSWER_EVAL_SYSTEM(tutorCtx(c.user, exam)), maxTokens: 1800, messages });
+  if (!r.ok) throw new HttpError(502, ai.friendlyError(r.error), { retry: true, code: r.error });
+  const saveUser = `[Answer Writing] ${question}`.slice(0, 4000);
+  db.prepare('INSERT INTO ai_conversations (user_id,exam_id,role,content,created_at) VALUES (?,?,?,?,?)').run(c.user.id, exam.id, 'user', saveUser, now());
+  const id = Number(db.prepare('INSERT INTO ai_conversations (user_id,exam_id,role,content,created_at) VALUES (?,?,?,?,?)').run(c.user.id, exam.id, 'assistant', r.text, now()).lastInsertRowid);
+  return { id, reply: r.text };
+}));
 route('POST', '/api/ai/ca-explain', ONB, (c) => guarded(c.user, 'ca', async () => {
   const exam = loadExam(c.user.exam_id), item = db.prepare('SELECT * FROM current_affairs WHERE id=?').get(+c.body.id); if (!item) throw new HttpError(404, 'Item not found.');
   const r = await ai.callClaude({ system: ai.TUTOR_SYSTEM(tutorCtx(c.user, exam)), maxTokens: 1000, messages: [{ role: 'user', content: `Explain this news item using ONLY the text provided (do not add new facts about the event). Then explain why it matters and how it connects to ${exam.name}, and list 2 likely exam angles.\nTitle: ${item.title}\nCategory: ${item.category}\nSummary: ${item.summary}` }] });
@@ -1350,7 +1367,7 @@ const server = http.createServer(async (req, res) => {
       let body = {};
       if (method !== 'GET' && method !== 'DELETE') {
         if (!/application\/json/.test(req.headers['content-type'] || '')) throw bad('Expected JSON.');
-        const bodyLimit = ['/api/ai/ask', '/api/ai/paper-parse', '/api/ai/solve-question', '/api/ai/notes'].includes(url.pathname) ? 16e6 : 2e6;
+        const bodyLimit = ['/api/ai/ask', '/api/ai/paper-parse', '/api/ai/solve-question', '/api/ai/notes', '/api/ai/evaluate-answer'].includes(url.pathname) ? 16e6 : 2e6;
         const raw = await readBody(req, bodyLimit); try { body = raw ? JSON.parse(raw) : {}; } catch { throw bad('Invalid JSON.'); }
       }
       const out = await matched.fn({ req, res, user, body, params, query: Object.fromEntries(url.searchParams), ip });

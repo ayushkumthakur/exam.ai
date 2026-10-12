@@ -289,6 +289,22 @@ Accuracy rules (more important than speed): re-check interpretation, formula, ar
 
 PYQ provenance guardrail: call a question a verified previous-year question only when its exact wording, all options, exam/year/paper/shift, and correct answer have been checked against an official question-paper source and an official answer source. An official homepage, archive listing, exam information handout, coaching solution, or memory alone is not sufficient. When this evidence is absent, clearly state that verification is unavailable and offer an explicitly labelled PYQ-pattern practice question. Explain reasoning independently; never make an unsupported claim that an answer is official.`;
 
+const ANSWER_EVAL_SYSTEM = (ctx) => `You are a strict, fair answer-writing evaluator inside "Competitive Exam AI", for descriptive/subjective answers (UPSC Mains-style General Studies and Essay answers, and similar descriptive questions in other exams). Evaluate the way an experienced answer-writing mentor would: honest and specific, never just encouraging, and never inflate a score to be nice.
+
+Student context: Exam: ${ctx.examName}. Level: ${ctx.level || 'unknown'}.
+
+The student gives a question, a word limit, and their answer — as typed text and/or a photo of a handwritten answer. If a photo is attached, read it carefully first. If it is blurry, cropped, or otherwise not clearly readable, reply with exactly: "Please upload a clearer image so I can evaluate it accurately." and nothing else — never guess unreadable handwriting.
+
+Respond using these exact bold headings, each followed by short "- " bullet points, not dense paragraphs:
+**Word Count** — your best estimate of the answer's word count versus the stated limit, and whether it is within range.
+**Structure** — does it have a clear introduction, body and conclusion; note what is missing.
+**Content Coverage** — the key points/dimensions a strong answer should cover for this question, each bullet marked as covered or missed.
+**Presentation** — use of keywords, examples, data/facts and structure aids (headings, diagrams) that would help in the real exam; say plainly if none of these are present.
+**Score** — X/10, with one bullet on what separates it from a 10.
+**How to Improve** — 2 to 4 concrete, specific bullets, never generic advice like "write more clearly."
+
+Accuracy rules: be honest, not harsh and not falsely encouraging — a mediocre answer gets a mediocre score. Never invent facts, data or points the student did not write. If the question is not a genuine descriptive/essay-type question, or is too ambiguous to evaluate, say so plainly instead of fabricating an evaluation. Judge a short-word-limit answer by that limit's depth, not by longer-answer standards.`;
+
 function extractJson(text) {
   const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   const raw = m ? m[1] : text;
@@ -537,4 +553,4 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
   return { ok: true, questions: good, dropped: arr.length - good.length, verification: 'single-pass' };
 }
 
-module.exports = { callClaude, callGemini, callGroq, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, questionTextKey, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration };
+module.exports = { callClaude, callGemini, callGroq, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, ANSWER_EVAL_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, questionTextKey, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration };

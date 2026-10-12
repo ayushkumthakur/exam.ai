@@ -9,8 +9,8 @@ async function pgTutor(parts, params) {
   let hist = S.config.ai_enabled ? (await get('/api/ai/history')).messages : [];
   const ex = (await get('/api/exams/' + S.user.exam_id)).exam; let tab = 'chat';
   const root = h('div', { class: 'stack' }), view = h('div', { class: 'stack' });
-  const tabs = () => h('div', { class: 'chips' }, [['chat', 'Ask AI'], ['coach', 'Study Coach'], ['paper', 'Solve Paper'], ['gen', 'Generate Questions'], ['notes', 'Study Material']].map(([k, l]) => h('button', { class: 'chip' + (tab === k ? ' on' : ''), onclick: () => { tab = k; draw(); } }, l)));
-  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), h('p', { class: 'small muted' }, 'Fresh context per question. Saved chat history is kept separately for reference and is not sent with new questions.'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'AI is not configured on this server yet. An admin needs to add GEMINI_API_KEY or ANTHROPIC_API_KEY in Railway.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, coach: tCoach, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
+  const tabs = () => h('div', { class: 'chips' }, [['chat', 'Ask AI'], ['write', 'Answer Writing'], ['coach', 'Study Coach'], ['paper', 'Solve Paper'], ['gen', 'Generate Questions'], ['notes', 'Study Material']].map(([k, l]) => h('button', { class: 'chip' + (tab === k ? ' on' : ''), onclick: () => { tab = k; draw(); } }, l)));
+  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), h('p', { class: 'small muted' }, 'Fresh context per question. Saved chat history is kept separately for reference and is not sent with new questions.'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'AI is not configured on this server yet. An admin needs to add GEMINI_API_KEY or ANTHROPIC_API_KEY in Railway.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, write: tWrite, coach: tCoach, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
 
   function tChat() {
     const log = h('div', { class: 'chat', 'aria-live': 'polite' }), ta = h('textarea', { rows: 2, placeholder: `Ask a ${ex.name} doubt, paste a question, or attach a photo…`, 'aria-label': 'Your question' });
@@ -61,6 +61,35 @@ async function pgTutor(parts, params) {
     view.append(log, h('div', { class: 'card stack' }, ta, h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => file.click() }, '📷 Image / PDF'), file, chosen, h('span', { class: 'grow' }), h('button', { class: 'btn ghost sm', onclick: async () => { if (confirm('Permanently clear saved AI chat history?')) { await post('/api/ai/clear'); hist = []; log.replaceChildren(h('div', { class: 'empty' }, 'Saved history cleared. Your next question will start fresh.')); drawSavedHistory(); } } }, 'Clear History'), sendBtn),
       h('p', { class: 'small muted' }, 'Each AI request is independent. Use an answer’s follow-up button when you intentionally want to refer to that answer. Ctrl+Enter to send. Verify important facts with your textbook or official sources.')), historySlot);
     if (params.get('ask')) { ta.value = params.get('ask'); history.replaceState(null, '', '#/tutor'); ask(); }
+  }
+
+  function tWrite() {
+    const q = h('textarea', { rows: 2, placeholder: 'Paste or type the GS / Essay question you are answering…' });
+    const wl = h('select', {}, [100, 150, 200, 250, 350].map(n => h('option', { value: n, selected: n === 150 }, n + ' words')));
+    const ans = h('textarea', { rows: 8, placeholder: 'Type your answer here, or attach a photo of your handwritten answer below…' });
+    const file = h('input', { type: 'file', accept: ACCEPT, hidden: true }), chosen = h('span', { class: 'small muted' }); let picked = null;
+    file.onchange = () => { picked = file.files[0] || null; chosen.textContent = picked ? '📎 ' + picked.name : ''; };
+    const out = h('div', { class: 'stack' });
+    const go_ = h('button', { class: 'btn primary', onclick: async () => {
+      const question = q.value.trim(), answer_text = ans.value.trim();
+      if (!question) { toast('Enter the question first.'); return; }
+      if (!answer_text && !picked) { toast('Write your answer or attach a photo of it.'); return; }
+      let files; try { files = picked ? [await fileB64(picked)] : undefined; } catch (e) { toast(e.message); return; }
+      go_.disabled = true; out.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Evaluating your answer like an examiner would…'));
+      try {
+        const r = await post('/api/ai/evaluate-answer', { question, answer_text, files, word_limit: +wl.value });
+        out.replaceChildren(h('div', { class: 'card' }, h('span', { class: 'badge ai' }, 'AI Evaluation · a practice aid, not an official UPSC/exam evaluator'), md(r.reply),
+          h('div', { class: 'row', style: 'margin-top:.7rem' }, bookmarkBtn('ai', 'answereval' + r.id, 'Answer evaluation: ' + question.slice(0, 60), r.reply))));
+      } catch (e) { out.replaceChildren(errBox(e, () => go_.click())); }
+      go_.disabled = false;
+    } }, 'Evaluate My Answer');
+    view.append(h('div', { class: 'card stack' },
+      h('p', { class: 'muted' }, 'Write a descriptive answer (UPSC Mains GS/Essay style, or similar for your exam) and get examiner-style feedback: word count, structure, content coverage, presentation and a score — plus what to improve.'),
+      h('div', {}, h('label', {}, 'Question'), q),
+      h('div', {}, h('label', {}, 'Word limit'), wl),
+      h('div', {}, h('label', {}, 'Your answer'), ans),
+      h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => file.click() }, '📷 Or attach a photo of your answer'), file, chosen),
+      go_), out);
   }
 
   function subjTopic(onChange) {
