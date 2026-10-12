@@ -500,7 +500,34 @@ async function pgAdmin() {
   const ct = h('input', { placeholder: 'Title' }), cs = h('textarea', { rows: 3, placeholder: 'Summary (facts you have verified)' }), cc = h('select', {}, ['National', 'International', 'Defence', 'Economy', 'Science & Technology', 'Environment', 'Sports', 'Awards', 'Appointments', 'Government Schemes', 'Important Days', 'Reports & Indexes', 'Books & Authors', 'Important Persons', 'Defence Exercises'].map(c => h('option', { value: c }, c))), cd = h('input', { type: 'date' }), csrc = h('input', { placeholder: 'Source (publication / URL)' });
   async function loadReports() { try { const r = await get('/api/admin/reports'); reports.replaceChildren(r.reports.length ? h('div', { class: 'list' }, r.reports.map(x => h('div', { class: 'stack' }, h('div', { class: 'row between' }, h('span', { class: 'small muted' }, `${x.email} · ${fmtDate(x.created_at)}`), h('span', { class: 'badge ' + (x.status === 'open' ? 'bad' : 'ok') }, x.status)), h('div', {}, h('b', {}, 'Q: '), x.question || ''), h('div', { class: 'small' }, h('b', {}, 'Note: '), x.note || '–'), x.answer ? h('details', {}, h('summary', {}, 'AI answer'), md(x.answer)) : null, x.status === 'open' ? h('button', { class: 'btn sm', style: 'align-self:flex-start', onclick: async () => { await post('/api/admin/reports/' + x.id + '/resolve'); loadReports(); } }, 'Mark resolved') : null))) : h('p', { class: 'muted' }, 'No reported answers.')); } catch (e) { reports.replaceChildren(errBox(e)); } }
   loadReports();
+  const backupsPanel = h('div', { class: 'stack' });
+  async function loadBackups() {
+    backupsPanel.replaceChildren(h('p', { class: 'muted' }, 'Loading backup status…'));
+    try {
+      const d = await get('/api/admin/backups');
+      const healthStatus = d.health?.freshness || 'unknown';
+      const statusBadge = h('span', { class: 'badge ' + (healthStatus === 'fresh' ? 'ok' : healthStatus === 'missing' || healthStatus === 'stale' ? 'warn' : '') }, healthStatus.toUpperCase());
+      const items = (d.backups || []).map(b => h('div', { class: 'row between', style: 'gap:1rem;border-bottom:1px solid var(--line);padding:.65rem 0;flex-wrap:wrap' },
+        h('div', { class: 'stack', style: 'gap:.15rem;min-width:0' },
+          h('b', {}, b.file),
+          h('span', { class: 'small muted' }, new Date(b.createdAt).toLocaleString() + ' · ' + Math.max(1, Math.round((b.bytes || 0) / 1024)) + ' KB')),
+        h('button', { class: 'btn sm', onclick: () => { window.location.href = '/api/admin/backups/' + encodeURIComponent(b.file); } }, 'Download')));
+      backupsPanel.replaceChildren(
+        h('div', { class: 'row between', style: 'flex-wrap:wrap' }, h('div', { class: 'row' }, h('b', {}, 'Latest backup'), statusBadge), h('button', { class: 'btn sm', onclick: loadBackups }, 'Refresh')),
+        h('p', { class: 'small muted' }, d.health?.latestAgeHours == null ? 'No backup snapshot found.' : 'Latest snapshot age: ' + d.health.latestAgeHours + ' hours. Target: within ' + d.health.freshWithinHours + ' hours.'),
+        h('p', { class: 'small muted' }, 'Storage: ' + (d.policy?.storage || 'persistent volume') + '. Off-site backup: ' + (d.health?.offsiteConfigured ? 'configured' : 'not configured') + '. Downloaded files contain student data; store them securely.'),
+        h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => {
+          e.target.disabled = true;
+          try { await post('/api/admin/backups/create', {}); toast('Backup created and verified.'); await loadBackups(); }
+          catch (err) { toast(err.message || 'Could not create backup.'); }
+          finally { e.target.disabled = false; }
+        } }, 'Create verified backup'),
+        items.length ? h('div', { class: 'list' }, items) : h('p', { class: 'muted' }, 'No saved snapshots yet.'));
+    } catch (e) { backupsPanel.replaceChildren(errBox(e, loadBackups)); }
+  }
+  loadBackups();
   return h('div', { class: 'stack' }, h('h1', {}, 'Admin'),
+    h('div', { class: 'card stack' }, h('h2', {}, 'Database backups'), h('p', { class: 'small muted' }, 'Admin-only SQLite snapshots. Downloads use a private, no-store response. Restore drills must use a separate test database—not the live database.'), backupsPanel),
     h('div', { class: 'card stack' }, h('h2', {}, 'AI usage & health'), h('p', { class: 'small muted' }, 'Live in-memory usage counters, API/quota errors and key-rotation events. Counters reset when the server restarts.'), health),
     h('div', { class: 'card' }, h('p', {}, `${st.users} users · ${st.exams} exams · ${st.open_reports} open report(s)`), h('p', { class: 'small muted' }, 'Questions: ' + st.questions.map(x => `${x.source_type} ${x.c}`).join(' · '))), out,
     h('div', { class: 'card stack' }, h('h3', {}, 'Add questions / PYQ papers'), h('p', { class: 'small muted' }, pyqNote), qa, h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: run('/api/admin/questions', qa) }, 'Add questions')),
