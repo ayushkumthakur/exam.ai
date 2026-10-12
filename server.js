@@ -1117,6 +1117,45 @@ route('GET', '/api/admin/backups/:file', ADM, (c) => {
   if (!dbBackup.listBackups().some(item => item.file === name)) throw new HttpError(404, 'Backup not found.');
   return { __backupDownload: name };
 });
+route('GET', '/api/admin/mock-bank-audit', ADM, () => {
+  const priorityIds = ['UPSC_CSE', 'UPSC_CSAT', 'SSC_CGL', 'RBI_B'];
+  const exams = priorityIds.map(id => loadExam(id)).filter(Boolean).map(exam => {
+    const sections = (exam.pattern.sections || []).map(section => {
+      const rows = db.prepare('SELECT id,text,source_type FROM questions WHERE exam_id=? AND subject=?').all(exam.id, section.subject);
+      const repeats = findDuplicateQuestionStems(rows);
+      const verifiedPyqCount = db.prepare(`SELECT COUNT(*) c FROM questions WHERE ${VERIFIED_PYQ_WHERE} AND exam_id=? AND subject=?`).get(exam.id, section.subject).c;
+      const uniqueQuestionCount = Math.max(0, rows.length - repeats.length);
+      const targetQuestions = Number(section.questions) || 0;
+      return {
+        subject: section.subject,
+        targetQuestions,
+        totalQuestions: rows.length,
+        uniqueQuestionCount,
+        repeatedQuestionCount: repeats.length,
+        verifiedPyqCount,
+        practiceQuestionCount: rows.filter(q => q.source_type === 'ADMIN_PRACTICE' || q.source_type === 'AI_GENERATED' || q.source_type === 'PYQ_PATTERN').length,
+        shortfall: Math.max(0, targetQuestions - uniqueQuestionCount),
+        questionCoverageReady: uniqueQuestionCount >= targetQuestions,
+        repeatExamples: repeats.slice(0, 3).map(item => ({
+          firstQuestionId: rows[item.firstIndex]?.id,
+          duplicateQuestionId: rows[item.duplicateIndex]?.id
+        }))
+      };
+    });
+    return {
+      id: exam.id,
+      name: exam.name,
+      patternVerified: exam.verified,
+      targetQuestions: sections.reduce((n, s) => n + s.targetQuestions, 0),
+      uniqueQuestionCount: sections.reduce((n, s) => n + s.uniqueQuestionCount, 0),
+      verifiedPyqCount: sections.reduce((n, s) => n + s.verifiedPyqCount, 0),
+      questionCoverageReady: sections.every(s => s.questionCoverageReady),
+      realExamReady: exam.verified && sections.every(s => s.questionCoverageReady && s.repeatedQuestionCount === 0),
+      sections
+    };
+  });
+  return { exams, note: 'Counts reflect questions currently stored in the database. Practice/AI-generated questions are not verified PYQs; official-pattern status is reported separately.' };
+});
 route('GET', '/api/admin/stats', ADM, () => ({ users: db.prepare('SELECT COUNT(*) c FROM users').get().c, questions: db.prepare('SELECT source_type, COUNT(*) c FROM questions GROUP BY 1').all(), exams: db.prepare('SELECT COUNT(*) c FROM exams').get().c, open_reports: db.prepare("SELECT COUNT(*) c FROM ai_feedback WHERE kind='report' AND status='open'").get().c }));
 route('POST', '/api/admin/exams', ADM, (c) => {
   const b = c.body, id = String(b.id || '').toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 30);
