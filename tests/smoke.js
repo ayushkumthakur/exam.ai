@@ -55,6 +55,7 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   ok(missingOrigin.status === 403, 'authenticated mutation without origin is rejected');
   ok((await api('GET', '/api/home')).status === 409, 'home blocked until onboarding');
   ok((await api('GET', '/api/admin/stats')).status === 403, 'student cannot reach admin');
+  ok((await api('GET', '/api/admin/backups/app-2026-01-01T00-00-00.000Z.db')).status === 403, 'student cannot download database backups');
   const fut = new Date(Date.now() + 120 * 864e5).toISOString().slice(0, 10);
   r = await api('POST', '/api/me/onboarding', { name: 'Ayush', exam_id: 'SSC_CHSL', level: 'Intermediate', target_date: fut, daily_minutes: 120 }); ok(r.status === 200 && r.data.user.onboarded, 'onboarding');
   r = await api('GET', '/api/home'); ok(r.data.exam.id === 'SSC_CHSL' && r.data.days_left >= 119 && r.data.recommendation.cta, 'home personalised + one recommendation');
@@ -125,6 +126,16 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   r = await api('GET', '/api/admin/backups');
   ok(r.status === 200 && ['fresh', 'stale', 'missing'].includes(r.data.health?.freshness), 'admin backup endpoint reports freshness health');
   ok(r.status === 200 && r.data.health?.offsiteConfigured === false && Array.isArray(r.data.backups), 'backup health clearly reports off-site status and backup list');
+  const backupCreated = await api('POST', '/api/admin/backups/create', {});
+  ok(backupCreated.status === 200 && backupCreated.data.ok && backupCreated.data.bytes > 0,
+    'admin can create an integrity-checked SQLite snapshot on demand');
+  if (backupCreated.status === 200 && backupCreated.data.file) {
+    const download = await fetch(BASE + '/api/admin/backups/' + encodeURIComponent(backupCreated.data.file), { headers: { cookie } });
+    const bytes = await download.arrayBuffer();
+    ok(download.status === 200 && download.headers.get('content-type') === 'application/vnd.sqlite3' &&
+      download.headers.get('content-disposition')?.includes(backupCreated.data.file) && bytes.byteLength === backupCreated.data.bytes,
+      'admin can download the exact generated SQLite snapshot');
+  }
   r = await api('POST', '/api/admin/questions', { exam_id: 'SSC_CHSL', subject: 'English', topic: 'Grammar', difficulty: 'easy', text: 'Pick the correct spelling:', options: ['Recieve', 'Receive'], answer: 1, explanation: 'i before e except after c.', source_type: 'VERIFIED_PYQ' }); ok(r.data.errors.length === 1, 'VERIFIED_PYQ without source metadata rejected');
   r = await api('POST', '/api/admin/questions', { exam_id: 'SSC_CHSL', subject: 'English', topic: 'Grammar', difficulty: 'easy', text: 'Pick the correct spelling:', options: ['Recieve', 'Receive', 'Recieved', 'Receeve'], answer: 1, explanation: 'Receive is the correct spelling; i comes after c.', source_type: 'VERIFIED_PYQ', pyq_year: 2024, pyq_paper: 'Tier-I', source_ref: 'javascript:alert(1)' }); ok(r.data.errors.length === 1 && /official-source|official exam-authority host/i.test(r.data.errors[0].error), 'verified PYQ rejects non-official source links');
   r = await api('POST', '/api/admin/exams', { id: 'MY_EXAM', name: 'My Exam', category: 'Other', minutes: 30, sections: [{ subject: 'Reasoning', questions: 20, marks: 1, negative: 0.25 }] }); ok(r.data.ok, 'admin can add exam');
