@@ -98,8 +98,8 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
     ok(fullMockTest.data.test.minutes === pattern.minutes, 'real mock ignores custom duration and keeps the official paper duration');
     await api('POST', '/api/tests/' + fullMock.data.id + '/submit', { answers: {} });
   } else {
-    ok(fullMock.status === 400 && /complete/i.test(fullMock.data.error || ''),
-      'incomplete full mock is rejected instead of being mislabeled');
+    ok(fullMock.status === 400 && /complete|repeated question/i.test(fullMock.data.error || ''),
+      'incomplete or duplicate-filled full mock is rejected instead of being mislabeled');
   }
   r = await api('POST', '/api/tests/create', { kind: 'topic', subject: 'Quantitative Aptitude', topic: 'Percentage', count: 20 });
   ok(r.status === 200 && Number.isInteger(r.data.id), `create topic test (HTTP ${r.status}${r.data.error ? `: ${r.data.error}` : ''})`);
