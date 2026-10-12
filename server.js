@@ -1095,7 +1095,7 @@ route('POST', '/api/admin/backups/create', ADM, () => dbBackup.createBackup());
 route('GET', '/api/admin/backups/:file', ADM, (c) => {
   const name = String(c.params.file || '');
   // Backup downloads are admin-only and limited to snapshots already reported by dbBackup.
-  if (!/^app-\\d{4}-\\d{2}-\\d{2}T[0-9.-]+Z(?:-\\d+)?\\.db$/.test(name)) throw new HttpError(404, 'Backup not found.');
+  if (!/^app-\d{4}-\d{2}-\d{2}T[0-9.-]+Z(?:-\d+)?\.db$/.test(name)) throw new HttpError(404, 'Backup not found.');
   if (!dbBackup.listBackups().some(item => item.file === name)) throw new HttpError(404, 'Backup not found.');
   return { __backupDownload: name };
 });
@@ -1401,7 +1401,7 @@ const server = http.createServer(async (req, res) => {
       const out = await matched.fn({ req, res, user, body, params, query: Object.fromEntries(url.searchParams), ip });
       if (out && typeof out.__backupDownload === 'string') {
         const name = out.__backupDownload;
-        const allowed = /^app-\\d{4}-\\d{2}-\\d{2}T[0-9.-]+Z(?:-\\d+)?\\.db$/.test(name)
+        const allowed = /^app-\d{4}-\d{2}-\d{2}T[0-9.-]+Z(?:-\d+)?\.db$/.test(name)
           && dbBackup.listBackups().some(item => item.file === name);
         if (!allowed) throw new HttpError(404, 'Backup not found.');
         const backupDir = path.resolve(process.env.DATA_DIR || path.join(__dirname, 'storage'), 'backups');
