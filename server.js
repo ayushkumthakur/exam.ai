@@ -1120,10 +1120,11 @@ route('POST', '/api/admin/questions', ADM, (c) => {
       if (type !== 'ADMIN_PRACTICE' && !m.exam_id) throw new Error('exam_id required for PYQ / PYQ-pattern questions');
       let answerSourceRef = null, verificationNotes = null, verifiedBy = null, verifiedAt = null;
       if (type === 'VERIFIED_PYQ') {
-        if (!(m.pyq_year && m.pyq_paper && m.source_ref)) throw new Error('VERIFIED_PYQ needs pyq_year, pyq_paper and official question-paper source_ref');
+        if (!(m.pyq_year && String(m.pyq_paper || '').trim() && String(m.source_ref || '').trim())) throw new Error('VERIFIED_PYQ needs pyq_year, a non-empty pyq_paper, and official question-paper source_ref');
         const year = Number(m.pyq_year);
         if (!Number.isInteger(year) || year < 2000 || year > new Date().getFullYear() + 1) throw new Error('PYQ year must be a valid year from 2000 through next year');
-        if (String(m.source_ref).length > 2000) throw new Error('source_ref must be 2000 characters or fewer');
+        if (String(m.pyq_paper).trim().length > 250) throw new Error('pyq_paper must be 250 characters or fewer');
+        if (String(m.source_ref).trim().length > 2000) throw new Error('source_ref must be 2000 characters or fewer');
         answerSourceRef = String(m.answer_source_ref || '').trim();
         verificationNotes = String(m.verification_notes || '').trim();
         const sourceCheck = validatePyqVerification({
