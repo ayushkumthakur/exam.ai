@@ -122,6 +122,9 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   // admin
   cookie = ''; const ae = 'admin@x.com'; r = await api('POST', '/api/auth/login', { email: ae, password: process.env.SMOKE_ADMIN_PASSWORD || pw });
   ok(r.data.user && r.data.user.role === 'admin', 'admin role via ADMIN_EMAILS');
+  r = await api('GET', '/api/admin/backups');
+  ok(r.status === 200 && ['fresh', 'stale', 'missing'].includes(r.data.health?.freshness), 'admin backup endpoint reports freshness health');
+  ok(r.status === 200 && r.data.health?.offsiteConfigured === false && Array.isArray(r.data.backups), 'backup health clearly reports off-site status and backup list');
   r = await api('POST', '/api/admin/questions', { exam_id: 'SSC_CHSL', subject: 'English', topic: 'Grammar', difficulty: 'easy', text: 'Pick the correct spelling:', options: ['Recieve', 'Receive'], answer: 1, explanation: 'i before e except after c.', source_type: 'VERIFIED_PYQ' }); ok(r.data.errors.length === 1, 'VERIFIED_PYQ without source metadata rejected');
   r = await api('POST', '/api/admin/questions', { exam_id: 'SSC_CHSL', subject: 'English', topic: 'Grammar', difficulty: 'easy', text: 'Pick the correct spelling:', options: ['Recieve', 'Receive', 'Recieved', 'Receeve'], answer: 1, explanation: 'Receive is the correct spelling; i comes after c.', source_type: 'VERIFIED_PYQ', pyq_year: 2024, pyq_paper: 'Tier-I', source_ref: 'javascript:alert(1)' }); ok(r.data.errors.length === 1 && /official-source|official exam-authority host/i.test(r.data.errors[0].error), 'verified PYQ rejects non-official source links');
   r = await api('POST', '/api/admin/exams', { id: 'MY_EXAM', name: 'My Exam', category: 'Other', minutes: 30, sections: [{ subject: 'Reasoning', questions: 20, marks: 1, negative: 0.25 }] }); ok(r.data.ok, 'admin can add exam');
