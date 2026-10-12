@@ -101,10 +101,20 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
     ok(fullMock.status === 400 && /complete|repeated question/i.test(fullMock.data.error || ''),
       'incomplete or duplicate-filled full mock is rejected instead of being mislabeled');
   }
-  r = await api('POST', '/api/tests/create', { kind: 'topic', subject: 'Quantitative Aptitude', topic: 'Percentage', count: 1 }); // One item is sufficient for the autosave/resume/submit flow and cannot contain duplicate stems.
-  ok(r.status === 200 && Number.isInteger(r.data.id), `create topic test (HTTP ${r.status}${r.data.error ? `: ${r.data.error}` : ''})`);
+  const flowQuestions = largerPracticeSet.data.questions;
+  const uniqueFlowQuestions = [];
+  const flowStems = new Set();
+  for (const q of flowQuestions) {
+    const stem = String(q.text || '').normalize('NFKC').toLowerCase().replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' ');
+    if (stem && !flowStems.has(stem)) { flowStems.add(stem); uniqueFlowQuestions.push(q); }
+  }
+  const flowIds = uniqueFlowQuestions.slice(0, 20).map(q => q.id);
+  r = flowIds.length === 20
+    ? await api('POST', '/api/tests/create', { kind: 'custom', question_ids: flowIds, title: 'Smoke test flow' })
+    : { status: 400, data: { error: `Only ${flowIds.length} unique practice questions available; cannot run the 20-question test flow.` } };
+  ok(r.status === 200 && Number.isInteger(r.data.id), `create unique-question test (HTTP ${r.status}${r.data.error ? `: ${r.data.error}` : ''})`);
   if (r.status !== 200 || !Number.isInteger(r.data.id)) {
-    console.error('Topic test creation response:', JSON.stringify(r.data));
+    console.error('Unique-question test creation response:', JSON.stringify(r.data));
   } else {
   const tid = r.data.id;
   r = await api('GET', '/api/tests/' + tid); ok(r.status === 200 && r.data.test?.questions?.length > 0 && !('answer' in r.data.test.questions[0]), 'test hides answers while active');
