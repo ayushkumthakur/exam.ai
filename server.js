@@ -1091,6 +1091,14 @@ route('GET', '/api/admin/backups', ADM, () => {
     }
   };
 });
+route('POST', '/api/admin/backups/create', ADM, () => dbBackup.createBackup());
+route('GET', '/api/admin/backups/:file', ADM, (c) => {
+  const name = String(c.params.file || '');
+  // Backup downloads are admin-only and limited to snapshots already reported by dbBackup.
+  if (!/^app-\d{4}-\d{2}-\d{2}T[0-9.-]+Z(?:-\d+)?\.db$/.test(name)) throw new HttpError(404, 'Backup not found.');
+  if (!dbBackup.listBackups().some(item => item.file === name)) throw new HttpError(404, 'Backup not found.');
+  return { __backupDownload: name };
+});
 route('GET', '/api/admin/stats', ADM, () => ({ users: db.prepare('SELECT COUNT(*) c FROM users').get().c, questions: db.prepare('SELECT source_type, COUNT(*) c FROM questions GROUP BY 1').all(), exams: db.prepare('SELECT COUNT(*) c FROM exams').get().c, open_reports: db.prepare("SELECT COUNT(*) c FROM ai_feedback WHERE kind='report' AND status='open'").get().c }));
 route('POST', '/api/admin/exams', ADM, (c) => {
   const b = c.body, id = String(b.id || '').toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 30);
@@ -1391,6 +1399,19 @@ const server = http.createServer(async (req, res) => {
         const raw = await readBody(req, bodyLimit); try { body = raw ? JSON.parse(raw) : {}; } catch { throw bad('Invalid JSON.'); }
       }
       const out = await matched.fn({ req, res, user, body, params, query: Object.fromEntries(url.searchParams), ip });
+      if (out && typeof out.__backupDownload === 'string') {
+        const name = out.__backupDownload;
+        const allowed = /^app-\d{4}-\d{2}-\d{2}T[0-9.-]+Z(?:-\d+)?\.db$/.test(name)
+          && dbBackup.listBackups().some(item => item.file === name);
+        if (!allowed) throw new HttpError(404, 'Backup not found.');
+        const backupDir = path.resolve(process.env.DATA_DIR || path.join(__dirname, 'storage'), 'backups');
+        const filePath = path.resolve(backupDir, name);
+        if (path.dirname(filePath) !== backupDir) throw new HttpError(404, 'Backup not found.');
+        const data = await fs.promises.readFile(filePath);
+        res.writeHead(200, { ...responseHeaders(), 'content-type': 'application/vnd.sqlite3', 'content-length': String(data.length),
+          'content-disposition': 'attachment; filename="' + name + '"', 'cache-control': 'no-store, private' });
+        return res.end(data);
+      }
       return send(res, 200, out);
     }
     // static
