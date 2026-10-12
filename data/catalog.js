@@ -114,15 +114,15 @@ const EXAMS = [
   ],'Official baseline: 80 questions, 200 marks, 120 minutes; qualifying at 33%, with one-third negative marking for wrong answers. Subject-wise allocation below is adjustable practice allocation, not an official fixed split. Questions are practice content unless explicitly labelled Verified PYQ.', {
     status: 'partially_verified', checkedAt: '2026-10-10', sourceName: 'UPSC Civil Services (Preliminary) Examination 2026 notice and official question papers', sourceUrl: 'https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026',
     verifiedFields: ['totalQuestions', 'maximumMarks', 'durationMinutes', 'qualifyingThreshold', 'negativeMarking'], approximateFields: ['subjectWiseQuestionCounts'],
-    runtimeLimitations: ['CSAT is an internal paper record and is not shown as a separate exam choice.']
+    runtimeLimitations: ['CSAT is modelled as a separate paper under the UPSC CSE account; it is not a separate account-level exam.']
   })],
   ['UPSC_CAPF','UPSC CAPF','UPSC',P(120,[S('General Awareness',100,2,0.667),S('English',25,2,0.667),S('Reasoning',25,2,0.667)])],
   ['UPSC_OTHER','Other UPSC Examinations','UPSC',P(120,[S('General Awareness',50,2,0.667),S('English',25,2,0.667),S('Reasoning',25,2,0.667)])],
   // SSC
-  ['SSC_CGL','SSC CGL (Tier 1)','SSC',P(60,[S('Reasoning',25,2,0.5),S('General Awareness',25,2,0.5),S('Quantitative Aptitude',25,2,0.5),S('English',25,2,0.5)], 'SSC CGL 2026 Tier-I baseline: 100 questions, 200 marks, 60 minutes, 0.50 negative marks per wrong answer. The official paper uses 15-minute sectional timers; this app currently has a single overall timer and does not enforce sectional timers. SSC CGL Tier-II has a different multi-session structure and is not represented by this Tier-I pattern.', {
+  ['SSC_CGL','SSC CGL (Tier 1)','SSC',P(60,[S('Reasoning',25,2,0.5),S('General Awareness',25,2,0.5),S('Quantitative Aptitude',25,2,0.5),S('English',25,2,0.5)], 'SSC CGL 2026 Tier-I baseline: 100 questions, 200 marks, 60 minutes, 0.50 negative marks per wrong answer. The mock enforces sequential 15-minute section timers in Real Exam Mode. SSC CGL Tier-II has a different multi-session structure and is not represented by this Tier-I pattern.', {
     status: 'verified_baseline_with_runtime_gap', checkedAt: '2026-10-10', sourceName: 'SSC Combined Graduate Level Examination 2026 official notice, section 13.8', sourceUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_cgl_2026.pdf',
     verifiedFields: ['totalQuestions', 'maximumMarks', 'durationMinutes', 'negativeMarking', 'sectionQuestionCounts', 'sectionTimingMinutes'], approximateFields: [], sectionTimingMinutes: 15,
-    runtimeLimitations: ['Official 15-minute per-section timers are not enforced; only one overall timer is available.', 'SSC CGL Tier-II is not yet a separate selectable mock pattern.']
+    runtimeLimitations: ['SSC CGL Tier-II has a different multi-session structure and is not represented by this Tier-I mock.']
   })],
   ['SSC_CHSL','SSC CHSL (Tier 1)','SSC',P(60,[S('English',25,2,0.5),S('Reasoning',25,2,0.5),S('Quantitative Aptitude',25,2,0.5),S('General Awareness',25,2,0.5)])],
   ['SSC_MTS','SSC MTS','SSC',P(90,[S('Reasoning',25,1,0.25),S('Quantitative Aptitude',25,1,0.25),S('English',25,1,0.25),S('General Awareness',25,1,0.25)])],
