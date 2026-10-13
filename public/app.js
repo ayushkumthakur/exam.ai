@@ -1037,7 +1037,7 @@ async function pgTests(parts, params) {
   const examId = S.user.exam_id === 'UPSC_CSE' && ['UPSC_CSE','UPSC_CSAT'].includes(paperId) ? paperId : S.user.exam_id;
   const [list, ex] = await Promise.all([get('/api/tests' + q({ exam_id: examId })), get('/api/exams/' + examId)]); const exam = ex.exam;
   const availableSubjects = Array.isArray(S.user.selected_subjects) && S.user.selected_subjects.length ? S.user.selected_subjects : exam.subjects;
-  const o = { kind: 'full_mock', subject: availableSubjects[0], topic: '', count: 20, difficulty: 'any', minutes: '', mode: 'real' }; const form = h('div', { class: 'card stack' });
+  const o = { kind: 'full_mock', subject: availableSubjects[0], topic: '', count: 20, difficulty: 'any', minutes: '', mode: 'real' }; const form = h('div', { class: 'card stack mock-builder' });
   const KINDS = [['full_mock', 'Full Mock'], ['sectional', 'Sectional Mock'], ['subject', 'Subject Test'], ['topic', 'Topic Test'], ['pyq', 'PYQ Test'], ['pyq_pattern', 'PYQ Pattern Mock'], ['ai_mock', 'AI Generated Mock'], ['weak_topic', 'Weak Topic Test']];
   function draw() {
     const realMode = o.kind === 'full_mock' && o.mode === 'real';
