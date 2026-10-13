@@ -624,3 +624,32 @@ details>summary{cursor:pointer;font-weight:650}
 .upsc-mock-picker .upsc-mock-hero .upsc-mock-hero-content h1{color:#fff !important;text-shadow:0 2px 12px rgba(5,20,45,.22)}
 .upsc-mock-picker .upsc-mock-hero .upsc-mock-hero-content p{color:rgba(255,255,255,.92) !important}
 @media(max-width:820px){.page{padding-bottom:calc(9rem + env(safe-area-inset-bottom))}}
+
+
+/* Mock test builder refinement (UI only): clearer hierarchy and phone-friendly controls */
+.mock-builder{gap:1rem;border:1px solid var(--line);background:linear-gradient(155deg,var(--surface),color-mix(in srgb,var(--brand) 3%,var(--surface)));box-shadow:0 14px 34px rgba(25,67,139,.075)}
+.mock-builder> .row.between{align-items:center;gap:.75rem;flex-wrap:wrap;padding-bottom:.25rem;border-bottom:1px solid var(--line)}
+.mock-builder> .row.between h2{margin:0;font-size:clamp(1.2rem,2vw,1.55rem);letter-spacing:-.035em}
+.mock-builder .chips{display:flex;flex-wrap:wrap;gap:.5rem}
+.mock-builder .chips .chip{min-height:42px;padding:.65rem .85rem;border-radius:12px}
+.mock-builder .blueprint-mode-picker{padding:.65rem;background:var(--bg);border:1px solid var(--line);border-radius:14px}
+.mock-builder .info,.mock-builder .blueprint-lock-note{border-radius:14px;line-height:1.65}
+.mock-builder label{display:block;margin-bottom:.45rem;font-size:.82rem;font-weight:750;color:var(--muted)}
+.mock-builder input,.mock-builder select{width:100%;min-width:0;min-height:46px}
+.mock-builder .grid{align-items:start}
+.mock-builder .btn{min-height:46px}
+@media(max-width:820px){
+  .mock-builder{padding:1rem!important;gap:.9rem;border-radius:20px!important}
+  .mock-builder .chips{flex-wrap:nowrap;overflow-x:auto;padding:.1rem .05rem .4rem;scrollbar-width:thin}
+  .mock-builder .chips .chip{flex:0 0 auto;white-space:nowrap}
+  .mock-builder .grid.g3{grid-template-columns:minmax(0,1fr)!important}
+  .mock-builder .row.between{align-items:flex-start}
+  .mock-builder .row.between .btn{min-height:42px}
+  .mock-builder .blueprint-mode-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+  .mock-builder .blueprint-mode-picker .chip{white-space:normal;min-width:0}
+}
+@media(max-width:420px){
+  .mock-builder{padding:.85rem!important}
+  .mock-builder .blueprint-mode-picker{grid-template-columns:minmax(0,1fr)}
+  .mock-builder .blueprint-lock-note{font-size:.82rem}
+}
