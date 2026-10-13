@@ -653,3 +653,6 @@ details>summary{cursor:pointer;font-weight:650}
   .mock-builder .blueprint-mode-picker{grid-template-columns:minmax(0,1fr)}
   .mock-builder .blueprint-lock-note{font-size:.82rem}
 }
+
+/* Vocabulary Lab hero heading contrast fix */
+.vocab-hero h1,.vocab-hero .vocab-title{color:#fff!important;text-shadow:0 1px 8px rgba(0,0,0,.18)}
