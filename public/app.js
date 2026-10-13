@@ -1026,13 +1026,13 @@ async function pgTests(parts, params) {
           h('h3', {}, 'General Studies'),
           h('p', {}, 'Full-length Prelims Paper I mock covering the core General Studies paper.'),
           h('div', { class: 'upsc-paper-meta' }, h('span', {}, '☷ 100 questions'), h('span', {}, '◷ 120 minutes')),
-          h('div', { class: 'upsc-paper-footer' }, h('span', {}, 'Explore Paper I'), h('span', { class: 'upsc-paper-arrow' }, '↗'))),
+          h('div', { class: 'upsc-paper-footer' }, h('span', {}, 'Start Paper I Practice'), h('span', { class: 'upsc-paper-arrow' }, '▶'))),
         h('button', { class: 'upsc-paper-card upsc-paper-csat', onclick: () => choose('UPSC_CSAT') },
           h('div', { class: 'upsc-paper-card-top' }, h('span', { class: 'upsc-paper-icon' }, '🧠'), h('span', { class: 'upsc-paper-tag' }, 'PAPER II · QUALIFYING')),
           h('h3', {}, 'CSAT'),
           h('p', {}, 'Full-length aptitude, logical reasoning and comprehension practice.'),
           h('div', { class: 'upsc-paper-meta' }, h('span', {}, '☷ 80 questions'), h('span', {}, '◷ 120 minutes')),
-          h('div', { class: 'upsc-paper-footer' }, h('span', {}, 'Explore CSAT'), h('span', { class: 'upsc-paper-arrow' }, '↗')))));
+          h('div', { class: 'upsc-paper-footer' }, h('span', {}, 'Start CSAT Practice'), h('span', { class: 'upsc-paper-arrow' }, '▶')))));
   }
   const examId = S.user.exam_id === 'UPSC_CSE' && ['UPSC_CSE','UPSC_CSAT'].includes(paperId) ? paperId : S.user.exam_id;
   const [list, ex] = await Promise.all([get('/api/tests' + q({ exam_id: examId })), get('/api/exams/' + examId)]); const exam = ex.exam;
