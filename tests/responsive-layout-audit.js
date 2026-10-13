@@ -57,4 +57,9 @@ assert.match(app, /upsc-paper-csat/);
 assert.match(styles, /\.upsc-mock-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\)/);
 assert.match(styles, /upsc-mock-grid[\s\S]*grid-template-columns:minmax\(0,1fr\)/);
 assert.match(styles, /\.upsc-paper-card:focus-visible/);
+assert.match(app, /class: 'card stack mock-builder'/);
+assert.match(styles, /\.mock-builder\s*\{/);
+assert.match(styles, /\.mock-builder \.blueprint-mode-picker/);
+assert.match(styles, /@media\(max-width:420px\)/);
+
 console.log('PASS UPSC mock picker premium cards + responsive mobile layout audit.');
