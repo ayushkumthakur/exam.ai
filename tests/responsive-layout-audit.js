@@ -54,6 +54,11 @@ assert.match(app, /upsc-mock-hero/);
 assert.match(app, /upsc-paper-card/);
 assert.match(app, /upsc-paper-gs/);
 assert.match(app, /upsc-paper-csat/);
+assert.match(app, /Start Paper I Practice/);
+assert.match(app, /Start CSAT Practice/);
+assert.doesNotMatch(app, /Explore Paper I/);
+assert.doesNotMatch(app, /Explore CSAT/);
+
 assert.match(styles, /\.upsc-mock-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\)/);
 assert.match(styles, /upsc-mock-grid[\s\S]*grid-template-columns:minmax\(0,1fr\)/);
 assert.match(styles, /\.upsc-paper-card:focus-visible/);
