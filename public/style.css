@@ -653,3 +653,12 @@ details>summary{cursor:pointer;font-weight:650}
   .mock-builder .blueprint-mode-picker{grid-template-columns:minmax(0,1fr)}
   .mock-builder .blueprint-lock-note{font-size:.82rem}
 }
+
+
+/* FIX: force Vocabulary Lab title to white on its dark teal hero. */
+.vocab-lab .vocab-hero h1,
+.vocab-hero h1 {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-shadow: 0 2px 8px rgba(0,0,0,.22) !important;
+}
