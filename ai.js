@@ -268,6 +268,17 @@ const FRIENDLY = {
 };
 const friendlyError = e => FRIENDLY[e] || 'Something went wrong while generating the answer.';
 
+// Keep recent, same-exam turns available to the tutor for natural follow-up questions.
+// History is text-only; a current image/document payload is passed through unchanged.
+function buildTutorMessages(history, currentContent) {
+  const previous = (Array.isArray(history) ? history : [])
+    .filter(message => message && ['user', 'assistant'].includes(message.role) &&
+      typeof message.content === 'string' && message.content.trim())
+    .slice(-8)
+    .map(message => ({ role: message.role, content: message.content.trim().slice(-1800) }));
+  return [...previous, { role: 'user', content: currentContent }];
+}
+
 const TUTOR_SYSTEM = (ctx) => `You are the AI tutor inside "Competitive Exam AI", an Indian competitive-exam preparation app.
 You are a teacher, doubt solver, question solver and mentor — not a generic chatbot. Stay on exam-preparation topics; politely redirect otherwise.
 
@@ -553,4 +564,4 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
   return { ok: true, questions: good, dropped: arr.length - good.length, verification: 'single-pass' };
 }
 
-module.exports = { callClaude, callGemini, callGroq, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, TUTOR_SYSTEM, ANSWER_EVAL_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, questionTextKey, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration };
+module.exports = { callClaude, callGemini, callGroq, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, buildTutorMessages, TUTOR_SYSTEM, ANSWER_EVAL_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, questionTextKey, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration };

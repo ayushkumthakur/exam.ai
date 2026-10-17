@@ -5,7 +5,7 @@ const EXPANDED_QUESTION_SEED = require('../data/expanded_question_bank');
 const { buildExamQuestionBank } = require('../data/question_bank');
 const { buildPriorityQuestionBank } = require('../data/priority_question_bank');
 const { buildCatalogQuestionBank } = require('../data/catalog_question_bank');
-const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration, TUTOR_SYSTEM } = require('../ai');
+const { validateQuestion, extractJson, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration, buildTutorMessages, TUTOR_SYSTEM } = require('../ai');
 const { allocateSectionTargets, createPaperBlueprint, activeSectionIndex, mergeBlueprintAnswers, difficultyProfileForExam, difficultyTargets, findDuplicateQuestionStems } = require('../paper-blueprint');
 
 const base = {
@@ -19,6 +19,17 @@ const base = {
 };
 const allowed = { subject: 'Quantitative Aptitude', topic: 'Arithmetic', difficulty: 'medium' };
 const tutorPrompt = TUTOR_SYSTEM({ examName: 'UPSC CSE Prelims', level: 'Intermediate', weak: [], daysLeft: 30 });
+const tutorHistory = Array.from({ length: 10 }, (_, i) => ({ role: i % 2 ? 'assistant' : 'user', content: 'turn-' + i }));
+const tutorMessages = buildTutorMessages(tutorHistory, 'follow-up');
+assert.equal(tutorMessages.length, 9, 'AI Tutor includes only the eight most recent stored messages plus the current turn');
+assert.equal(tutorMessages[0].content, 'turn-2', 'tutor history keeps chronological order after trimming older turns');
+assert.equal(tutorMessages.at(-2).content, 'turn-9', 'latest stored turn appears immediately before the follow-up');
+assert.deepEqual(tutorMessages.at(-1), { role: 'user', content: 'follow-up' }, 'current question is always the final user turn');
+assert.ok(tutorMessages.slice(0, -1).every(message => ['user', 'assistant'].includes(message.role)), 'only valid conversation roles are forwarded');
+assert.equal(buildTutorMessages([{ role: 'system', content: 'unsafe role' }, { role: 'user', content: 'x'.repeat(2000) }], 'next')[0].content.length, 1800,
+  'stored context rejects non-chat roles and caps each historical message at 1,800 characters');
+const attachedTutorMessages = buildTutorMessages([], [{ type: 'image', source: { type: 'base64', data: 'abc', media_type: 'image/png' } }]);
+assert.equal(attachedTutorMessages[0].content[0].type, 'image', 'current image payload passes through to multimodal providers unchanged');
 assert.match(tutorPrompt, /official question-paper source and an official answer source/i,
   'AI Tutor requires both primary question and answer evidence before claiming a verified PYQ');
 assert.match(tutorPrompt, /PYQ-pattern practice question/i,
