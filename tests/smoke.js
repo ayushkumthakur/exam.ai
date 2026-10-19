@@ -134,6 +134,27 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
   r = await api('GET', '/api/pyq/analysis'); ok(r.data.sufficient === false, 'no trend claims from insufficient PYQ data');
   }
   r = await api('POST', '/api/auth/logout', {}); r = await api('GET', '/api/me'); ok(r.data.user === null, 'logout');
+  // An authenticated password change keeps the current device signed in and revokes other devices.
+  const recoveryEmail = `recovery-${Date.now()}@test.com`;
+  const oldRecoveryPassword = 'Recover@12345', newRecoveryPassword = 'Changed@12345';
+  r = await api('POST', '/api/auth/signup', { email: recoveryEmail, password: oldRecoveryPassword, confirm_password: oldRecoveryPassword });
+  ok(r.status === 200 && r.data.user?.email === recoveryEmail, 'password-change fixture account created');
+  const ownerSessionCookie = cookie;
+  const secondDeviceLogin = await fetch(BASE + '/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json', origin: BASE }, body: JSON.stringify({ email: recoveryEmail, password: oldRecoveryPassword }) });
+  const secondDeviceCookie = (secondDeviceLogin.headers.get('set-cookie') || '').split(';')[0];
+  ok(secondDeviceLogin.status === 200 && secondDeviceCookie.startsWith('sid='), 'same account can establish a separate device session');
+  cookie = ownerSessionCookie;
+  r = await api('POST', '/api/auth/set-password', { password: newRecoveryPassword, confirm_password: newRecoveryPassword });
+  ok(r.status === 200 && r.data.user?.email === recoveryEmail, 'authenticated password reset succeeds without old password');
+  r = await api('GET', '/api/me');
+  ok(r.data.user?.email === recoveryEmail, 'password change preserves the device that changed it');
+  const revokedDevice = await fetch(BASE + '/api/me', { headers: { cookie: secondDeviceCookie } });
+  const revokedData = await revokedDevice.json().catch(() => ({}));
+  ok(revokedData.user === null, 'password change revokes other device sessions');
+  await api('POST', '/api/auth/logout', {});
+  r = await api('POST', '/api/auth/login', { email: recoveryEmail, password: newRecoveryPassword });
+  ok(r.status === 200 && r.data.user?.email === recoveryEmail, 'new password works for subsequent login');
+  await api('POST', '/api/auth/logout', {});
   // admin
   cookie = ''; const ae = 'admin@x.com'; r = await api('POST', '/api/auth/login', { email: ae, password: process.env.SMOKE_ADMIN_PASSWORD || pw });
   ok(r.data.user && r.data.user.role === 'admin', 'admin role via ADMIN_EMAILS');
