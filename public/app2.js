@@ -523,6 +523,68 @@ async function pgAdmin() {
   onLeave(() => clearInterval(healthTimer));
   const area = (v, rows = 9) => h('textarea', { rows, style: 'font-family:ui-monospace,monospace;font-size:.85rem' }, v);
   const qa = area(JSON.stringify({ source_type: 'ADMIN_PRACTICE', exam_id: null, questions: [{ subject: 'Mathematics', topic: 'Trigonometry', difficulty: 'easy', text: 'Question text…', options: ['A', 'B', 'C', 'D'], answer: 0, explanation: 'Why…', concept: 'Concept…', tip: 'Tip…' }] }, null, 2), 14);
+  const pyqAuditPanel = h('div', { class: 'stack' });
+  const officialPyqSources = [
+    ['UPSC previous question papers', 'https://www.upsc.gov.in/examinations/previous-question-papers'],
+    ['SSC official notices and answer keys', 'https://ssc.gov.in/'],
+    ['RBI Grade B recruitment notices', 'https://opportunities.rbi.org.in/Scripts/Vacancies.aspx']
+  ];
+  async function loadPyqAudit() {
+    pyqAuditPanel.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Checking PYQ provenance and paper coverage…'));
+    try {
+      const d = await get('/api/admin/pyq-provenance-audit'), s = d.summary || {};
+      const metric = (label, value, detail) => h('div', { class: 'card stack', style: 'gap:.25rem' },
+        h('span', { class: 'small muted' }, label), h('h2', {}, String(value ?? 0)),
+        detail ? h('span', { class: 'small muted' }, detail) : null);
+      const sourceLinks = h('div', { class: 'row', style: 'flex-wrap:wrap' }, officialPyqSources.map(([label, url]) =>
+        h('a', { class: 'btn sm ghost', href: url, target: '_blank', rel: 'noopener noreferrer' }, label)));
+      const examCards = (d.exams || []).map(ex => h('div', { class: 'card stack', style: 'gap:.55rem' },
+        h('div', { class: 'row between', style: 'flex-wrap:wrap' },
+          h('h3', {}, ex.name),
+          h('span', { class: 'badge ' + (ex.invalidLabelCount ? 'warn' : 'ok') }, ex.invalidLabelCount ? ex.invalidLabelCount + ' label(s) need review' : 'No invalid labels')),
+        h('div', { class: 'grid g3' },
+          metric('Metadata-valid PYQs', ex.metadataValidCount, 'Source/review fields pass policy'),
+          metric('Question-bank gaps', ex.sections.reduce((n,x) => n + x.shortfall, 0), 'Unique questions below section targets'),
+          metric('Duplicate verified stems', ex.duplicateVerifiedStemCount, 'Within metadata-valid claimed PYQs')),
+        h('p', { class: 'small muted' }, 'Official exam pattern: ' + (ex.patternVerified ? 'marked verified' : 'not marked verified') + ' · Bank coverage: ' + (ex.questionCoverageReady ? 'targets reached' : 'more unique questions needed')),
+        h('div', { class: 'stack', style: 'gap:.45rem' }, ex.sections.map(sec =>
+          h('div', { class: 'stack', style: 'gap:.15rem;border-top:1px solid var(--line);padding-top:.45rem' },
+            h('div', { class: 'row between', style: 'gap:.75rem;flex-wrap:wrap' },
+              h('b', {}, sec.subject),
+              h('span', { class: 'small muted' }, sec.uniqueQuestionCount + ' unique / ' + sec.targetQuestions + ' target')),
+            h('div', { class: 'small muted' }, 'Verified-provenance: ' + sec.verifiedPyqCount + ' · Practice: ' + sec.practiceQuestionCount + ' · Invalid PYQ labels: ' + sec.invalidLabelCount + ' · Shortfall: ' + sec.shortfall))))));
+      const invalidCards = (d.invalidRecords || []).map(q => h('div', { class: 'stack', style: 'gap:.25rem;border-bottom:1px solid var(--line);padding:.6rem 0' },
+        h('div', { class: 'row between', style: 'flex-wrap:wrap' },
+          h('b', {}, '#' + q.id + ' · ' + (q.exam_id || 'No exam') + ' · ' + (q.subject || 'No subject')),
+          h('span', { class: 'badge warn' }, 'Needs review')),
+        h('p', { class: 'small' }, q.text || '(Empty question stem)'),
+        h('p', { class: 'small muted' }, 'Year: ' + (q.pyq_year || 'missing') + ' · Paper: ' + (q.pyq_paper || 'missing') + ' · Topic: ' + (q.topic || 'missing')),
+        h('ul', { class: 'small muted' }, (q.issues || []).map(issue => h('li', {}, issue)))));
+      pyqAuditPanel.replaceChildren(
+        h('div', { class: 'row between', style: 'flex-wrap:wrap' },
+          h('div', { class: 'stack', style: 'gap:.15rem' },
+            h('h3', {}, 'Provenance & coverage audit'),
+            h('p', { class: 'small muted' }, 'Refresh this report after importing questions or editing review metadata.')),
+          h('button', { class: 'btn sm', onclick: loadPyqAudit }, 'Refresh audit')),
+        h('div', { class: 'grid g3' },
+          metric('PYQ labels', s.labelledCount, 'Rows marked VERIFIED_PYQ in storage'),
+          metric('Metadata-valid', s.metadataValidCount, 'Human review attestation recorded'),
+          metric('Rejected labels', s.invalidLabelCount, 'Excluded from student PYQ flows')),
+        h('p', { class: 'small muted' }, d.note || ''),
+        h('h4', {}, 'Official authority pages'),
+        sourceLinks,
+        h('div', { class: 'stack' }, examCards),
+        h('div', { class: 'card stack' },
+          h('div', { class: 'row between', style: 'flex-wrap:wrap' },
+            h('h3', {}, 'Records needing correction'),
+            h('span', { class: 'badge ' + (s.invalidLabelCount ? 'warn' : 'ok') }, String(s.invalidLabelCount || 0))),
+          d.invalidRecordsTruncated ? h('p', { class: 'small muted' }, 'Showing the latest 75 invalid labels. The summary count includes every invalid label.') : null,
+          invalidCards.length ? h('div', { class: 'list' }, invalidCards) : h('p', { class: 'muted' }, 'No invalid VERIFIED_PYQ labels found. That does not by itself establish that the linked document content was independently checked.')));
+    } catch (e) {
+      pyqAuditPanel.replaceChildren(errBox(e, loadPyqAudit));
+    }
+  }
+  loadPyqAudit();
   const pyqNote = 'PYQ verification checklist: use VERIFIED_PYQ only after checking the exact question wording, every option, exam/year/paper/shift and correct answer against official sources. Each question must include exam_id, pyq_year, pyq_paper, source_ref (official question paper URL), answer_source_ref (official answer key/answer source URL), review_confirmed: true, and verification_notes describing what you compared. Supported exam IDs include UPSC_CSE, UPSC_CSAT, SSC_CGL and RBI_B. The server checks HTTPS and approved authority hosts plus review metadata, but it does not fetch or independently verify document contents. Never mark AI-generated or memory-based questions as verified; use PYQ_PATTERN or ADMIN_PRACTICE. Keep each question as a separate record with its own evidence. A full paper uploaded together becomes a PYQ test automatically.';
   const ea = area(JSON.stringify({ id: 'MY_EXAM', name: 'My Exam', category: 'Other', minutes: 60, verified: false, sections: [{ subject: 'Reasoning', questions: 25, marks: 1, negative: 0.25 }, { subject: 'English', questions: 25, marks: 1, negative: 0.25 }] }, null, 2), 12);
   const run = (path, ta) => async (e) => { e.target.disabled = true; try { const r = await post(path, JSON.parse(ta.value)); out.replaceChildren(h('div', { class: r.errors && r.errors.length ? 'note' : 'info' }, JSON.stringify(r))); } catch (er) { out.replaceChildren(errBox(er)); } e.target.disabled = false; };
@@ -559,6 +621,7 @@ async function pgAdmin() {
     h('div', { class: 'card stack' }, h('h2', {}, 'Database backups'), h('p', { class: 'small muted' }, 'Admin-only SQLite snapshots. Downloads use a private, no-store response. Restore drills must use a separate test database—not the live database.'), backupsPanel),
     h('div', { class: 'card stack' }, h('h2', {}, 'AI usage & health'), h('p', { class: 'small muted' }, 'Live in-memory usage counters, API/quota errors and key-rotation events. Counters reset when the server restarts.'), health),
     h('div', { class: 'card' }, h('p', {}, `${st.users} users · ${st.exams} exams · ${st.open_reports} open report(s)`), h('p', { class: 'small muted' }, 'Questions: ' + st.questions.map(x => `${x.source_type} ${x.c}`).join(' · '))), out,
+    h('div', { class: 'card stack' }, h('h2', {}, 'Verified PYQ quality control'), h('p', { class: 'small muted' }, 'Use this audit to find missing provenance and coverage gaps before publishing PYQ material.'), pyqAuditPanel),
     h('div', { class: 'card stack' }, h('h3', {}, 'Add questions / PYQ papers'), h('p', { class: 'small muted' }, pyqNote), qa, h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: run('/api/admin/questions', qa) }, 'Add questions')),
     h('div', { class: 'card stack' }, h('h3', {}, 'Add or update an exam'), h('p', { class: 'small muted' }, 'Syllabus defaults to the standard topic list for each subject. Set verified:true only after checking the official notification.'), ea, h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: run('/api/admin/exams', ea) }, 'Save exam')),
     h('div', { class: 'card stack' }, h('h3', {}, 'Add a current-affairs item'), ct, cs, h('div', { class: 'grid g3' }, cc, cd, csrc), h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async () => { try { await post('/api/admin/ca', { title: ct.value, summary: cs.value, category: cc.value, event_date: cd.value || null, source: csrc.value || null, exams: 'ALL' }); toast('Added'); ct.value = cs.value = ''; } catch (e) { toast(e.message); } } }, 'Publish')),
