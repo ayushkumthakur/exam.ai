@@ -405,6 +405,27 @@ async function pgProfile() {
   const examSel = h('div', {}, h('label', {}, 'Exam'), h('select', { onchange: (e) => f.exam_id = e.target.value }, Object.entries(byCat).map(([c, l]) => h('optgroup', { label: c }, l.map(e => h('option', { value: e.id, selected: e.id === f.exam_id }, e.name))))));
   const date = h('input', { type: 'date', value: f.target_date, min: new Date(Date.now() + 864e5).toISOString().slice(0, 10), onchange: (e) => f.target_date = e.target.value });
   const save = h('button', { class: 'btn primary', onclick: async () => { save.disabled = true; try { const examChanged = f.exam_id !== S.user.exam_id; const r = await put('/api/me', f); S.user = r.user; msg.replaceChildren(h('div', { class: 'info' }, examChanged ? 'Exam changed. Your dashboard, practice, tests, current affairs, tutor, revision and plan now follow the new exam. Your old history is kept.' : 'Saved.')); toast('Saved'); route(); } catch (e) { msg.replaceChildren(errBox(e)); } save.disabled = false; } }, 'Save changes');
+  const passwordMsg = h('div');
+  const newPassword = h('input', { type: 'password', autocomplete: 'new-password', minlength: 8, maxlength: 128, required: true, placeholder: 'New password', 'aria-label': 'New password' });
+  const confirmPassword = h('input', { type: 'password', autocomplete: 'new-password', minlength: 8, maxlength: 128, required: true, placeholder: 'Confirm new password', 'aria-label': 'Confirm new password' });
+  const changePassword = h('button', { class: 'btn primary', type: 'submit' }, 'Set new password');
+  const passwordForm = h('form', { class: 'stack', onsubmit: async (ev) => {
+    ev.preventDefault(); passwordMsg.replaceChildren();
+    if (newPassword.value !== confirmPassword.value) {
+      passwordMsg.replaceChildren(h('div', { class: 'err', role: 'alert' }, 'The passwords do not match.'));
+      confirmPassword.focus(); return;
+    }
+    changePassword.disabled = true; changePassword.textContent = 'Updating password…';
+    try {
+      const r = await post('/api/auth/set-password', { password: newPassword.value, confirm_password: confirmPassword.value });
+      S.user = r.user; newPassword.value = ''; confirmPassword.value = '';
+      passwordMsg.replaceChildren(h('div', { class: 'info', role: 'status' }, 'Password updated. This device stays signed in; other device sessions have been signed out. Save your new password somewhere secure.'));
+      toast('Password updated');
+    } catch (e) { passwordMsg.replaceChildren(errBox(e)); }
+    finally { changePassword.disabled = false; changePassword.textContent = 'Set new password'; }
+  } }, h('div', {}, h('label', {}, 'New password'), newPassword), h('div', {}, h('label', {}, 'Confirm new password'), confirmPassword), passwordMsg, changePassword);
+  const passwordSection = h('div', { class: 'card stack' }, h('h3', {}, 'Account security'),
+    h('p', { class: 'muted small' }, 'Still signed in on this device? You can set a new password without remembering the old one. Use at least 8 characters (up to 128). This device remains signed in, while other device sessions are signed out.'), passwordForm);
   const wipe = h('input', { type: 'checkbox', style: 'width:20px;min-height:20px' });
   const adminMsg = h('div');
   const adminSection = u.role === 'admin' ? null : (() => {
@@ -422,6 +443,7 @@ async function pgProfile() {
   return h('div', { class: 'stack' }, h('h1', {}, 'Profile'),
     h('div', { class: 'card' }, h('div', { class: 'grid g2' }, [['Name', u.name], ['Email', u.email], ['Exam', S.exams.find(e => e.id === u.exam_id)?.name], ['Preparation level', u.level], ['Target date', u.target_date + (prog.days_left !== null ? ` (${prog.days_left} days)` : '')], ['Daily study time', u.daily_minutes / 60 + ' h'], ['Stage', u.stage], ['Overall', `${prog.questions_solved} questions · ${pct(prog.accuracy)} accuracy`]].map(([l, v]) => h('div', {}, h('div', { class: 'small muted' }, l), h('b', {}, v))))),
     h('div', { class: 'card stack' }, h('h3', {}, 'Update preferences'), h('div', { class: 'grid g2' }, examSel, sel('Preparation level', 'level', ['Beginner', 'Intermediate', 'Advanced'].map(x => [x, x])), h('div', {}, h('label', {}, 'Target date'), date), sel('Daily study time', 'daily_minutes', [[60, '1 hour'], [120, '2 hours'], [180, '3 hours'], [240, '4 hours'], [300, '5+ hours']]), sel('Stage', 'stage', ['Just Started', 'Preparing', 'Revision'].map(x => [x, x]))), msg, save),
+    passwordSection,
     h('div', { class: 'card stack' }, h('h3', {}, 'Reset preferences'), h('p', { class: 'muted small' }, 'Sends you back through setup. Your history stays unless you tick the box.'), h('label', { class: 'row', style: 'font-weight:500' }, wipe, 'Also permanently delete my history (answers, mistakes, tests, bookmarks, AI chats)'),
       h('button', { class: 'btn', style: 'align-self:flex-start', onclick: async () => { if (!confirm(wipe.checked ? 'This permanently deletes your history. Continue?' : 'Reset your preferences?')) return; try { await post('/api/me/reset', { confirm: true, wipe_history: wipe.checked }); S.user = (await get('/api/me')).user; route(); } catch (e) { toast(e.message); } } }, 'Reset preferences')),
     adminSection,
