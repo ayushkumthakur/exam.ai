@@ -33,6 +33,13 @@ assert.match(mockTest, /@media\s*\(max-width:\s*820px\)/);
 assert.match(mockTest, /@media\s*\(max-width:\s*520px\)/);
 assert.match(mockTest, /@media\s*\(min-width:\s*821px\)/);
 assert.match(mockTest, /min-height:\s*44px/);
+const profileUi = read('public/app2.js');
+assert.match(profileUi, /Account security/);
+assert.match(profileUi, /\/api\/auth\/set-password/);
+assert.match(profileUi, /This device remains signed in/);
+assert.match(profileUi, /other device sessions are signed out/);
+console.log('PASS account-security profile UI and authenticated password-change path audit.');
+
 const app = read('public/app.js');
 const styles = read('public/style.css');
 assert.match(app, /Vocabulary Lab/);
