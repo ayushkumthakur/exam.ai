@@ -1185,6 +1185,79 @@ route('GET', '/api/admin/mock-bank-audit', ADM, () => {
   });
   return { exams, note: 'Counts reflect questions currently stored in the database. Practice/AI-generated questions are not verified PYQs; official-pattern status is reported separately.' };
 });
+route('GET', '/api/admin/pyq-provenance-audit', ADM, () => {
+  const labelled = db.prepare(`SELECT id,exam_id,subject,topic,text,source_type,pyq_year,pyq_paper,pyq_shift,source_ref,answer_source_ref,verification_notes,verified_by,verified_at
+    FROM questions WHERE source_type='VERIFIED_PYQ' ORDER BY id DESC`).all();
+  const metadataValid = labelled.filter(isVerifiedPyq);
+  const invalid = labelled.filter(q => !isVerifiedPyq(q));
+  const reviewIssues = (q) => {
+    const issues = [];
+    const year = Number(q.pyq_year);
+    if (!Number.isInteger(year) || year < 2000 || year > new Date().getFullYear() + 1) issues.push('Missing or invalid exam year.');
+    if (!String(q.pyq_paper || '').trim()) issues.push('Missing paper/phase name.');
+    const evidence = validatePyqVerification({
+      examId: q.exam_id,
+      questionSourceUrl: q.source_ref,
+      answerSourceUrl: q.answer_source_ref,
+      reviewConfirmed: true,
+      verificationNotes: q.verification_notes
+    });
+    if (!evidence.valid) issues.push(evidence.reason);
+    if (!String(q.verified_by || '').trim()) issues.push('Missing reviewer identity.');
+    if (!(Number(q.verified_at) > 0)) issues.push('Missing reviewer timestamp.');
+    return [...new Set(issues)];
+  };
+  const priorityIds = ['UPSC_CSE', 'UPSC_CSAT', 'SSC_CGL', 'RBI_B'];
+  const exams = priorityIds.map(id => loadExam(id)).filter(Boolean).map(exam => {
+    const rows = labelled.filter(q => q.exam_id === exam.id);
+    const valid = rows.filter(isVerifiedPyq);
+    const duplicates = findDuplicateQuestionStems(valid);
+    const sections = (exam.pattern.sections || []).map(section => {
+      const all = db.prepare('SELECT id,text,source_type FROM questions WHERE exam_id=? AND subject=?').all(exam.id, section.subject);
+      const sectionRepeats = findDuplicateQuestionStems(all);
+      const uniqueQuestionCount = Math.max(0, all.length - sectionRepeats.length);
+      const verifiedPyqCount = valid.filter(q => q.subject === section.subject).length;
+      const practiceQuestionCount = all.filter(q => ['ADMIN_PRACTICE','AI_GENERATED','PYQ_PATTERN'].includes(q.source_type)).length;
+      const targetQuestions = Number(section.questions) || 0;
+      return {
+        subject: section.subject, targetQuestions, uniqueQuestionCount,
+        verifiedPyqCount, practiceQuestionCount,
+        invalidLabelCount: rows.filter(q => q.subject === section.subject && !isVerifiedPyq(q)).length,
+        shortfall: Math.max(0, targetQuestions - uniqueQuestionCount),
+        questionCoverageReady: uniqueQuestionCount >= targetQuestions
+      };
+    });
+    return {
+      id: exam.id, name: exam.name, patternVerified: exam.verified,
+      labelledCount: rows.length, metadataValidCount: valid.length,
+      invalidLabelCount: rows.length - valid.length, duplicateVerifiedStemCount: duplicates.length,
+      targetQuestions: sections.reduce((n,s) => n + s.targetQuestions, 0),
+      uniqueQuestionCount: sections.reduce((n,s) => n + s.uniqueQuestionCount, 0),
+      questionCoverageReady: sections.every(s => s.questionCoverageReady), sections
+    };
+  });
+  const supportedIds = new Set(priorityIds);
+  const unsupportedRows = invalid.filter(q => !supportedIds.has(q.exam_id));
+  const invalidRecords = invalid.slice(0, 75).map(q => ({
+    id: q.id, exam_id: q.exam_id, subject: q.subject, topic: q.topic,
+    pyq_year: q.pyq_year, pyq_paper: q.pyq_paper,
+    text: String(q.text || '').slice(0, 180),
+    issues: reviewIssues(q)
+  }));
+  return {
+    summary: {
+      labelledCount: labelled.length,
+      metadataValidCount: metadataValid.length,
+      invalidLabelCount: invalid.length,
+      unsupportedExamCount: unsupportedRows.length,
+      duplicateVerifiedStemCount: exams.reduce((n,e) => n + e.duplicateVerifiedStemCount, 0)
+    },
+    exams,
+    invalidRecords,
+    invalidRecordsTruncated: invalid.length > invalidRecords.length,
+    note: 'Metadata-valid means official-host source URLs, year/paper fields, reviewer attestation and timestamp pass policy checks. The app does not fetch or independently inspect linked PDF contents; counts are not an automatic claim that each question matches its paper.'
+  };
+});
 route('GET', '/api/admin/stats', ADM, () => ({ users: db.prepare('SELECT COUNT(*) c FROM users').get().c, questions: db.prepare('SELECT source_type, COUNT(*) c FROM questions GROUP BY 1').all(), exams: db.prepare('SELECT COUNT(*) c FROM exams').get().c, open_reports: db.prepare("SELECT COUNT(*) c FROM ai_feedback WHERE kind='report' AND status='open'").get().c }));
 route('POST', '/api/admin/exams', ADM, (c) => {
   const b = c.body, id = String(b.id || '').toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 30);

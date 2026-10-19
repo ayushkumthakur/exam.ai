@@ -167,7 +167,16 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
       Number.isInteger(section.shortfall) && typeof section.questionCoverageReady === 'boolean')) &&
     r.data.exams.every(exam => typeof exam.patternVerified === 'boolean' && typeof exam.realExamReady === 'boolean'),
     'mock-bank audit reports unique question coverage separately from official pattern verification');
-  r = await api('GET', '/api/admin/ai-health');
+  r = await api('GET', '/api/admin/pyq-provenance-audit');
+  ok(r.status === 200 && Number.isInteger(r.data.summary?.labelledCount) &&
+    Number.isInteger(r.data.summary?.metadataValidCount) && Number.isInteger(r.data.summary?.invalidLabelCount),
+    'admin PYQ provenance audit returns numeric label-quality counts');
+  ok(r.status === 200 && ['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B'].every(id => r.data.exams?.some(exam => exam.id === id)) &&
+    r.data.exams.every(exam => Array.isArray(exam.sections) && Number.isInteger(exam.invalidLabelCount)),
+    'admin PYQ audit reports priority exam coverage and invalid labels');
+  ok(r.status === 200 && /does not fetch or independently inspect linked PDF contents/i.test(r.data.note || ''),
+    'admin PYQ audit discloses that metadata checks are not independent PDF verification');
+    r = await api('GET', '/api/admin/ai-health');
   ok(r.status === 200 && typeof r.data.integration?.enabled === 'boolean' &&
     ['gemini', 'groq', 'anthropic', null].includes(r.data.integration?.activeProvider),
     'admin AI health exposes provider readiness without secret values');
