@@ -39,8 +39,9 @@ function feedDate(block) {
     xmlField(block, 'updated') || xmlField(block, 'dc:date') || xmlField(block, 'date');
 }
 function feedSummary(block) {
-  return xmlField(block, 'description') || xmlField(block, 'summary') ||
+  const value = xmlField(block, 'description') || xmlField(block, 'summary') ||
     xmlField(block, 'content:encoded') || xmlField(block, 'content');
+  return xmlText(value);
 }
 function isEnglishText(value) {
   // Keep Devanagari-language items out of the English current-affairs feed.
