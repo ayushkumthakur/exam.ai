@@ -5,7 +5,7 @@ node_modules
 .env.*
 !.env.example
 storage
-data
+runtime-data
 backups
 *.db
 *.db-*
