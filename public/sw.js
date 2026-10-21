@@ -1,4 +1,4 @@
-const CACHE = 'cea-shell-v9';
+const CACHE = 'cea-shell-v10';
 const SHELL = [
   '/',
   '/style.css?v=11',
@@ -12,6 +12,7 @@ const SHELL = [
   '/distinct-identity.css?v=1',
   '/mobile-drawer-fix.css?v=3',
   '/mock-test-responsive.css?v=1',
+  '/study-command-center.css?v=1',
   '/app2.js?v=10',
   '/app.js?v=20',
   '/icon.svg'
