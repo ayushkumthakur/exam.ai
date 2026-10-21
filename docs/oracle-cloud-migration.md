@@ -21,12 +21,11 @@ Configure the VM's networking rules to allow TCP 22 from your own IP and TCP 80/
 
 Connect to the VM using SSH, then install Docker Engine and the Docker Compose plugin using the official instructions for the VM's Linux distribution.
 
-Create the application directory and persistent data directory:
+Create an empty application directory. Create the runtime data directory after cloning the repository (so it does not make the Git clone fail):
 
 ```bash
-sudo mkdir -p /opt/competitive-exam-ai/runtime-data
-sudo chown -R 1000:1000 /opt/competitive-exam-ai/runtime-data
-sudo chmod 700 /opt/competitive-exam-ai/runtime-data
+sudo mkdir -p /opt/competitive-exam-ai
+sudo chown "$USER":"$USER" /opt/competitive-exam-ai
 ```
 
 ## 3. Get the source code
@@ -47,6 +46,14 @@ nano .env
 ```
 
 Fill in the same AI provider key(s) you already use, without posting them in chat or GitHub.
+
+Create the separate persistent directory now:
+
+```bash
+sudo mkdir -p /opt/competitive-exam-ai/runtime-data
+sudo chown -R 1000:1000 /opt/competitive-exam-ai/runtime-data
+sudo chmod 700 /opt/competitive-exam-ai/runtime-data
+```
 
 ## 4. Restore the SQLite backup
 
