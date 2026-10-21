@@ -60,7 +60,7 @@ async function pgTutor(parts, params) {
     }
     drawSavedHistory();
     view.append(log, h('div', { class: 'card stack' }, ta, h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => file.click() }, '📷 Image / PDF'), file, chosen, h('span', { class: 'grow' }), h('button', { class: 'btn ghost sm', onclick: async () => { if (confirm('Permanently clear saved AI chat history?')) { await post('/api/ai/clear'); hist = []; log.replaceChildren(h('div', { class: 'empty' }, 'Saved history cleared. Previous saved turns are no longer available as tutor context.')); drawSavedHistory(); } } }, 'Clear History'), sendBtn),
-      h('p', { class: 'small muted' }, 'Each AI request is independent. Use an answer’s follow-up button when you intentionally want to refer to that answer. Ctrl+Enter to send. Verify important facts with your textbook or official sources.')), historySlot);
+      h('p', { class: 'small muted' }, 'Recent turns from this exam may be included for continuity. Use an answer’s follow-up buttons for a focused re-explanation. Ctrl+Enter to send. Verify important facts with your textbook or official sources.')), historySlot);
     if (params.get('ask')) { ta.value = params.get('ask'); history.replaceState(null, '', '#/tutor'); ask(); }
   }
 
