@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const { TOPICS, syllabusFor, NOTES } = require('./data/catalog');
 const ai = require('./ai');
-const { xmlField, isEnglishText } = require('./current-affairs-feed');
+const { xmlField, feedEntries, feedLink, feedDate, feedSummary, isEnglishText } = require('./current-affairs-feed');
 const aiMetrics = require('./ai-metrics');
 const dbBackup = require('./db-backup');
 const { validateOfficialPyqSource, validatePyqVerification } = require('./pyq-source-policy');
@@ -899,10 +899,13 @@ route('GET', '/api/ca', ONB, async (c) => {
   let sql = "SELECT * FROM current_affairs WHERE (exams='ALL' OR (',' || exams || ',') LIKE ?) AND (event_date IS NULL OR event_date>=?)";
   const p = ['%,' + c.user.exam_id + ',%', from];
   if (cat) { sql += ' AND category=?'; p.push(cat); }
-  // Pull a wider window before filtering so Hindi legacy rows do not leave the English feed empty.
   const candidates = db.prepare(sql + " ORDER BY COALESCE(event_date,'') DESC, id DESC LIMIT ? OFFSET 0").all(...p, Math.min(250, Math.max(limit + offset, limit * 5)));
   const items = candidates.filter(item => isEnglishText(item.title) && isEnglishText(item.summary)).slice(offset, offset + limit);
-  return { items, categories: CA_CATS, period, from, updated: dayStr() };
+  const feed = readCaFeedStatus();
+  return {
+    items, categories: CA_CATS, period, from, updated: dayStr(),
+    feed_status: { status: feed.status || 'unknown', lastAttemptAt: feed.lastAttemptAt || null, lastSuccessAt: feed.lastSuccessAt || null, added: Number(feed.added) || 0 }
+  };
 });
 const CA_CATS = ['National', 'International', 'Defence', 'Economy', 'Science & Technology', 'Environment', 'Sports', 'Awards', 'Appointments', 'Government Schemes', 'Important Days', 'Reports & Indexes', 'Books & Authors', 'Important Persons', 'Defence Exercises'];
 
@@ -1322,8 +1325,9 @@ route('POST', '/api/admin/ca', ADM, (c) => {
   return { id: Number(id) };
 });
 route('DELETE', '/api/admin/ca/:id', ADM, (c) => { db.prepare('DELETE FROM current_affairs WHERE id=?').run(+c.params.id); return { ok: true }; });
+route('GET', '/api/admin/ca/status', ADM, () => ({ status: readCaFeedStatus(), sources: CA_FEEDS.map(f => ({ name: f.name, url: f.url })) }));
 route('POST', '/api/admin/ca/refresh', ADM, async () => {
-  return await refreshCurrentAffairsFeeds();
+  return await runCaFeedRefresh(true);
 });
 
 route('GET', '/api/admin/reports', ADM, () => ({ reports: db.prepare(`SELECT f.id,f.kind,f.note,f.status,f.created_at,u.email, c.content answer,
@@ -1381,66 +1385,117 @@ const CA_FEEDS = [
   { name: 'Press Information Bureau', url: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3' },
   { name: 'Reserve Bank of India', url: 'https://www.rbi.org.in/Scripts/RSS.aspx?Id=6' }
 ];
+const CA_FEED_STATUS_KEY = 'ca_feed_refresh_status';
+function readCaFeedStatus() {
+  try { return JSON.parse(db.prepare("SELECT value FROM app_state WHERE key=?").get(CA_FEED_STATUS_KEY)?.value || '{}'); }
+  catch { return {}; }
+}
+function writeCaFeedStatus(value) {
+  db.prepare("INSERT INTO app_state (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value")
+    .run(CA_FEED_STATUS_KEY, JSON.stringify(value));
+}
 function caCategory(title, summary, feed) {
   const t = (title + ' ' + summary).toLowerCase();
-  if (/rbi|reserve bank|inflation|gdp|repo rate|banking|economy|trade|finance|budget/.test(t)) return 'Economy';
+  if (/rbi|reserve bank|inflation|gdp|repo rate|banking|economy|trade|finance|budget|core industr/.test(t)) return 'Economy';
   if (/defen[cs]e|army|navy|air force|missile|military|exercise/.test(t)) return 'Defence';
   if (/space|isro|science|technology|quantum|satellite|research|digital/.test(t)) return 'Science & Technology';
   if (/climate|environment|forest|wildlife|renewable|pollution/.test(t)) return 'Environment';
   if (/sport|cricket|hockey|olympic|medal|tournament/.test(t)) return 'Sports';
   if (/award|prize|honour/.test(t)) return 'Awards';
   if (/appointed|appointment|chairman|chief justice|governor|president of/.test(t)) return 'Appointments';
-  if (/scheme|yojana|benefit|launched.*scheme/.test(t)) return 'Government Schemes';
-  if (/international|bilateral|united nations|world bank|imf|summit|foreign minister/.test(t)) return 'International';
+  if (/scheme|yojana|benefit|launched.*scheme|campaign/.test(t)) return 'Government Schemes';
+  if (/international|bilateral|united nations|world bank|imf|summit|foreign minister|free trade agreement|fta/.test(t)) return 'International';
   return feed === 'Press Information Bureau' ? 'National' : 'Economy';
 }
+let caFeedRefreshBusy = false;
 async function refreshCurrentAffairsFeeds() {
+  const previous = readCaFeedStatus();
+  const startedAt = now();
   const results = [];
-  let added = 0, skipped = 0, failed = 0;
+  let added = 0, skipped = 0, failed = 0, noDate = 0, invalid = 0;
+  writeCaFeedStatus({ ...previous, status: 'running', lastAttemptAt: startedAt, startedAt, added: 0, skipped: 0, failed: 0, sources: [] });
   for (const feed of CA_FEEDS) {
     try {
-      const response = await fetch(feed.url, { headers: { 'user-agent': 'CompetitiveExamAI/1.0 (official public RSS reader)', accept: 'application/rss+xml, application/xml, text/xml' }, signal: AbortSignal.timeout(9000) });
+      const response = await fetch(feed.url, {
+        headers: { 'user-agent': 'CompetitiveExamAI/1.1 (official public RSS reader)', accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml' },
+        signal: AbortSignal.timeout(12000)
+      });
       if (!response.ok) throw new Error('HTTP ' + response.status);
       const xml = await response.text();
-      const entries = [...xml.matchAll(/<(item|entry)\b[^>]*>([\s\S]*?)<\/(?:item|entry)>/gi)].slice(0, 40);
-      let feedAdded = 0;
-      for (const [, , block] of entries) {
+      const entries = feedEntries(xml).slice(0, 60);
+      if (!entries.length) throw new Error('Feed returned no RSS/Atom items.');
+      let feedAdded = 0, feedSkipped = 0, feedNoDate = 0, feedInvalid = 0;
+      for (const block of entries) {
         const title = xmlField(block, 'title').slice(0, 300);
-        if (!title) continue;
-        const summary = (xmlField(block, 'description') || xmlField(block, 'summary') || xmlField(block, 'content')).slice(0, 4000) || title;
-        const link = xmlField(block, 'link') || ((block.match(/<link\b[^>]*href=["']([^"']+)/i) || [])[1] || '');
-        const pub = xmlField(block, 'pubDate') || xmlField(block, 'published') || xmlField(block, 'updated');
-        const parsedDate = pub ? Date.parse(pub) : NaN;
-        const eventDate = Number.isFinite(parsedDate) ? dayStr(parsedDate) : dayStr();
-        if (eventDate < dayStr(now() - 7 * DAY) || eventDate > dayStr(now() + DAY)) { skipped++; continue; }
-        if (db.prepare('SELECT id FROM current_affairs WHERE title=? AND event_date=?').get(title, eventDate)) { skipped++; continue; }
+        if (!title || !isEnglishText(title)) { feedSkipped++; continue; }
+        const rawSummary = feedSummary(block);
+        const summary = (rawSummary || title).slice(0, 4000);
+        if (!isEnglishText(summary)) { feedSkipped++; continue; }
+        const link = feedLink(block);
+        if (!/^https:\/\//i.test(link)) { feedInvalid++; continue; }
+        const published = feedDate(block);
+        const parsedDate = published ? Date.parse(published) : NaN;
+        if (!Number.isFinite(parsedDate)) { feedNoDate++; continue; }
+        const eventDate = dayStr(parsedDate);
+        // Keep two weeks for weekly study, but reject stale entries and future-dated feed errors.
+        if (eventDate < dayStr(now() - 14 * DAY) || eventDate > dayStr(now() + DAY)) { feedSkipped++; continue; }
+        const existing = db.prepare('SELECT id,summary,source FROM current_affairs WHERE title=? AND event_date=?').get(title, eventDate);
+        if (existing) {
+          // Update a syndicated item only when the official feed provides new text or a better source link.
+          const betterLink = /^https:\/\//i.test(link) && existing.source !== link;
+          if ((summary && summary !== existing.summary) || betterLink) {
+            db.prepare('UPDATE current_affairs SET summary=?,source=? WHERE id=?')
+              .run(summary, betterLink ? link : (existing.source || link), existing.id);
+          }
+          feedSkipped++;
+          continue;
+        }
         const category = caCategory(title, summary, feed.name);
         try {
           db.prepare('INSERT INTO current_affairs (title,summary,category,exams,event_date,source,created_at) VALUES (?,?,?,?,?,?,?)')
-            .run(title, summary, category, 'ALL', eventDate, (link && /^https?:\/\//i.test(link)) ? link : feed.name, now());
+            .run(title, summary, category, 'ALL', eventDate, link, now());
           added++; feedAdded++;
-        } catch (e) { if (!/unique|constraint/i.test(e.message)) console.error('[ca-feed-insert]', e.message); skipped++; }
+        } catch (e) {
+          if (!/unique|constraint/i.test(e.message)) console.error('[ca-feed-insert]', e.message);
+          feedSkipped++;
+        }
       }
-      results.push({ source: feed.name, fetched: entries.length, added: feedAdded });
+      skipped += feedSkipped; noDate += feedNoDate; invalid += feedInvalid;
+      results.push({ source: feed.name, fetched: entries.length, added: feedAdded, skipped: feedSkipped, missingDate: feedNoDate, invalidItem: feedInvalid });
     } catch (e) {
-      failed++; results.push({ source: feed.name, error: e.message });
+      failed++;
+      results.push({ source: feed.name, error: String(e.message || e).slice(0, 300) });
       console.error('[ca-feed]', feed.name, e.message);
     }
   }
-  return { ok: failed < CA_FEEDS.length, added, skipped, failed, sources: results, updated: dayStr() };
+  const completedAt = now();
+  const successful = failed < CA_FEEDS.length;
+  const state = {
+    status: failed === 0 ? 'success' : successful ? 'partial' : 'failed',
+    lastAttemptAt: startedAt, lastCompletedAt: completedAt,
+    lastSuccessAt: successful ? completedAt : (previous.lastSuccessAt || null),
+    added, skipped, failed, missingDate: noDate, invalidItem: invalid,
+    sources: results
+  };
+  writeCaFeedStatus(state);
+  console.log('[ca-feed-refresh]', JSON.stringify({ status: state.status, added, skipped, failed, missingDate: noDate, invalidItem: invalid }));
+  return { ok: successful, ...state, updated: dayStr(completedAt) };
 }
-let caFeedRefreshBusy = false;
-async function runCaFeedRefresh() {
-  if (caFeedRefreshBusy) return;
+async function runCaFeedRefresh(force = false) {
+  if (caFeedRefreshBusy) return { ok: false, status: 'running', message: 'A current-affairs refresh is already in progress.', ...readCaFeedStatus() };
   caFeedRefreshBusy = true;
-  try { await refreshCurrentAffairsFeeds(); }
-  catch (e) { console.error('[ca-feed-refresh]', e.message); }
-  finally { caFeedRefreshBusy = false; }
+  try {
+    return await refreshCurrentAffairsFeeds();
+  } catch (e) {
+    const previous = readCaFeedStatus();
+    const state = { ...previous, status: 'failed', lastAttemptAt: previous.lastAttemptAt || now(), lastCompletedAt: now(), error: String(e.message || e).slice(0, 300) };
+    writeCaFeedStatus(state);
+    console.error('[ca-feed-refresh]', e.message);
+    return { ok: false, ...state };
+  } finally { caFeedRefreshBusy = false; }
 }
 function msUntilNextCurrentAffairsRefresh() {
   const localNow = new Date(now() + TZ_MIN * 60000);
-  const next = new Date(localNow);
-  // Keep a stable three-day cadence at 07:00 IST, anchored to 1 Jan 2026.
   const anchor = Date.UTC(2026, 0, 1, 7, 0, 0, 0);
   const current = Date.UTC(localNow.getUTCFullYear(), localNow.getUTCMonth(), localNow.getUTCDate(), 7, 0, 0, 0);
   const period = 3 * 24 * 60 * 60 * 1000;
@@ -1458,12 +1513,8 @@ function scheduleCurrentAffairsEveryThreeDays() {
   }, msUntilNextCurrentAffairsRefresh());
 }
 function startCurrentAffairsAutoRefresh() {
-  // Refresh official PIB/RBI feeds every six hours; build the sourced exam-relevant digest every three days at 07:00 IST when Gemini grounding is configured.
-  setTimeout(() => {
-    // Refresh official feeds at startup, but do not spend a grounded-AI request on every
-    // deploy/restart. The sourced AI digest remains on the three-day schedule below.
-    runCaFeedRefresh();
-  }, 15000);
+  // Official RSS refresh runs on startup and every six hours; AI-grounded digests have a separate quota-dependent schedule.
+  setTimeout(() => { runCaFeedRefresh(); }, 15000);
   setInterval(() => runCaFeedRefresh(), 6 * 60 * 60 * 1000);
   scheduleCurrentAffairsEveryThreeDays();
 }

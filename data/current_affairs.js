@@ -108,5 +108,48 @@ module.exports = [
     summary: 'The Indian Air Force began the operational phase of Exercise Tarang Shakti 2026 at Jodhpur. The multilateral air exercise runs from 26 September to 12 October 2026 and is themed “Power in Partnership”.',
     category: 'Defence Exercises', event_date: '2026-09-27', exams: 'ALL',
     source: 'PIB, Ministry of Defence (27 Sep 2026) — https://www.pib.gov.in/PressReleaseIframePage.aspx?PRID=2315563&lang=2&reg=48'
-  }
+  },
+
+  {
+    title: 'Core Industries Index grows 7.9% in September 2026',
+    summary: 'The provisional Index of Core Industries (base year 2022–23) grew 7.9% year-on-year in September 2026, compared with 5.9% in August. Iron ore, electricity, coal, refinery products, cement and steel recorded positive growth, while fertilisers, natural gas and crude oil declined. April–September cumulative growth was 5.1%.',
+    category: 'Economy', event_date: '2026-10-21', exams: 'ALL',
+    source: 'PIB, Ministry of Commerce & Industry (21 Oct 2026) — https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2326038&lang=1&reg=3'
+  },
+  {
+    title: 'India and New Zealand agree on electronic origin-data exchange under FTA',
+    summary: 'India’s CBIC and the New Zealand Customs Service signed a cooperation memorandum on electronic origin-data exchange for goods trade. The measure is intended to support customs cooperation and use of trade preferences under the India–New Zealand Free Trade Agreement, which entered into force on 20 October 2026.',
+    category: 'International', event_date: '2026-10-21', exams: 'ALL',
+    source: 'PIB, Ministry of Finance (21 Oct 2026) — https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2326043&lang=1&reg=3'
+  },
+  {
+    title: 'Financial inclusion saturation campaign scheduled through 31 December',
+    summary: 'The Department of Financial Services announced a campaign running from 21 October to 31 December 2026 across 2.70 lakh Gram Panchayats and Urban Local Bodies. Bank camps are to support enrolment in PMJJBY, PMSBY and APY, PMJDY account opening, re-KYC and awareness of digital fraud.',
+    category: 'Government Schemes', event_date: '2026-10-19', exams: 'ALL',
+    source: 'PIB, Ministry of Finance (19 Oct 2026) — https://www.pib.gov.in/PressReleaseIframePage.aspx?PRID=2325230&lang=2&reg=48'
+  },
+  {
+    title: 'India–New Zealand Free Trade Agreement enters into force on 20 October',
+    summary: 'India and New Zealand announced that their Free Trade Agreement would enter into force on 20 October 2026. PIB reported that the agreement is intended to expand market access for Indian exporters, including MSMEs, artisans, farmers and women entrepreneurs.',
+    category: 'Economy', event_date: '2026-10-20', exams: 'ALL',
+    source: 'PIB, Ministry of Commerce & Industry (19 Oct 2026) — https://www.pib.gov.in/PressReleaseIframePage.aspx?PRID=2325235&lang=2&reg=48'
+  },
+  {
+    title: 'Government’s Special Swachhata Campaign 6.0 reports mid-campaign progress',
+    summary: 'A PIB update dated 19 October reported that Special Swachhata Campaign 6.0 had covered more cleanliness campaign sites than the previous campaign and generated ₹491.28 crore through scrap disposal in its first 17 days. The campaign also reported 116 lakh square feet of space freed as of 19 October.',
+    category: 'National', event_date: '2026-10-19', exams: 'ALL',
+    source: 'PIB, Department of Administrative Reforms and Public Grievances (19 Oct 2026) — https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2325142&lang=1&reg=3'
+  },
+  {
+    title: 'Agri Welfare Portal launched to provide farmers mobile access to schemes',
+    summary: 'The Ministry of Agriculture and Farmers Welfare launched an upgraded Agri Welfare Portal to give farmers mobile access to agricultural schemes, financial assistance and related information, with the stated aim of reducing the need to visit offices and limiting intermediaries.',
+    category: 'Government Schemes', event_date: '2026-10-19', exams: 'ALL',
+    source: 'PIB, Ministry of Agriculture & Farmers Welfare (19 Oct 2026) — https://www.pib.gov.in/PressReleaseIframePage.aspx?PRID=2325129&lang=2&reg=48'
+  },
+  {
+    title: 'PM-SETU approves ₹1,194.92 crore for five ITI clusters',
+    summary: 'The National Steering Committee for PM-SETU approved five Strategic Investment Plans worth ₹1,194.92 crore for ITI clusters in Maharashtra, Odisha and Jammu & Kashmir. With these approvals, cumulative investment approved under the scheme reached ₹3,687 crore, according to PIB.',
+    category: 'Government Schemes', event_date: '2026-10-16', exams: 'ALL',
+    source: 'PIB, Ministry of Skill Development and Entrepreneurship (16 Oct 2026) — https://www.pib.gov.in/PressReleasePage.aspx?PRID=2324330&lang=1&reg=3'
+  },
 ];
