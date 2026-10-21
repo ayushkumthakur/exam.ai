@@ -16,6 +16,6 @@ services:
       # Keep the app private on the VM; use Caddy/Nginx for HTTPS.
       - "127.0.0.1:3000:3000"
     volumes:
-      - ./data:/data
+      - ./runtime-data:/data
     init: true
     stop_grace_period: 20s
