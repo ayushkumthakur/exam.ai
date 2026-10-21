@@ -5,7 +5,7 @@ ENV NODE_ENV=production \
     DATA_DIR=/data
 
 WORKDIR /app
-COPY --chown=node:node package.json ./ 
+COPY --chown=node:node package.json ./
 COPY --chown=node:node . .
 
 RUN mkdir -p /data && chown node:node /data
