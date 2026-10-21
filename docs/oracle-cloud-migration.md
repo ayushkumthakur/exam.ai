@@ -24,9 +24,9 @@ Connect to the VM using SSH, then install Docker Engine and the Docker Compose p
 Create the application directory and persistent data directory:
 
 ```bash
-sudo mkdir -p /opt/competitive-exam-ai/data
-sudo chown -R 1000:1000 /opt/competitive-exam-ai/data
-sudo chmod 700 /opt/competitive-exam-ai/data
+sudo mkdir -p /opt/competitive-exam-ai/runtime-data
+sudo chown -R 1000:1000 /opt/competitive-exam-ai/runtime-data
+sudo chmod 700 /opt/competitive-exam-ai/runtime-data
 ```
 
 ## 3. Get the source code
@@ -50,17 +50,17 @@ Fill in the same AI provider key(s) you already use, without posting them in cha
 
 ## 4. Restore the SQLite backup
 
-Copy the downloaded verified `app-....db` snapshot to `/opt/competitive-exam-ai/data/app.db`. Transfer it over an authenticated file-copy method such as `scp`; do not put it in a public repository or public URL.
+Copy the downloaded verified `app-....db` snapshot to `/opt/competitive-exam-ai/runtime-data/app.db`. Transfer it over an authenticated file-copy method such as `scp`; do not put it in a public repository or public URL.
 
 Then make sure the container user can read and write the database:
 
 ```bash
-sudo chown 1000:1000 /opt/competitive-exam-ai/data/app.db
-sudo chmod 600 /opt/competitive-exam-ai/data/app.db
-sudo chown -R 1000:1000 /opt/competitive-exam-ai/data
+sudo chown 1000:1000 /opt/competitive-exam-ai/runtime-data/app.db
+sudo chmod 600 /opt/competitive-exam-ai/runtime-data/app.db
+sudo chown -R 1000:1000 /opt/competitive-exam-ai/runtime-data
 ```
 
-If you have securely recovered the existing `/data/secret` file, place it at `/opt/competitive-exam-ai/data/secret` with owner UID 1000 and mode 600. Do not create a guessed or copied value. If that file is unavailable, the app will generate a new secret when it starts.
+If you have securely recovered the existing `/data/secret` file, place it at `/opt/competitive-exam-ai/runtime-data/secret` with owner UID 1000 and mode 600. Do not create a guessed or copied value. If that file is unavailable, the app will generate a new secret when it starts.
 
 ## 5. Start and verify the app privately
 
@@ -72,7 +72,7 @@ docker compose logs --tail=100 app
 curl -fsS http://127.0.0.1:3000/api/config
 ```
 
-Do not point the public domain to the new VM until you have tested the restored database and can log in. To stop the new app without deleting its data, use `docker compose down`; do not delete the `data/` directory.
+Do not point the public domain to the new VM until you have tested the restored database and can log in. To stop the new app without deleting its data, use `docker compose down`; do not delete the `runtime-data/` directory.
 
 ## 6. HTTPS
 
