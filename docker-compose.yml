@@ -1,0 +1,21 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: competitive-exam-ai
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATA_DIR: /data
+      TZ_OFFSET_MIN: "330"
+    ports:
+      # Keep the app private on the VM; use Caddy/Nginx for HTTPS.
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./runtime-data:/data
+    init: true
+    stop_grace_period: 20s
