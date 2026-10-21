@@ -204,6 +204,12 @@ async function pgCA() {
     }
     controls.append(periodChips, h('span', { class: 'small muted' }, 'Official-feed updates • Weekly shows the last 7 days'));
     list.append(controls);
+    const feed = items.feed_status || {};
+    const lastSync = feed.lastSuccessAt ? new Date(feed.lastSuccessAt).toLocaleString() : 'No successful sync recorded yet';
+    const syncMessage = feed.status === 'failed'
+      ? 'Official-feed refresh failed. The current list may be stale; an administrator can retry from Admin → Current-affairs feed health.'
+      : 'Official-feed refresh: ' + lastSync + (feed.status === 'partial' ? ' · One or more sources failed.' : '');
+    list.append(h('div', { class: feed.status === 'failed' ? 'note small' : 'info small' }, syncMessage));
 
     const chips = h('div', { class: 'chips' });
     chips.append(h('button', {
@@ -681,6 +687,46 @@ async function pgAdmin() {
   const ct = h('input', { placeholder: 'Title' }), cs = h('textarea', { rows: 3, placeholder: 'Summary (facts you have verified)' }), cc = h('select', {}, ['National', 'International', 'Defence', 'Economy', 'Science & Technology', 'Environment', 'Sports', 'Awards', 'Appointments', 'Government Schemes', 'Important Days', 'Reports & Indexes', 'Books & Authors', 'Important Persons', 'Defence Exercises'].map(c => h('option', { value: c }, c))), cd = h('input', { type: 'date' }), csrc = h('input', { placeholder: 'Source (publication / URL)' });
   async function loadReports() { try { const r = await get('/api/admin/reports'); reports.replaceChildren(r.reports.length ? h('div', { class: 'list' }, r.reports.map(x => h('div', { class: 'stack' }, h('div', { class: 'row between' }, h('span', { class: 'small muted' }, `${x.email} · ${fmtDate(x.created_at)}`), h('span', { class: 'badge ' + (x.status === 'open' ? 'bad' : 'ok') }, x.status)), h('div', {}, h('b', {}, 'Q: '), x.question || ''), h('div', { class: 'small' }, h('b', {}, 'Note: '), x.note || '–'), x.answer ? h('details', {}, h('summary', {}, 'AI answer'), md(x.answer)) : null, x.status === 'open' ? h('button', { class: 'btn sm', style: 'align-self:flex-start', onclick: async () => { await post('/api/admin/reports/' + x.id + '/resolve'); loadReports(); } }, 'Mark resolved') : null))) : h('p', { class: 'muted' }, 'No reported answers.')); } catch (e) { reports.replaceChildren(errBox(e)); } }
   loadReports();
+  const caFeedPanel = h('div', { class: 'stack' });
+  async function loadCaFeedStatus() {
+    caFeedPanel.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Checking official current-affairs feeds…'));
+    try {
+      const d = await get('/api/admin/ca/status'), s = d.status || {};
+      const badge = h('span', { class: 'badge ' + (s.status === 'success' ? 'ok' : s.status === 'partial' || s.status === 'running' ? 'warn' : s.status === 'failed' ? 'bad' : '') },
+        String(s.status || 'unknown').toUpperCase());
+      const sourceRows = (s.sources || []).map(x => h('div', { class: 'card stack', style: 'gap:.3rem' },
+        h('div', { class: 'row between', style: 'flex-wrap:wrap' }, h('b', {}, x.source || x.name || 'Official feed'),
+          h('span', { class: 'badge ' + (x.error ? 'bad' : 'ok') }, x.error ? 'Failed' : 'Responded')),
+        x.error ? h('p', { class: 'small muted' }, x.error) : h('p', { class: 'small muted' },
+          'Fetched ' + (x.fetched || 0) + ' · added ' + (x.added || 0) + ' · skipped ' + (x.skipped || 0) +
+          (x.missingDate ? ' · missing date ' + x.missingDate : '') +
+          (x.invalidItem ? ' · invalid item ' + x.invalidItem : '')),
+        h('a', { class: 'small', href: x.url || (d.sources || []).find(f => f.name === x.source)?.url || '#', target: '_blank', rel: 'noopener noreferrer' }, 'Open official feed ↗')));
+      caFeedPanel.replaceChildren(
+        h('div', { class: 'row between', style: 'flex-wrap:wrap' },
+          h('div', { class: 'row' }, h('b', {}, 'Official-feed status'), badge),
+          h('button', { class: 'btn sm', onclick: loadCaFeedStatus }, 'Refresh status')),
+        h('div', { class: 'grid g3' },
+          h('div', { class: 'card' }, h('span', { class: 'small muted' }, 'Last attempt'), h('b', {}, s.lastAttemptAt ? new Date(s.lastAttemptAt).toLocaleString() : 'Never')),
+          h('div', { class: 'card' }, h('span', { class: 'small muted' }, 'Last successful sync'), h('b', {}, s.lastSuccessAt ? new Date(s.lastSuccessAt).toLocaleString() : 'None yet')),
+          h('div', { class: 'card' }, h('span', { class: 'small muted' }, 'Items added last run'), h('b', {}, String(s.added ?? 0)))),
+        h('p', { class: 'small muted' }, 'Official RSS refresh is separate from the AI-grounded digest, so Gemini quota errors will not block feed ingestion. Fresh items are stored in the existing database; no user history is changed.'),
+        h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => {
+          const btn = e.target; btn.disabled = true; btn.textContent = 'Refreshing official feeds…';
+          try {
+            const result = await post('/api/admin/ca/refresh', {});
+            await loadCaFeedStatus();
+            toast(result.status === 'success' ? ('Feed refresh complete: ' + (result.added || 0) + ' new item(s).') :
+              result.status === 'partial' ? 'Refresh completed with a source failure. Check source details.' :
+              result.status === 'running' ? 'A feed refresh is already running.' : 'Feed refresh failed. Check the source details.');
+          } catch (err) {
+            caFeedPanel.replaceChildren(errBox(err, loadCaFeedStatus));
+          } finally { btn.disabled = false; }
+        } }, 'Refresh official feeds now'),
+        sourceRows.length ? h('div', { class: 'grid g2' }, sourceRows) : h('p', { class: 'small muted' }, 'No per-source run has been recorded yet.'));
+    } catch (e) { caFeedPanel.replaceChildren(errBox(e, loadCaFeedStatus)); }
+  }
+  loadCaFeedStatus();
   const backupsPanel = h('div', { class: 'stack' });
   async function loadBackups() {
     backupsPanel.replaceChildren(h('p', { class: 'muted' }, 'Loading backup status…'));
@@ -710,6 +756,7 @@ async function pgAdmin() {
   return h('div', { class: 'stack' }, h('h1', {}, 'Admin'),
     h('div', { class: 'card stack' }, h('h2', {}, 'Database backups'), h('p', { class: 'small muted' }, 'Admin-only SQLite snapshots. Downloads use a private, no-store response. Restore drills must use a separate test database—not the live database.'), backupsPanel),
     h('div', { class: 'card stack' }, h('h2', {}, 'AI usage & health'), h('p', { class: 'small muted' }, 'Live in-memory usage counters, API/quota errors and key-rotation events. Counters reset when the server restarts.'), health),
+    h('div', { class: 'card stack' }, h('h2', {}, 'Current-affairs feed health'), h('p', { class: 'small muted' }, 'Inspect feed failures and manually sync official sources. This is independent of the quota-dependent AI digest.'), caFeedPanel),
     h('div', { class: 'card' }, h('p', {}, `${st.users} users · ${st.exams} exams · ${st.open_reports} open report(s)`), h('p', { class: 'small muted' }, 'Questions: ' + st.questions.map(x => `${x.source_type} ${x.c}`).join(' · '))), out,
     h('div', { class: 'card stack' }, h('h2', {}, 'Verified PYQ quality control'), h('p', { class: 'small muted' }, 'Use this audit to find missing provenance and coverage gaps before publishing PYQ material.'), pyqAuditPanel),
     h('div', { class: 'card stack' }, h('h3', {}, 'Add questions / PYQ papers'), h('p', { class: 'small muted' }, pyqNote), qa, h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: run('/api/admin/questions', qa) }, 'Add questions')),
