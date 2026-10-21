@@ -10,7 +10,7 @@ async function pgTutor(parts, params) {
   const ex = (await get('/api/exams/' + S.user.exam_id)).exam; let tab = 'chat';
   const root = h('div', { class: 'stack' }), view = h('div', { class: 'stack' });
   const tabs = () => h('div', { class: 'chips' }, [['chat', 'Ask AI'], ['write', 'Answer Writing'], ['coach', 'Study Coach'], ['paper', 'Solve Paper'], ['gen', 'Generate Questions'], ['notes', 'Study Material']].map(([k, l]) => h('button', { class: 'chip' + (tab === k ? ' on' : ''), onclick: () => { tab = k; draw(); } }, l)));
-  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), h('p', { class: 'small muted' }, 'Fresh context per question. Saved chat history is kept separately for reference and is not sent with new questions.'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'AI is not configured on this server yet. An admin needs to add GEMINI_API_KEY or ANTHROPIC_API_KEY in Railway.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, write: tWrite, coach: tCoach, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
+  function draw() { root.replaceChildren(h('h1', {}, 'AI Tutor'), h('p', { class: 'small muted' }, 'Recent turns from this exam may be used to understand follow-up questions. Saved chat history can be cleared at any time.'), !S.config.ai_enabled ? h('div', { class: 'note' }, 'AI is not configured on this server yet. An admin needs to configure a supported provider key (GEMINI_API_KEY, GROQ_API_KEY, or ANTHROPIC_API_KEY) in Railway.') : null, tabs(), view); view.replaceChildren(); ({ chat: tChat, write: tWrite, coach: tCoach, paper: tPaper, gen: tGen, notes: tNotes })[tab](); }
 
   function tChat() {
     const log = h('div', { class: 'chat', 'aria-live': 'polite' }), ta = h('textarea', { rows: 2, placeholder: `Ask a ${ex.name} doubt, paste a question, or attach a photo…`, 'aria-label': 'Your question' });
@@ -24,13 +24,14 @@ async function pgTutor(parts, params) {
     }
     function actions(id, text) {
       const labels = { simple: 'Explain simply', another: 'Show another method' };
-      const send = (mode, msg) => ask(msg || `Use only the answer below as context for this request; do not rely on any other conversation history.\n\nPrevious answer:\n${text}`, mode, msg || labels[mode]);
+      const send = (mode, msg) => ask(msg || `Focus on the previous answer below. Keep the explanation consistent with it, and clearly correct it if you find an error.\n\nPrevious answer:\n${text}`, mode, msg || labels[mode]);
       const B = (l, f) => h('button', { class: 'btn sm', onclick: f }, l);
       // Kept only the actions that do something distinct: two genuinely different re-explanations,
       // one way to get more practice, one save action, and feedback. Everything redundant with these
       // (Explain in Detail/Again, Give Similar Question, Generate Quiz, Add to Revision, Ask Follow-up)
       // was trimmed — the textbox below is always visible, so there's no need for a button just to focus it.
       return h('div', { class: 'row', style: 'margin-top:.7rem' }, B('Explain Simply', () => send('simple')), B('Show Another Method', () => send('another')),
+        B('Copy Answer', async () => { try { await navigator.clipboard.writeText(text); toast('Answer copied to clipboard'); } catch { toast('Copy is unavailable in this browser. Select the answer text to copy it.'); } }),
         B('More Practice', () => { tab = 'gen'; draw(); }),
         B('🔖 Bookmark', () => post('/api/bookmarks', { kind: 'ai', ref_id: 'ai' + id, title: 'AI explanation', body: text }).then(r => toast(r.saved ? 'Bookmarked' : 'Removed')).catch(e => toast(e.message))),
         h('span', { class: 'grow' }),
@@ -48,17 +49,17 @@ async function pgTutor(parts, params) {
       sendBtn.disabled = false;
     }
     sendBtn.onclick = () => ask(); ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) ask(); });
-    log.append(h('div', { class: 'empty' }, `Ask any ${ex.name} doubt. Each question starts fresh. Answers include the correct answer, explanation, concept, and exam tip.`));
+    log.append(h('div', { class: 'empty' }, `Ask any ${ex.name} doubt. Recent turns from this exam may help with follow-ups. Answers aim to include a clear explanation, key concept, and exam tip.`));
     const historySlot = h('div');
     function drawSavedHistory() {
       historySlot.replaceChildren();
       if (!hist.length) return;
       const archive = h('div', { class: 'chat saved-history-list' });
       hist.forEach(m => archive.append(h('div', { class: 'msg ' + m.role }, m.role === 'assistant' ? md(m.content) : m.content)));
-      historySlot.append(h('details', { class: 'card saved-history' }, h('summary', { style: 'cursor:pointer;font-weight:650' }, `Saved chat history (${hist.length} messages) · not used for new questions`), archive));
+      historySlot.append(h('details', { class: 'card saved-history' }, h('summary', { style: 'cursor:pointer;font-weight:650' }, `Saved chat history (${hist.length} messages) · recent turns may inform follow-ups`), archive));
     }
     drawSavedHistory();
-    view.append(log, h('div', { class: 'card stack' }, ta, h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => file.click() }, '📷 Image / PDF'), file, chosen, h('span', { class: 'grow' }), h('button', { class: 'btn ghost sm', onclick: async () => { if (confirm('Permanently clear saved AI chat history?')) { await post('/api/ai/clear'); hist = []; log.replaceChildren(h('div', { class: 'empty' }, 'Saved history cleared. Your next question will start fresh.')); drawSavedHistory(); } } }, 'Clear History'), sendBtn),
+    view.append(log, h('div', { class: 'card stack' }, ta, h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => file.click() }, '📷 Image / PDF'), file, chosen, h('span', { class: 'grow' }), h('button', { class: 'btn ghost sm', onclick: async () => { if (confirm('Permanently clear saved AI chat history?')) { await post('/api/ai/clear'); hist = []; log.replaceChildren(h('div', { class: 'empty' }, 'Saved history cleared. Previous saved turns are no longer available as tutor context.')); drawSavedHistory(); } } }, 'Clear History'), sendBtn),
       h('p', { class: 'small muted' }, 'Each AI request is independent. Use an answer’s follow-up button when you intentionally want to refer to that answer. Ctrl+Enter to send. Verify important facts with your textbook or official sources.')), historySlot);
     if (params.get('ask')) { ta.value = params.get('ask'); history.replaceState(null, '', '#/tutor'); ask(); }
   }
