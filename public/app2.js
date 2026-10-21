@@ -315,12 +315,101 @@ async function pgCA() {
 
 // ---------- study plan ----------
 async function pgPlan() {
-  const r = await get('/api/plan'); const p = r.plan; const done = p.tasks.filter(t => t.done).length;
-  const act = (t) => t.type === 'revision' ? go('#/revision' + q({ subject: t.subject, topic: t.topic })) : t.type === 'mistakes' ? go('#/revision?mistakes=1') : t.type === 'practice' ? go('#/practice' + q({ subject: t.subject, topic: t.topic, start: 1 })) : t.type === 'current_affairs' ? go('#/ca') : go('#/tests');
-  return h('div', { class: 'stack' }, h('h1', {}, 'Study Plan'), h('p', { class: 'muted' }, `Today’s plan fits your ${p.budget_minutes}-minute daily budget (${p.planned_minutes} min planned). ${r.days_left !== null && r.days_left >= 0 ? r.days_left + ' days to your exam.' : ''}`),
-    h('div', { class: 'card stack' }, h('div', { class: 'row between' }, h('b', {}, `${done} of ${p.tasks.length} done`), h('span', { class: 'muted small' }, p.day)), h('div', { class: 'bar ok' }, h('i', { style: `width:${Math.round(100 * done / p.tasks.length)}%` })),
-      h('div', { class: 'list' }, p.tasks.map(t => h('div', { class: 'row between' }, h('label', { class: 'row', style: 'margin:0;font-weight:500' }, h('input', { type: 'checkbox', style: 'width:22px;min-height:22px', checked: t.done, onchange: async (e) => { await post('/api/plan/done', { key: t.key, done: e.target.checked }); go('#/plan'); } }), h('span', {}, t.title, h('span', { class: 'muted small' }, ` · ${t.minutes} min`))), h('button', { class: 'btn sm', onclick: () => act(t) }, 'Start'))))),
-    h('div', { class: 'info' }, 'The plan adapts to your weak topics, open mistakes, preparation stage and exam date, and avoids overloading you.'));
+  const r = await get('/api/plan');
+  const p = r.plan || {};
+  const tasks = Array.isArray(p.tasks) ? p.tasks : [];
+  const done = tasks.filter(t => t.done).length;
+  const completion = tasks.length ? Math.round(100 * done / tasks.length) : 0;
+  const nextTask = tasks.find(t => !t.done) || null;
+  const budget = Math.max(0, Number(p.budget_minutes) || 0);
+  const planned = Math.max(0, Number(p.planned_minutes) || 0);
+  const remaining = Math.max(0, budget - planned);
+  const dayLabel = p.day ? new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(p.day + 'T12:00:00')) : 'Today';
+  const daysLeft = r.days_left === null || r.days_left === undefined || !Number.isFinite(Number(r.days_left)) ? null : Number(r.days_left);
+  const countdown = daysLeft === null ? 'Exam date not set' : daysLeft < 0 ? 'Target date passed' : daysLeft === 0 ? 'Exam target is today' : daysLeft + ' days to target';
+  const typeMeta = {
+    revision: { label: 'Revision', number: '01' },
+    mistakes: { label: 'Mistake review', number: '02' },
+    practice: { label: 'Practice', number: '03' },
+    current_affairs: { label: 'Current affairs', number: '04' },
+    test: { label: 'Test', number: '05' }
+  };
+  const act = (t) => t.type === 'revision'
+    ? go('#/revision' + q({ subject: t.subject, topic: t.topic }))
+    : t.type === 'mistakes' ? go('#/revision?mistakes=1')
+    : t.type === 'practice' ? go('#/practice' + q({ subject: t.subject, topic: t.topic, start: 1 }))
+    : t.type === 'current_affairs' ? go('#/ca')
+    : go('#/tests');
+  const stat = (label, value, note) => h('div', { class: 'card plan-stat' },
+    h('span', { class: 'small muted' }, label),
+    h('strong', {}, value),
+    h('span', { class: 'small muted' }, note));
+  const taskCards = tasks.map((t, index) => {
+    const meta = typeMeta[t.type] || { label: 'Study task', number: String(index + 1).padStart(2, '0') };
+    return h('article', { class: 'card plan-task' + (t.done ? ' is-done' : '') },
+      h('div', { class: 'row between' },
+        h('div', { class: 'row' }, h('span', { class: 'plan-step' }, String(index + 1).padStart(2, '0')), h('span', { class: 'badge' }, meta.label)),
+        h('span', { class: 'badge ' + (t.done ? 'ok' : (nextTask && nextTask.key === t.key ? 'warn' : '')) }, t.done ? 'Complete' : (nextTask && nextTask.key === t.key ? 'Next up' : 'Planned'))),
+      h('h3', {}, t.title),
+      h('div', { class: 'row between plan-task-bottom' },
+        h('span', { class: 'small muted' }, '◷ ' + (Number(t.minutes) || 0) + ' minutes'),
+        h('button', { class: 'btn sm' + (nextTask && nextTask.key === t.key ? ' primary' : ''), onclick: () => act(t) }, 'Start task →')),
+      h('label', { class: 'row plan-complete-toggle' },
+        h('input', { type: 'checkbox', checked: !!t.done, onchange: async (e) => {
+          const control = e.target, wanted = control.checked;
+          control.disabled = true;
+          try {
+            await post('/api/plan/done', { key: t.key, done: wanted });
+            go('#/plan');
+          } catch (err) {
+            control.checked = !wanted;
+            control.disabled = false;
+            toast(err.message || 'Could not update this task. Please try again.');
+          }
+        } }),
+        h('span', {}, t.done ? 'Mark as not done' : 'Mark complete')));
+  });
+  const nextPanel = nextTask
+    ? h('section', { class: 'plan-next card' },
+        h('div', { class: 'plan-next-copy' },
+          h('span', { class: 'plan-kicker' }, 'YOUR NEXT MOVE'),
+          h('h2', {}, nextTask.title),
+          h('p', {}, 'Start here, then tick the task off to update today’s progress.'),
+          h('span', { class: 'small muted' }, (Number(nextTask.minutes) || 0) + ' minutes · ' + ((typeMeta[nextTask.type] || {}).label || 'Study task'))),
+        h('button', { class: 'btn accent', onclick: () => act(nextTask) }, 'Start next task →'))
+    : h('section', { class: 'plan-next card' },
+        h('div', { class: 'plan-next-copy' }, h('span', { class: 'plan-kicker' }, 'DAILY GOAL REACHED'),
+          h('h2', {}, tasks.length ? 'You completed today’s plan.' : 'Your plan is being prepared.'),
+          h('p', {}, tasks.length ? 'Great work. Keep the streak alive with a short recap or stop here and come back tomorrow.' : 'No tasks are available right now. Visit practice or your profile and check your exam preferences.')),
+        h('button', { class: 'btn accent', onclick: () => tasks.length ? go('#/progress') : go('#/profile') }, tasks.length ? 'View progress →' : 'Check profile →'));
+  const quickActions = h('section', { class: 'plan-quick-actions' },
+    h('h2', {}, 'Quick study actions'),
+    h('div', { class: 'grid g2' },
+      h('button', { class: 'card plan-quick', onclick: () => go('#/practice?start=1') }, h('b', {}, 'Mixed practice'), h('span', { class: 'small muted' }, 'Build speed across topics')),
+      h('button', { class: 'card plan-quick', onclick: () => go('#/revision?mistakes=1') }, h('b', {}, 'Mistake book'), h('span', { class: 'small muted' }, 'Retry unresolved errors')),
+      h('button', { class: 'card plan-quick', onclick: () => go('#/tests') }, h('b', {}, 'Mock tests'), h('span', { class: 'small muted' }, 'Check exam readiness')),
+      h('button', { class: 'card plan-quick', onclick: () => go('#/tutor') }, h('b', {}, 'Ask AI Tutor'), h('span', { class: 'small muted' }, 'Explain a difficult concept'))));
+  return h('div', { class: 'stack daily-plan-page' },
+    h('section', { class: 'plan-hero' },
+      h('div', { class: 'plan-hero-top' }, h('span', { class: 'plan-kicker' }, 'PERSONALISED STUDY ROUTINE'), h('span', { class: 'badge' }, dayLabel)),
+      h('h1', {}, 'Your Daily Study Plan'),
+      h('p', {}, 'Small, focused sessions based on your revision queue, open mistakes and exam timeline.'),
+      h('div', { class: 'plan-hero-bottom' }, h('span', {}, countdown), h('a', { href: '#/profile' }, 'Adjust daily target →'))),
+    h('section', { class: 'plan-stat-grid', 'aria-label': 'Daily plan summary' },
+      stat('DAILY BUDGET', budget + ' min', 'Your available study time'),
+      stat('PLANNED', planned + ' min', remaining + ' min buffer'),
+      stat('COMPLETED', done + ' / ' + tasks.length, 'Tasks finished today')),
+    h('section', { class: 'card plan-progress-card' },
+      h('div', { class: 'row between' }, h('div', {}, h('b', {}, completion + '% complete'), h('p', { class: 'small muted' }, done === tasks.length && tasks.length ? 'All planned tasks complete' : 'Work through the next task to keep momentum')),
+        h('span', { class: 'plan-progress-fraction' }, done + '/' + tasks.length)),
+      h('div', { class: 'bar ok plan-progress-track', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-valuenow': String(completion), 'aria-label': 'Daily study plan completion' }, h('i', { style: 'width:' + completion + '%' }))),
+    nextPanel,
+    h('section', { class: 'plan-task-section stack' },
+      h('div', { class: 'row between' }, h('div', {}, h('h2', {}, 'Today’s checklist'), h('p', { class: 'small muted' }, 'Check tasks off as you finish them. Your progress is saved to your account.')),
+        h('span', { class: 'badge' }, tasks.length + ' tasks')),
+      tasks.length ? h('div', { class: 'plan-task-list' }, taskCards) : h('div', { class: 'card empty' }, 'No tasks are available today. Try practice or check your target exam in Profile.')),
+    quickActions,
+    h('div', { class: 'info' }, 'This plan is generated from your saved preparation data. A task marked complete is a personal checklist signal; it does not automatically mark practice questions or tests as completed.'));
 }
 
 // ---------- progress + leaderboard ----------
