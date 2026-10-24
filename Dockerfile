@@ -8,8 +8,18 @@ WORKDIR /app
 COPY --chown=node:node package.json ./
 COPY --chown=node:node . .
 
-RUN mkdir -p /data && chown node:node /data
-USER node
+# The persistent volume may contain root-owned files from the original deployment.
+# Fix ownership at container start, then drop privileges before running the app.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gosu \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /data \
+    && chown node:node /data
+COPY docker-entrypoint.sh /usr/local/bin/competitive-exam-entrypoint
+RUN chmod 0755 /usr/local/bin/competitive-exam-entrypoint
+
+USER root
+ENTRYPOINT ["/usr/local/bin/competitive-exam-entrypoint"]
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
