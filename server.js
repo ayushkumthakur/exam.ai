@@ -1383,7 +1383,8 @@ async function refreshCurrentAffairsAuto(days, maxItems) {
 // ---------- low-cost official current-affairs feed ingestion ----------
 const CA_FEEDS = [
   { name: 'Press Information Bureau', url: 'https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3' },
-  { name: 'Reserve Bank of India', url: 'https://www.rbi.org.in/Scripts/RSS.aspx?Id=6' }
+  { name: 'Reserve Bank of India — Press Releases', url: 'https://rbi.org.in/pressreleases_rss.xml' },
+  { name: 'Reserve Bank of India — Notifications', url: 'https://rbi.org.in/notifications_rss.xml' }
 ];
 const CA_FEED_STATUS_KEY = 'ca_feed_refresh_status';
 function readCaFeedStatus() {
