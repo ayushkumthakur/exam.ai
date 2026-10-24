@@ -7,8 +7,23 @@ const CA_SEED = require('./data/current_affairs');
 const CSAT_SEED = require('./data/csat_questions');
 
 const dir = process.env.DATA_DIR || path.join(__dirname, 'storage');
-fs.mkdirSync(dir, { recursive: true });
-const db = new DatabaseSync(path.join(dir, 'app.db'));
+fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+const dbPath = path.join(dir, 'app.db');
+
+// A persistent volume can retain restrictive permissions across deployments. Normalize
+// the existing SQLite files for the current non-root app user before opening the DB.
+// Keep owner-only permissions because the database contains private student records.
+try { fs.chmodSync(dir, 0o700); }
+catch (error) { console.error('[db] Could not normalize DATA_DIR permissions:', error.message); }
+for (const suffix of ['', '-wal', '-shm', '-journal']) {
+  const filePath = dbPath + suffix;
+  if (!fs.existsSync(filePath)) continue;
+  try { fs.chmodSync(filePath, 0o600); }
+  catch (error) { console.error('[db] Could not normalize SQLite file permissions for ' + path.basename(filePath) + ':', error.message); }
+}
+const db = new DatabaseSync(dbPath);
+try { fs.chmodSync(dbPath, 0o600); }
+catch (error) { console.error('[db] Could not set app.db permissions:', error.message); }
 db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
 
 db.exec(`
