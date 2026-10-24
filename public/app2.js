@@ -744,17 +744,25 @@ async function pgAdmin() {
         h('p', { class: 'small muted' }, d.health?.latestAgeHours == null ? 'No backup snapshot found.' : 'Latest snapshot age: ' + d.health.latestAgeHours + ' hours. Target: within ' + d.health.freshWithinHours + ' hours.'),
         h('p', { class: 'small muted' }, 'Storage: ' + (d.policy?.storage || 'persistent volume') + '. Off-site backup: ' + (d.health?.offsiteConfigured ? 'configured' : 'not configured') + '. Downloaded files contain student data; store them securely.'),
         h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => {
-          e.target.disabled = true;
-          try { await post('/api/admin/backups/create', {}); toast('Backup created and verified.'); await loadBackups(); }
-          catch (err) { toast(err.message || 'Could not create backup.'); }
-          finally { e.target.disabled = false; }
-        } }, 'Create verified backup'),
+          const button = e.target;
+          const originalLabel = button.textContent;
+          button.disabled = true;
+          button.textContent = 'Creating backup…';
+          try {
+            const backup = await post('/api/admin/backups/create', {});
+            if (!backup || !backup.file) throw new Error('Backup was created, but its filename was not returned. Refresh the list and download it there.');
+            await loadBackups();
+            toast('Verified backup created. Download starting…');
+            window.location.href = '/api/admin/backups/' + encodeURIComponent(backup.file);
+          } catch (err) { toast(err.message || 'Could not create backup.'); }
+          finally { button.disabled = false; button.textContent = originalLabel; }
+        } }, 'Create & download backup copy'),
         items.length ? h('div', { class: 'list' }, items) : h('p', { class: 'muted' }, 'No saved snapshots yet.'));
     } catch (e) { backupsPanel.replaceChildren(errBox(e, loadBackups)); }
   }
   loadBackups();
   return h('div', { class: 'stack' }, h('h1', {}, 'Admin'),
-    h('div', { class: 'card stack' }, h('h2', {}, 'Database backups'), h('p', { class: 'small muted' }, 'Admin-only SQLite snapshots. Downloads use a private, no-store response. Restore drills must use a separate test database—not the live database.'), backupsPanel),
+    h('div', { class: 'card stack' }, h('h2', {}, 'Database backups'), h('p', { class: 'small muted' }, 'Admin-only SQLite snapshots. Create & download makes and verifies a fresh snapshot, then downloads an off-site copy to this device. Store downloaded files securely. Restore drills must use a separate test database—not the live database.'), backupsPanel),
     h('div', { class: 'card stack' }, h('h2', {}, 'AI usage & health'), h('p', { class: 'small muted' }, 'Live in-memory usage counters, API/quota errors and key-rotation events. Counters reset when the server restarts.'), health),
     h('div', { class: 'card stack' }, h('h2', {}, 'Current-affairs feed health'), h('p', { class: 'small muted' }, 'Inspect feed failures and manually sync official sources. This is independent of the quota-dependent AI digest.'), caFeedPanel),
     h('div', { class: 'card' }, h('p', {}, `${st.users} users · ${st.exams} exams · ${st.open_reports} open report(s)`), h('p', { class: 'small muted' }, 'Questions: ' + st.questions.map(x => `${x.source_type} ${x.c}`).join(' · '))), out,
