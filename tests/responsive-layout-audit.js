@@ -9,6 +9,7 @@ const mobile = read('public/mobile-reference.css');
 const desktop = read('public/full-site-premium.css');
 const base = read('public/style.css');
 const mockTest = read('public/mock-test-responsive.css');
+const upgrade = read('public/site-upgrade-v3.css');
 
 assert.match(html, /name="viewport"[^>]*width=device-width[^>]*viewport-fit=cover/i);
 assert.match(html, /mobile-reference\.css\?v=\d+/);
@@ -77,5 +78,11 @@ assert.match(app, /class: 'card stack mock-builder'/);
 assert.match(styles, /\.mock-builder\s*\{/);
 assert.match(styles, /\.mock-builder \.blueprint-mode-picker/);
 assert.match(styles, /@media\(max-width:420px\)/);
+
+assert.match(html, /site-upgrade-v3\.css\?v=\d+/);
+assert.match(upgrade, /@media \(max-width: 820px\)/);
+assert.match(upgrade, /overflow-x: clip/);
+assert.match(upgrade, /font-size: 16px !important/);
+assert.match(upgrade, /\.opt \{[\s\S]*?overflow-wrap: anywhere/);
 
 console.log('PASS UPSC mock picker premium cards + responsive mobile layout audit.');

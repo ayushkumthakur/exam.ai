@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const db = require('./db');
+const { normalizeQuestionStem } = require('./question-normalizer');
 const { TOPICS, syllabusFor, NOTES } = require('./data/catalog');
 const ai = require('./ai');
 const { xmlField, feedEntries, feedLink, feedDate, feedSummary, isEnglishText } = require('./current-affairs-feed');
@@ -256,8 +257,7 @@ function pickQuestions(user, exam, { subject, topic, difficulty, source, ids, li
   const unique = [];
   const stems = new Set();
   for (const question of candidates) {
-    const stem = String(question.text || '').normalize('NFKC').toLowerCase()
-      .replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' ');
+    const stem = normalizeQuestionStem(question.text);
     if (!stem || stems.has(stem)) continue;
     stems.add(stem);
     unique.push(question);
