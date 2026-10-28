@@ -35,7 +35,7 @@ const backupApi = require('../db-backup');
     });
     assert.equal(r.error, null);
     assert.equal(r.config.prefix, 'private/backups', 'object prefix is normalized');
-    assert.equal(r.config.endpoint, 'http://127.0.0.1:9000');
+    assert.equal(r.config.endpoint, 'http://127.0.0.1:9000/');
 
     r = backupApi.resolveS3Config({
       NODE_ENV: 'test',
