@@ -742,7 +742,14 @@ async function pgAdmin() {
       backupsPanel.replaceChildren(
         h('div', { class: 'row between', style: 'flex-wrap:wrap' }, h('div', { class: 'row' }, h('b', {}, 'Latest backup'), statusBadge), h('button', { class: 'btn sm', onclick: loadBackups }, 'Refresh')),
         h('p', { class: 'small muted' }, d.health?.latestAgeHours == null ? 'No backup snapshot found.' : 'Latest snapshot age: ' + d.health.latestAgeHours + ' hours. Target: within ' + d.health.freshWithinHours + ' hours.'),
-        h('p', { class: 'small muted' }, 'Storage: ' + (d.policy?.storage || 'persistent volume') + '. Off-site backup: ' + (d.health?.offsiteConfigured ? 'configured' : 'not configured') + '. Downloaded files contain student data; store them securely.'),
+        h('p', { class: 'small muted' }, 'Storage: ' + (d.policy?.storage || 'persistent volume') + '. Automatic cloud backup: ' + (d.health?.offsiteConfigured ? 'configured' : 'not configured') + '. Downloaded files contain student data; store them securely.'),
+        h('div', { class: 'small muted', style: 'overflow-wrap:anywhere' },
+          d.health?.offsite?.configurationError ? 'Cloud backup setup: ' + d.health.offsite.configurationError :
+          d.health?.offsiteConfigured ?
+            (d.health.offsite.lastSuccessAt ? 'Last cloud upload: ' + new Date(d.health.offsite.lastSuccessAt).toLocaleString() + (d.health.offsite.lastSuccessFile ? ' · ' + d.health.offsite.lastSuccessFile : '') :
+              'Cloud backup is configured; the first successful upload is pending.') :
+            'For automatic off-site copies, configure BACKUP_S3_BUCKET, BACKUP_S3_ACCESS_KEY_ID, BACKUP_S3_SECRET_ACCESS_KEY and BACKUP_S3_ENDPOINT (optional on AWS S3).'),
+        d.health?.offsite?.lastError ? h('p', { class: 'small', style: 'color:var(--danger, #b91c1c);overflow-wrap:anywhere' }, 'Last cloud upload issue: ' + d.health.offsite.lastError) : null,
         h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => {
           const button = e.target;
           const originalLabel = button.textContent;
