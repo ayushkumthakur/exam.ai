@@ -1125,6 +1125,7 @@ route('GET', '/api/admin/backups', ADM, () => {
   const latestAgeHours = latest ? Math.max(0, (now() - Date.parse(latest.createdAt)) / 3600000) : null;
   const freshWithinHours = 26; // daily job plus a small scheduling/startup grace window
   const freshness = !latest ? 'missing' : latestAgeHours <= freshWithinHours ? 'fresh' : 'stale';
+  const offsite = dbBackup.getOffsiteBackupHealth();
   return {
     backups,
     health: {
@@ -1132,16 +1133,17 @@ route('GET', '/api/admin/backups', ADM, () => {
       latestFile: latest?.file || null,
       latestAgeHours: latestAgeHours === null ? null : Math.round(latestAgeHours * 10) / 10,
       freshWithinHours,
-      offsiteConfigured: false
+      offsiteConfigured: offsite.configured,
+      offsite
     },
     policy: {
       intervalHours: 24,
       retention: Math.max(1, Math.min(30, Number(process.env.DB_BACKUP_KEEP) || 7)),
-      storage: 'persistent DATA_DIR volume; off-site copy not configured'
+      storage: offsite.configured ? 'persistent DATA_DIR volume plus S3-compatible off-site copy' : 'persistent DATA_DIR volume; configure S3-compatible off-site storage for disaster recovery'
     }
   };
 });
-route('POST', '/api/admin/backups/create', ADM, () => dbBackup.createBackup());
+route('POST', '/api/admin/backups/create', ADM, async () => await dbBackup.createBackup());
 route('GET', '/api/admin/backups/:file', ADM, (c) => {
   const name = String(c.params.file || '');
   // Backup downloads are admin-only and limited to snapshots already reported by dbBackup.
