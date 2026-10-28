@@ -13,6 +13,7 @@ fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(restoreDir, { recursive: true });
 let db;
 let restored;
+(async () => {
 try {
   process.env.DATA_DIR = dataDir;
   db = require('../db');
@@ -26,7 +27,7 @@ try {
     answers: db.prepare('SELECT COUNT(*) AS n FROM answers').get().n
   };
   const { createBackup } = require('../db-backup');
-  const backup = createBackup({ dataDir, keep: 2 });
+  const backup = await createBackup({ dataDir, keep: 2 });
   assert.equal(backup.ok, true);
   const snapshotPath = path.join(dataDir, 'backups', backup.file);
   const restoredPath = path.join(restoreDir, 'app.db');
@@ -48,3 +49,4 @@ try {
   if (db) db.close();
   fs.rmSync(root, { recursive: true, force: true });
 }
+})().catch(error => { console.error(error); process.exitCode = 1; });

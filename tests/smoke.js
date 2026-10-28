@@ -185,7 +185,7 @@ const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++
     'admin AI health lists only configured status for supported providers');
   r = await api('GET', '/api/admin/backups');
   ok(r.status === 200 && ['fresh', 'stale', 'missing'].includes(r.data.health?.freshness), 'admin backup endpoint reports freshness health');
-  ok(r.status === 200 && r.data.health?.offsiteConfigured === false && Array.isArray(r.data.backups), 'backup health clearly reports off-site status and backup list');
+  ok(r.status === 200 && typeof r.data.health?.offsiteConfigured === 'boolean' && typeof r.data.health?.offsite?.configured === 'boolean' && Array.isArray(r.data.backups), 'backup health reports cloud configuration, last-upload state, and local snapshots');
   const backupCreated = await api('POST', '/api/admin/backups/create', {});
   ok(backupCreated.status === 200 && backupCreated.data.ok && backupCreated.data.bytes > 0,
     'admin can create an integrity-checked SQLite snapshot on demand');

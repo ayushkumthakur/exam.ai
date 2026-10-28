@@ -5,12 +5,13 @@ const path = require('node:path');
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'competitive-exam-ai-backup-test-'));
 process.env.DATA_DIR = dataDir;
 let db;
+(async () => {
 try {
   db = require('../db');
   db.prepare('INSERT INTO users (email, name, created_at) VALUES (?, ?, ?)').run('backup-check@example.test', 'Backup Check', Date.now());
   const before = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
   const { createBackup, listBackups } = require('../db-backup');
-  const result = createBackup({ dataDir, keep: 2 });
+  const result = await createBackup({ dataDir, keep: 2 });
   assert.equal(result.ok, true);
   assert.ok(result.bytes > 0);
   assert.equal(listBackups({ dataDir }).length, 1);
@@ -27,3 +28,4 @@ try {
   if (db) db.close();
   fs.rmSync(dataDir, { recursive: true, force: true });
 }
+})().catch(error => { console.error(error); process.exitCode = 1; });

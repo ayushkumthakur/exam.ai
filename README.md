@@ -58,6 +58,12 @@ Set variables in your deployment environment or local shell. Never commit API ke
 | `GROQ_API_KEY` | Optional secret Groq API key for text-only AI fallback. Add it in Railway Variables; never commit it. |
 | `GROQ_API_KEY_2` | Optional backup Groq key. |
 | `GROQ_MODEL` | Optional Groq model override; defaults to `llama-3.3-70b-versatile`. |
+| `BACKUP_S3_BUCKET` | Optional bucket name for automatic off-site SQLite backup copies. |
+| `BACKUP_S3_ACCESS_KEY_ID` / `BACKUP_S3_SECRET_ACCESS_KEY` | Optional dedicated least-privilege S3-compatible credentials. Add them only to Railway Variables or your host secret store; never commit them. |
+| `BACKUP_S3_ENDPOINT` | Optional S3 endpoint URL; omit for standard AWS S3, set for Cloudflare R2 or another S3-compatible service. HTTPS is required in production. |
+| `BACKUP_S3_REGION` | Optional signing region; defaults to `us-east-1`. Set the provider's region; use `auto` only with an explicit endpoint. |
+| `BACKUP_S3_PREFIX` | Optional object-key prefix; defaults to `competitive-exam-ai`. |
+| `BACKUP_S3_TIMEOUT_MS` | Optional upload timeout in milliseconds (1,000–300,000; default 60,000). |
 | `ANTHROPIC_API_KEY` | Secret API key for Anthropic; required if Anthropic is the primary or backup provider. |
 | `ANTHROPIC_MODEL` | Optional Anthropic model override; defaults to the model configured in `ai.js`. |
 | `ADMIN_EMAILS` | Comma-separated email addresses granted admin role by the application. |
@@ -69,7 +75,7 @@ Production checklist:
 - Keep API keys and application secrets private; rotate any key that has been exposed.
 - Do not leave temporary admin-bootstrap variables configured after a one-time recovery.
 - Configure email delivery if real email OTPs are required.
-- Back up the SQLite data and test restoring the backup before a production handover.
+- Back up the SQLite data and test restoring the backup before a production handover. Local snapshots stay on the persistent volume. To copy snapshots automatically off-site, configure the optional `BACKUP_S3_*` settings above with a private bucket and least-privilege credentials, then confirm the Admin → Database backups panel shows a successful cloud upload. Upload failures are recorded and do not discard the local snapshot.
 - Review provider quotas and costs before enabling AI generation for public users. Admins can inspect in-memory AI usage, token counts, API errors and Gemini key-slot rotations from the Admin dashboard; counters reset on server restart and are not a billing ledger.
 
 ## Tests
@@ -100,7 +106,7 @@ Ensure the SQLite data directory persists across restarts and deployments. Never
 - [ ] Buyer receives setup and deployment instructions.
 - [ ] Buyer verifies admin access and tests signup, AI generation, mock submission, saved results, and email flows.
 - [x] Local SQLite snapshots are created automatically after startup and every 24 hours; each snapshot is integrity-checked and the newest 7 are retained by default. Set `DB_BACKUP_KEEP` to change retention (1–30).
-- [ ] Off-site backup is not configured: local snapshots share the Railway persistent volume and do not protect against volume loss. Configure external object storage and test a restore before treating disaster recovery as complete.
+- [ ] Confirm whether `BACKUP_S3_*` is configured. If not, off-site backup is still disabled and local snapshots share the Railway persistent volume; configure external object storage and test a restore before treating disaster recovery as complete.
 - [ ] Any third-party provider accounts, API usage costs, domains, and hosting are transferred explicitly or excluded in writing.
 - [ ] Ownership, included assets, support period, payment terms, and permitted use are documented in the sale agreement.
 
