@@ -76,10 +76,14 @@ Official sources checked:
 - [UPSC CSE Prelims 2026 exam page](https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026)
 - [UPSC previous question papers](https://www.upsc.gov.in/examinations/previous-question-papers)
 - [UPSC answer-key archives](https://www.upsc.gov.in/examinations/answer-key/archives)
+- [2026 GS-I provisional answer key](https://www.upsc.gov.in/sites/default/files/ProvAnsKey%E2%80%93GS-I-CSP-Exam-2026-270526.pdf)
+- [2026 CSAT provisional answer key](https://www.upsc.gov.in/sites/default/files/ProvAnsKey%E2%80%93GS-II-CSP-Exam-2026-270526.pdf)
+- [2026 GS-I official question paper](https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-I_25052026.pdf)
+- [2026 CSAT official question paper](https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-II_25052026.pdf)
 - [2025 GS-I official question paper](https://www.upsc.gov.in/sites/default/files/QP-CSP-25-GENERAL-STUDIES-PAPER-I-26052025.pdf)
 - [2025 GS-II official question paper](https://www.upsc.gov.in/sites/default/files/QP-CSP-25-GENERAL-STUDIES-PAPER-II-26052025.pdf)
 
-The official 2026 exam page lists both Prelims question papers, and the 2025 official listing contains both papers. However, this audit did not complete an item-by-item comparison of the full paper text, options, and a matching official answer key. The UPSC answer-key archive did not expose the older key in the available text view. A paper listing is not sufficient evidence. **Verified items added: 0.**
+The official 2026 exam page lists both Prelims question papers. The 2026 provisional answer-key PDFs were retrieved, but the 2026 paper PDFs were too large for the available retrieval path (approximately 35.9 MB for GS-I and 27.7 MB for CSAT), so exact stem/options could not be compared to the keys. The 2025 GS-I paper PDF was also too large (approximately 29.2 MB), and its final-key PDF retrieval timed out. A readable key or a paper listing alone is not sufficient evidence. **Verified items added: 0.**
 
 ### SSC CGL Tier-I
 
