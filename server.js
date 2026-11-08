@@ -3,6 +3,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
 const db = require('./db');
 const { normalizeQuestionStem } = require('./question-normalizer');
 const { TOPICS, syllabusFor, NOTES } = require('./data/catalog');
@@ -1581,7 +1582,32 @@ function readBody(req, limit = 2e6) {
     req.on('error', reject);
   });
 }
-function send(res, status, obj) { const body = JSON.stringify(obj); res.writeHead(status, { ...responseHeaders(), 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }); res.end(body); }
+// Compresses response bodies when the client supports it (almost always) and the payload is
+// large enough that compression actually helps (small bodies just pay gzip's fixed overhead).
+// Covers both JSON API responses and static JS/CSS/HTML — none of this changes what's sent,
+// only how many bytes it takes to send it.
+const COMPRESSIBLE_MIN_BYTES = 800;
+function sendCompressed(req, res, status, headers, body) {
+  const buf = Buffer.isBuffer(body) ? body : Buffer.from(body);
+  const accept = String(req.headers['accept-encoding'] || '');
+  const finalHeaders = { ...headers };
+  if (buf.length >= COMPRESSIBLE_MIN_BYTES) {
+    finalHeaders['Vary'] = finalHeaders['Vary'] ? finalHeaders['Vary'] + ', Accept-Encoding' : 'Accept-Encoding';
+    if (/\bbr\b/.test(accept)) {
+      const compressed = zlib.brotliCompressSync(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } });
+      finalHeaders['Content-Encoding'] = 'br'; finalHeaders['Content-Length'] = String(compressed.length);
+      res.writeHead(status, finalHeaders); return res.end(compressed);
+    }
+    if (/\bgzip\b/.test(accept)) {
+      const compressed = zlib.gzipSync(buf, { level: 6 });
+      finalHeaders['Content-Encoding'] = 'gzip'; finalHeaders['Content-Length'] = String(compressed.length);
+      res.writeHead(status, finalHeaders); return res.end(compressed);
+    }
+  }
+  finalHeaders['Content-Length'] = String(buf.length);
+  res.writeHead(status, finalHeaders); res.end(buf);
+}
+function send(res, status, obj, req) { const body = JSON.stringify(obj); const headers = { ...responseHeaders(), 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }; if (req) return sendCompressed(req, res, status, headers, body); res.writeHead(status, headers); res.end(body); }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x'); const ip = clientIp(req);
@@ -1589,12 +1615,12 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/')) {
       const method = req.method; let matched = null, params = {};
       for (const r of routes) { if (r.method !== method) continue; const m = r.re.exec(url.pathname); if (m) { matched = r; params = m.groups || {}; break; } }
-      if (!matched) return send(res, 404, { error: 'Not found' });
+      if (!matched) return send(res, 404, { error: 'Not found' }, req);
       const user = getUser(req);
       enforceSameOrigin(req, !!user);
-      if (matched.opts.auth && !user) return send(res, 401, { error: 'Please log in.' });
-      if (matched.opts.admin && user.role !== 'admin') return send(res, 403, { error: 'Admins only.' });
-      if (matched.opts.onboarded && !user.onboarded) return send(res, 409, { error: 'Please finish setting up your profile.', code: 'ONBOARDING' });
+      if (matched.opts.auth && !user) return send(res, 401, { error: 'Please log in.' }, req);
+      if (matched.opts.admin && user.role !== 'admin') return send(res, 403, { error: 'Admins only.' }, req);
+      if (matched.opts.onboarded && !user.onboarded) return send(res, 409, { error: 'Please finish setting up your profile.', code: 'ONBOARDING' }, req);
 
       // Throttle expensive generation/analysis and test creation before reading large bodies
       // or invoking external AI APIs. Limits are per client IP and, when logged in, per account.
@@ -1625,20 +1651,35 @@ const server = http.createServer(async (req, res) => {
           'content-disposition': 'attachment; filename="' + name + '"', 'cache-control': 'no-store, private' });
         return res.end(data);
       }
-      return send(res, 200, out);
+      return send(res, 200, out, req);
     }
-    // static
+    // static. HTML stays no-cache (so a fresh deploy's index.html is always picked up right away);
+    // everything else gets a short cache window plus a content-hash ETag, so a client revisiting
+    // within that window — or getting a 304 after it — skips re-downloading bytes that haven't
+    // changed, instead of fetching them fresh on literally every single request as before.
     let p; try { p = decodeURIComponent(url.pathname); } catch { res.writeHead(400, SEC); return res.end('Bad request'); } if (p === '/' || !path.extname(p)) p = '/index.html';
     const file = path.join(PUB, path.normalize(p));
     if (!file.startsWith(PUB + path.sep)) { res.writeHead(403); return res.end(); }
     fs.readFile(file, (err, data) => {
       if (err) { res.writeHead(404, SEC); return res.end('Not found'); }
-      res.writeHead(200, { ...responseHeaders({ 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-cache' }) }); res.end(data);
+      const ext = path.extname(file);
+      const isHtml = ext === '.html';
+      const etag = '"' + crypto.createHash('sha1').update(data).digest('hex').slice(0, 20) + '"';
+      if (!isHtml && req.headers['if-none-match'] === etag) {
+        res.writeHead(304, responseHeaders({ ETag: etag, 'Cache-Control': 'public, max-age=300, must-revalidate' }));
+        return res.end();
+      }
+      const headers = responseHeaders({
+        'content-type': MIME[ext] || 'application/octet-stream',
+        'cache-control': isHtml ? 'no-cache' : 'public, max-age=300, must-revalidate',
+        ...(isHtml ? {} : { ETag: etag }),
+      });
+      sendCompressed(req, res, 200, headers, data);
     });
   } catch (e) {
-    if (e instanceof HttpError) return send(res, e.status, { error: e.message, ...(e.extra || {}) });
+    if (e instanceof HttpError) return send(res, e.status, { error: e.message, ...(e.extra || {}) }, req);
     console.error('[error]', req.method, url.pathname, e);
-    send(res, 500, { error: 'Something went wrong. Please try again.', retry: true }); // never leak internals; app stays up
+    send(res, 500, { error: 'Something went wrong. Please try again.', retry: true }, req); // never leak internals; app stays up
   }
 });
 // Bound slow headers/bodies and oversized header collections to reduce resource-exhaustion risk.
