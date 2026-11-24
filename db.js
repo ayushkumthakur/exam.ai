@@ -167,6 +167,31 @@ if (examCount === 0) {
     .run(csat.name, csat.category);
 }
 
+// Additively refresh the RRB Group D syllabus on persistent databases.
+// Preserve admin-added subjects/topics while ensuring newly catalogued CEN 09/2025
+// sections and topics are visible to the question selector and question visibility filter.
+{
+  const target = EXAMS.find(exam => exam.id === 'RRB_GROUP_D');
+  const row = db.prepare("SELECT syllabus FROM exams WHERE id='RRB_GROUP_D'").get();
+  if (target && row) {
+    const { syllabusFor } = require('./data/catalog');
+    const current = Array.isArray(JSON.parse(row.syllabus || 'null')) ? JSON.parse(row.syllabus) : [];
+    const seeded = syllabusFor(target);
+    const merged = seeded.map(section => {
+      const existing = current.find(item => item.subject === section.subject);
+      return existing
+        ? { ...existing, topics: [...new Set([...(section.topics || []), ...(existing.topics || [])])] }
+        : section;
+    });
+    for (const extra of current) {
+      if (!merged.some(section => section.subject === extra.subject)) merged.push(extra);
+    }
+    if (JSON.stringify(current) !== JSON.stringify(merged)) {
+      db.prepare("UPDATE exams SET syllabus=? WHERE id='RRB_GROUP_D'").run(JSON.stringify(merged));
+    }
+  }
+}
+
 // Priority-exam pattern audit migration. Update only untouched catalog defaults; preserve admin-customized patterns.
 {
   const catalogById = new Map(EXAMS.map(exam => [exam.id, exam]));
