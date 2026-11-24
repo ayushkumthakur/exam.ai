@@ -174,6 +174,20 @@ if (examCount === 0) {
   const target = EXAMS.find(exam => exam.id === 'RRB_GROUP_D');
   const row = db.prepare("SELECT syllabus FROM exams WHERE id='RRB_GROUP_D'").get();
   if (target && row) {
+    // Replace only the exact untouched legacy catalog default (25/30/45).
+    // Any administrator-customised RRB paper blueprint is left intact.
+    const savedPatternRow = db.prepare("SELECT pattern FROM exams WHERE id='RRB_GROUP_D'").get();
+    const savedPattern = JSON.parse(savedPatternRow.pattern || '{}');
+    const savedSections = (savedPattern.sections || []).map(section =>
+      [section.subject, section.questions, section.marks, Math.round(Number(section.negative || 0) * 1000) / 1000]
+    );
+    const legacyDefault = savedPattern.minutes === 90 &&
+      JSON.stringify(savedSections) === JSON.stringify([
+        ['Mathematics',25,1,0.333], ['Reasoning',30,1,0.333], ['General Awareness',45,1,0.333]
+      ]);
+    if (legacyDefault) {
+      db.prepare("UPDATE exams SET pattern=? WHERE id='RRB_GROUP_D'").run(JSON.stringify(target.pattern));
+    }
     const { syllabusFor } = require('./data/catalog');
     const current = Array.isArray(JSON.parse(row.syllabus || 'null')) ? JSON.parse(row.syllabus) : [];
     const seeded = syllabusFor(target);
