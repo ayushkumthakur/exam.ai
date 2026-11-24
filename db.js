@@ -190,6 +190,18 @@ if (examCount === 0) {
       db.prepare("UPDATE exams SET syllabus=? WHERE id='RRB_GROUP_D'").run(JSON.stringify(merged));
     }
   }
+  // Existing RRB Group D learners may have saved the old three-subject selection.
+  // Add the newly separated General Science section without removing their choices.
+  const learners = db.prepare("SELECT id, selected_subjects FROM users WHERE exam_id='RRB_GROUP_D'").all();
+  const updateLearner = db.prepare("UPDATE users SET selected_subjects=? WHERE id=?");
+  for (const learner of learners) {
+    let selected = [];
+    try { selected = JSON.parse(learner.selected_subjects || '[]'); } catch { selected = []; }
+    if (!Array.isArray(selected) || selected.length === 0) continue;
+    if (!selected.includes('General Science')) {
+      updateLearner.run(JSON.stringify([...selected, 'General Science']), learner.id);
+    }
+  }
 }
 
 // Priority-exam pattern audit migration. Update only untouched catalog defaults; preserve admin-customized patterns.
