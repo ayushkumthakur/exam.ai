@@ -1060,7 +1060,7 @@ async function pgTestTake(parts) {
   if (test.status !== 'active') { location.replace('#/result/' + test.id); return h('div'); }
   const blueprint = test.blueprint || {};
   const timedSections = blueprint.timedSections ? (blueprint.sections || []).filter(s => Number(s.durationSeconds) > 0) : [];
-  const st = { answers: { ...test.answers }, marked: new Set(test.marked.map(String)), times: { ...test.times }, idx: Math.min(test.current_idx || 0, test.questions.length - 1), dirty: false, submitting: false, paletteFilter: 'all', sectionId: null };
+  const st = { answers: { ...test.answers }, marked: new Set(test.marked.map(String)), times: { ...test.times }, idx: Math.min(test.current_idx || 0, test.questions.length - 1), dirty: false, editVersion: 0, submitting: false, paletteFilter: 'all', sectionId: null };
   const skew = test.serverNow - Date.now(); // keeps the timer honest even if the device clock is off
   const remaining = () => Math.max(0, Math.round((test.deadline - (Date.now() + skew)) / 1000));
   const elapsed = () => Math.max(0, ((Date.now() + skew) - test.started_at) / 1000);
@@ -1068,15 +1068,37 @@ async function pgTestTake(parts) {
   const indexesFor = sec => test.questions.map((q, i) => ({ q, i })).filter(({ q }) => !sec || sec.questionIds.some(id => String(id) === String(q.id))).map(({ i }) => i);
   if (timedSections.length) { const sec = currentSection(); const ix = indexesFor(sec); if (!ix.includes(st.idx)) st.idx = ix[0] ?? 0; st.sectionId = sec?.id || null; }
   let enteredAt = Date.now(); const root = h('div', { class: 'stack' }), body = h('div'), pal = h('div'), timerEl = h('span', { class: 'timer' }), saveEl = h('span', { class: 'small muted' });
-  const payload = () => ({ answers: st.answers, marked: [...st.marked].map(Number), times: st.times, current_idx: st.idx });
-  const bank = () => { const id = test.questions[st.idx].id; st.times[id] = (st.times[id] || 0) + (Date.now() - enteredAt); enteredAt = Date.now(); };
-  async function save() { if (!st.dirty || st.submitting) return; bank(); try { await put('/api/tests/' + test.id + '/save', payload()); st.dirty = false; saveEl.textContent = 'Saved ✓'; } catch { saveEl.textContent = 'Offline, will retry…'; } }
+  // Snapshot each autosave and serialize writes. If the student changes an answer
+  // while a save is in flight, the newer revision is sent after the first save settles.
+  const payload = () => ({ answers: { ...st.answers }, marked: [...st.marked].map(Number), times: { ...st.times }, current_idx: st.idx });
+  const bank = () => { const question = test.questions[st.idx]; if (!question) return; const id = question.id; st.times[id] = (st.times[id] || 0) + (Date.now() - enteredAt); enteredAt = Date.now(); };
+  let saveInFlight = null;
+  async function save() {
+    if (!st.dirty || st.submitting) return saveInFlight;
+    if (saveInFlight) return saveInFlight;
+    bank();
+    const version = st.editVersion, snapshot = payload();
+    let saved = false;
+    saveInFlight = (async () => {
+      try {
+        await put('/api/tests/' + test.id + '/save', snapshot);
+        saved = true;
+        if (st.editVersion === version) { st.dirty = false; saveEl.textContent = 'Saved ✓'; }
+        else { st.dirty = true; saveEl.textContent = 'Saving latest changes…'; }
+      } catch {
+        st.dirty = true;
+        saveEl.textContent = 'Offline, will retry…';
+      }
+    })();
+    try { await saveInFlight; } finally { saveInFlight = null; }
+    if (saved && st.dirty && st.editVersion !== version && !st.submitting) return save();
+  }
   const autosave = setInterval(save, 8000);
   const updateClock = () => {
     const total = remaining();
     if (timedSections.length) {
       const sec = currentSection();
-      if (sec && sec.id !== st.sectionId) { bank(); st.sectionId = sec.id; st.idx = Math.max(0, indexesFor(sec)[0] ?? 0); st.dirty = true; draw(); save(); }
+      if (sec && sec.id !== st.sectionId) { bank(); st.sectionId = sec.id; st.idx = Math.max(0, indexesFor(sec)[0] ?? 0); touch(); draw(); save(); }
       const left = sec ? Math.max(0, Math.ceil(sec.endsAtOffsetSeconds - elapsed())) : total;
       timerEl.textContent = fmtClock(left); timerEl.classList.toggle('low', left < 120);
       overallTimerEl.textContent = fmtClock(total); overallTimerEl.classList.toggle('low', total < 300);
@@ -1086,7 +1108,7 @@ async function pgTestTake(parts) {
   const tk = setInterval(updateClock, 250);
   const onHide = () => { if (document.hidden) save(); }; document.addEventListener('visibilitychange', onHide);
   onLeave(() => { clearInterval(autosave); clearInterval(tk); document.removeEventListener('visibilitychange', onHide); save(); });
-  const touch = () => { st.dirty = true; saveEl.textContent = ''; };
+  const touch = () => { st.editVersion++; st.dirty = true; saveEl.textContent = ''; };
   function draw() {
     const sec = timedSections.length ? currentSection() : null;
     const visibleIndexes = indexesFor(sec);

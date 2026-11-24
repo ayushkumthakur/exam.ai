@@ -274,8 +274,8 @@ function buildTutorMessages(history, currentContent) {
   const previous = (Array.isArray(history) ? history : [])
     .filter(message => message && ['user', 'assistant'].includes(message.role) &&
       typeof message.content === 'string' && message.content.trim())
-    .slice(-8)
-    .map(message => ({ role: message.role, content: message.content.trim().slice(-1800) }));
+    .slice(-6)
+    .map(message => ({ role: message.role, content: message.content.trim().slice(-1400) }));
   return [...previous, { role: 'user', content: currentContent }];
 }
 

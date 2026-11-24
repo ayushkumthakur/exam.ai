@@ -17,7 +17,7 @@ async function pgTutor(parts, params) {
     const file = h('input', { type: 'file', accept: ACCEPT, hidden: true }), chosen = h('span', { class: 'small muted' }); let picked = null;
     file.onchange = () => { picked = file.files[0] || null; chosen.textContent = picked ? '📎 ' + picked.name : ''; };
     const sendBtn = h('button', { class: 'btn primary' }, 'Ask AI');
-    let lastId = null;
+    let lastId = null, asking = false;
     function addMsg(role, text, id) {
       const m = h('div', { class: 'msg ' + role }, role === 'assistant' ? md(text) : text); log.append(m);
       if (role === 'assistant') { if (id) m.append(actions(id, text)); } return m;
@@ -39,14 +39,16 @@ async function pgTutor(parts, params) {
     }
     const fb = (id, kind, note) => post('/api/ai/feedback', { conversation_id: id, kind, note }).then(() => toast(kind === 'report' ? 'Reported. An admin will review it.' : 'Thanks for the feedback')).catch(e => toast(e.message));
     async function ask(msg, mode, displayMessage) {
+      if (asking) return;
       const text = (msg ?? ta.value).trim(); if (!text && !picked && !mode) return;
-      let files; try { files = picked ? [await fileB64(picked)] : undefined; } catch (e) { toast(e.message); return; }
+      asking = true; sendBtn.disabled = true;
+      let files; try { files = picked ? [await fileB64(picked)] : undefined; } catch (e) { asking = false; sendBtn.disabled = false; toast(e.message); return; }
       if (!mode) addMsg('user', text || '[uploaded file]'); else if (displayMessage) addMsg('user', displayMessage); else if (msg) addMsg('user', msg); else addMsg('user', { simple: 'Explain simply', detail: 'Explain in detail', another: 'Show another method', again: 'Explain again' }[mode]);
       ta.value = ''; picked = null; file.value = ''; chosen.textContent = '';
-      const wait = h('div', { class: 'msg assistant' }, h('span', { class: 'spin' }), ' Thinking carefully…'); log.append(wait); sendBtn.disabled = true; wait.scrollIntoView({ block: 'nearest' });
+      const wait = h('div', { class: 'msg assistant' }, h('span', { class: 'spin' }), ' Thinking carefully…'); log.append(wait); wait.scrollIntoView({ block: 'nearest' });
       try { const r = await post('/api/ai/ask', { message: text, mode, files, display_message: displayMessage, fresh_context: true }); wait.remove(); lastId = r.id; addMsg('assistant', r.reply, r.id).scrollIntoView({ block: 'nearest' }); hist.push({ role: 'user', content: displayMessage || text || (files ? '[uploaded file]' : 'AI request') }, { id: r.id, role: 'assistant', content: r.reply }); drawSavedHistory(); }
       catch (e) { wait.replaceChildren(h('div', {}, e.message), h('button', { class: 'btn sm', style: 'margin-top:.5rem', onclick: () => { wait.remove(); ta.value = text; if (files) toast('Re-attach your file to retry.'); } }, 'Try Again')); }
-      sendBtn.disabled = false;
+      finally { asking = false; sendBtn.disabled = false; }
     }
     sendBtn.onclick = () => ask(); ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) ask(); });
     log.append(h('div', { class: 'empty' }, `Ask any ${ex.name} doubt. Recent turns from this exam may help with follow-ups. Answers aim to include a clear explanation, key concept, and exam tip.`));
