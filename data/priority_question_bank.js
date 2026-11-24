@@ -141,6 +141,20 @@ const FACTS = {
     ["The Indian Standard Meridian is 82°30′ east longitude.",true,"Indian Standard Time is based on 82°30′ E."],
     ["The headquarters of UNESCO is in Geneva.",false,"UNESCO is headquartered in Paris, France."]
   ],
+  RailwayCurrentAffairsNov: [
+    ["The Union Cabinet approved continuation of the Stand-Up India Scheme until 31 March 2031.",true,"PIB reported the five-year continuation of the Stand-Up India Scheme on 11 November 2026."],
+    ["The Credit Guarantee Fund for Micro Units scheme was approved for continuation until 31 March 2031.",true,"The Cabinet approved continuation of CGFMU for five years, as reported by PIB on 11 November 2026."],
+    ["The VISTAR scheme is planned for the period 2026-27 to 2030-31.",true,"VISTAR stands for Viksit Bharat Initiative for Statistical Transformation, Analytics & Research."],
+    ["A ₹14,500 crore viability-gap funding scheme was approved for 92 GWh of grid-scale energy storage systems.",true,"The Cabinet announcement was reported by PIB on 4 November 2026."],
+    ["The Critical Mineral Processing capex support scheme has an outlay of ₹2,814 crore.",true,"The scheme focuses on domestic processing capacity for critical minerals including lithium and nickel."],
+    ["India and the European Union concluded negotiations for India's association with Horizon Europe in November 2026.",true,"The Department of Science and Technology reported the conclusion of negotiations on 7 November 2026."],
+    ["India administered more than one crore HPV vaccine doses in less than nine months, according to a PIB release on 23 November 2026.",true,"The milestone was reported by PIB on 23 November 2026."],
+    ["Exercise Sea Vigil-26 was conducted as a pan-India coastal defence exercise during 11–19 November 2026.",true,"The Indian Navy led the fifth edition of Exercise Sea Vigil-26."],
+    ["India's cheetah population was reported at 62 after four cubs were born in the wild in November 2026.",true,"PIB reported the birth of four cubs in the wild on 20 November 2026."],
+    ["India's estimated merchandise and services exports during April–October 2026-27 were reported at US$568.84 billion.",true,"PIB reported an estimated 16.66 percent growth over April–October 2025-26 on 13 November 2026."],
+    ["The India–New Zealand Free Trade Agreement entered into force on 20 October 2026.",true,"The agreement's entry into force was announced by PIB on 20 October 2026."],
+    ["The 2026 India–Malaysia joint military exercise was named HARIMAU SHAKTI–VI.",true,"The exercise commenced in Malaysia in November 2026, according to PIB."],
+  ],
   RailwayCurrentAffairs: [
     ["The 20th Asian Games in 2026 were hosted by Aichi-Nagoya in Japan.",true,"The 2026 Asian Games were held in Aichi-Nagoya, Japan."],
     ["India's PM E-DRIVE scheme supports electric mobility and charging infrastructure.",true,"The scheme supports electric vehicle adoption and charging infrastructure."],
@@ -621,6 +635,7 @@ function buildPriorityQuestionBank(exams, topics) {
   addForExam("RRB_GROUP_D","Reasoning","Series",reasoningQuestions("RRB_GROUP_D","Reasoning",180,17000));
   addForExam("RRB_GROUP_D","General Awareness","Static GK",statementQuestions("RRB_GROUP_D","General Awareness","Static GK",FACTS.RailwayStaticGK,150,18000));
   addForExam("RRB_GROUP_D","General Awareness","Current Affairs",statementQuestions("RRB_GROUP_D","General Awareness","Current Affairs",FACTS.RailwayCurrentAffairs,100,18200));
+  addForExam("RRB_GROUP_D","General Awareness","Current Affairs",statementQuestions("RRB_GROUP_D","General Awareness","Current Affairs",FACTS.RailwayCurrentAffairsNov,100,18400));
   // SSC CGL Tier-I: speed/accuracy-oriented four-section banks.
   addForExam("SSC_CGL","Reasoning","Series",reasoningQuestions("SSC_CGL","Reasoning",150,5000));
   const sscGA = Object.values(FACTS).flatMap((facts,di) => statementQuestions("SSC_CGL","General Awareness",di === 5 ? "Science" : "Static GK",facts,25,6000+di*100)).slice(0,150);
