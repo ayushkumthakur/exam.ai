@@ -630,7 +630,7 @@ function buildPriorityQuestionBank(exams, topics) {
   // All generated items remain ADMIN_PRACTICE, never claimed as official PYQs.
   addForExam("RRB_GROUP_D","General Science","Physics",statementQuestions("RRB_GROUP_D","General Science","Physics",FACTS.RailwayPhysics,150,15000));
   addForExam("RRB_GROUP_D","General Science","Chemistry",statementQuestions("RRB_GROUP_D","General Science","Chemistry",FACTS.RailwayChemistry,150,15200));
-  addForExam("RRB_GROUP_D","General Science","Life Science",statementQuestions("RRB_GROUP_D","General Science","Life Science",FACTS.RailwayLifeScience,150,15400));
+  addForExam("RRB_GROUP_D","General Science","Life Sciences",statementQuestions("RRB_GROUP_D","General Science","Life Science",FACTS.RailwayLifeScience,150,15400));
   addForExam("RRB_GROUP_D","Mathematics","Percentage",quantitativeQuestions("RRB_GROUP_D","Mathematics",180,16000));
   addForExam("RRB_GROUP_D","Reasoning","Series",reasoningQuestions("RRB_GROUP_D","Reasoning",180,17000));
   addForExam("RRB_GROUP_D","General Awareness","Static GK",statementQuestions("RRB_GROUP_D","General Awareness","Static GK",FACTS.RailwayStaticGK,150,18000));
