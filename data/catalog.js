@@ -38,7 +38,7 @@ const TOPICS = {
   Geography: ['Physical Geography','Indian Geography','World Geography'],
   Polity: ['Constitution','Fundamental Rights','Parliament','Judiciary'],
   Economics: ['Basic Concepts','Indian Economy','Banking & Finance'],
-  'General Science': ['Physics','Chemistry','Life Science'],
+  'General Science': ['Physics','Chemistry','Life Sciences'],
   Physics: ['Mechanics','Heat & Thermodynamics','Optics','Electricity & Magnetism','Modern Physics'],
   Chemistry: ['Physical Chemistry','Organic Chemistry','Inorganic Chemistry'],
   Biology: ['Cell Biology','Human Physiology','Genetics','Plant Biology'],
