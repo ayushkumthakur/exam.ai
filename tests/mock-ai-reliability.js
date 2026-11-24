@@ -10,8 +10,8 @@ const history = Array.from({ length: 10 }, (_, i) => ({
 }));
 const messages = buildTutorMessages(history, 'current question');
 assert.equal(messages.length, 7, 'keep the six most recent history messages plus the current question');
-assert.equal(messages[0].content, '9'.repeat(1400), 'retain the newest bounded context, in order');
-assert.equal(messages[5].content, '4'.repeat(1400));
+assert.equal(messages[0].content, '4'.repeat(1400), 'retain the six most recent bounded messages, in order');
+assert.equal(messages[5].content, '9'.repeat(1400));
 assert.equal(messages[6].content, 'current question');
 
 const app = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
