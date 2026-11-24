@@ -17,7 +17,7 @@ const bank = buildPriorityQuestionBank(EXAMS, TOPICS).filter(q => q.exam_id === 
 const expected = [
   ['General Science','Physics',150],
   ['General Science','Chemistry',150],
-  ['General Science','Life Science',150],
+  ['General Science','Life Sciences',150],
   ['Mathematics','Percentage',18],
   ['Reasoning','Series',72],
   ['General Awareness','Static GK',150],
