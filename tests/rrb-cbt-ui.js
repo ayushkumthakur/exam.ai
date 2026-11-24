@@ -1,0 +1,15 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const app = fs.readFileSync('public/app.js', 'utf8');
+const css = fs.readFileSync('public/style.css', 'utf8');
+assert.match(app, /const realCbtMode = blueprint\.mode === 'real' && blueprint\.kind === 'full_mock'/);
+assert.match(app, /cbt-section-nav/);
+assert.match(app, /Save & Next/);
+assert.match(app, /Not visited/);
+assert.match(app, /Answered \+ marked/);
+assert.match(app, /root\.requestFullscreen/);
+assert.match(app, /paletteFilter === 'unvisited'/);
+assert.match(css, /\.pal \.not-visited/);
+assert.match(css, /\.pal \.ansmk/);
+console.log('PASS RRB Real CBT section navigation, palette states, save-next and fullscreen UI audit.');

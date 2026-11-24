@@ -1060,7 +1060,9 @@ async function pgTestTake(parts) {
   if (test.status !== 'active') { location.replace('#/result/' + test.id); return h('div'); }
   const blueprint = test.blueprint || {};
   const timedSections = blueprint.timedSections ? (blueprint.sections || []).filter(s => Number(s.durationSeconds) > 0) : [];
-  const st = { answers: { ...test.answers }, marked: new Set(test.marked.map(String)), times: { ...test.times }, idx: Math.min(test.current_idx || 0, test.questions.length - 1), dirty: false, submitting: false, paletteFilter: 'all', sectionId: null };
+  const st = { answers: { ...test.answers }, marked: new Set(test.marked.map(String)), times: { ...test.times }, idx: Math.min(test.current_idx || 0, test.questions.length - 1), dirty: false, submitting: false, paletteFilter: 'all', sectionId: null, visited: new Set([Math.min(test.current_idx || 0, test.questions.length - 1)]) };
+  const realCbtMode = blueprint.mode === 'real' && blueprint.kind === 'full_mock';
+  const sectionNav = h('div', { class: 'chips cbt-section-nav', 'aria-label': 'Exam sections' });
   const skew = test.serverNow - Date.now(); // keeps the timer honest even if the device clock is off
   const remaining = () => Math.max(0, Math.round((test.deadline - (Date.now() + skew)) / 1000));
   const elapsed = () => Math.max(0, ((Date.now() + skew) - test.started_at) / 1000);
@@ -1091,18 +1093,21 @@ async function pgTestTake(parts) {
     const sec = timedSections.length ? currentSection() : null;
     const visibleIndexes = indexesFor(sec);
     if (timedSections.length && !visibleIndexes.includes(st.idx)) st.idx = visibleIndexes[0] ?? 0;
+    st.visited.add(st.idx);
     const qn = test.questions[st.idx], letters = 'ABCDEF';
     body.replaceChildren(h('div', { class: 'card stack' }, h('div', { class: 'row between' }, h('div', { class: 'row' }, srcBadge(qn), h('span', { class: 'badge' }, qn.subject)), h('span', { class: 'muted small' }, `Question ${st.idx + 1} of ${test.questions.length}`)), sec ? h('div', { class: 'section-progress' }, h('b', {}, `Section ${sec.index + 1}: ${sec.name}`), h('span', {}, `${visibleIndexes.filter(i => st.answers[test.questions[i].id] !== undefined).length}/${visibleIndexes.length} answered · section locks when time expires`)) : null, h('div', { class: 'q-text' }, qn.text),
       h('div', {}, qn.options.map((o, k) => h('button', { class: 'opt' + (st.answers[qn.id] === k ? ' sel' : ''), 'aria-pressed': st.answers[qn.id] === k, onclick: () => { st.answers[qn.id] = k; touch(); draw(); } }, h('span', { class: 'k' }, letters[k]), h('span', {}, o)))),
       h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { delete st.answers[qn.id]; touch(); draw(); } }, 'Clear'), h('button', { class: 'btn', onclick: () => { const k = String(qn.id); st.marked.has(k) ? st.marked.delete(k) : st.marked.add(k); touch(); draw(); } }, st.marked.has(String(qn.id)) ? '★ Unmark' : '☆ Mark for review'),
-        h('span', { class: 'grow' }), h('button', { class: 'btn', disabled: st.idx === (visibleIndexes[0] ?? 0), onclick: () => move(-1) }, '← Prev'), h('button', { class: 'btn primary', disabled: st.idx === (visibleIndexes[visibleIndexes.length - 1] ?? test.questions.length - 1), onclick: () => move(1) }, 'Next →'))));
+        h('span', { class: 'grow' }), h('button', { class: 'btn', disabled: st.idx === (visibleIndexes[0] ?? 0), onclick: () => move(-1) }, '← Prev'), h('button', { class: 'btn primary', disabled: st.idx === (visibleIndexes[visibleIndexes.length - 1] ?? test.questions.length - 1), onclick: () => move(1) }, realCbtMode ? 'Save & Next →' : 'Next →'))));
     const answered = Object.keys(st.answers).length;
     const unanswered = test.questions.length - answered;
     const filteredQuestions = test.questions.map((x, i) => ({ x, i })).filter(({ x, i }) =>
       (!sec || visibleIndexes.includes(i)) && (st.paletteFilter === 'all' ||
       (st.paletteFilter === 'unanswered' && st.answers[x.id] === undefined) ||
+      (st.paletteFilter === 'answered' && st.answers[x.id] !== undefined) ||
+      (st.paletteFilter === 'unvisited' && !st.visited.has(i)) ||
       (st.paletteFilter === 'marked' && st.marked.has(String(x.id)))));
-    const filterButtons = [['all', 'All'], ['unanswered', 'Unanswered'], ['marked', 'Marked']].map(([v, label]) =>
+    const filterButtons = [['all', 'All'], ['unanswered', 'Unanswered'], ['answered', 'Answered'], ['unvisited', 'Not visited'], ['marked', 'Marked']].map(([v, label]) =>
       h('button', { class: 'chip' + (st.paletteFilter === v ? ' on' : ''), onclick: () => { st.paletteFilter = v; draw(); } }, label));
     pal.replaceChildren(
       h('div', { class: 'test-palette-summary' },
@@ -1111,11 +1116,20 @@ async function pgTestTake(parts) {
         h('div', {}, h('b', {}, st.marked.size), h('span', {}, 'Marked for review'))),
       h('div', { class: 'chips test-palette-filters' }, filterButtons),
       filteredQuestions.length
-        ? h('div', { class: 'pal' }, filteredQuestions.map(({ x, i }) => h('button', { class: (st.answers[x.id] !== undefined ? 'ans ' : '') + (st.marked.has(String(x.id)) ? 'mk ' : '') + (i === st.idx ? 'cur ' : '') + (st.answers[x.id] === undefined ? 'unanswered ' : ''), 'aria-label': `Question ${i + 1}`, title: `Question ${i + 1}${st.answers[x.id] !== undefined ? ' · Answered' : ' · Unanswered'}${st.marked.has(String(x.id)) ? ' · Marked for review' : ''}`, onclick: () => { bank(); st.idx = i; touch(); draw(); } }, i + 1)))
+        ? h('div', { class: 'pal' }, filteredQuestions.map(({ x, i }) => { const answered = st.answers[x.id] !== undefined, marked = st.marked.has(String(x.id)); const status = answered && marked ? 'ansmk' : answered ? 'ans' : marked ? 'mk' : !st.visited.has(i) ? 'not-visited' : 'unanswered'; return h('button', { class: status + (i === st.idx ? ' cur' : ''), 'aria-label': `Question ${i + 1}`, title: `Question ${i + 1}${st.answers[x.id] !== undefined ? ' · Answered' : ' · Unanswered'}${st.marked.has(String(x.id)) ? ' · Marked for review' : ''}`, onclick: () => { bank(); st.idx = i; st.visited.add(i); touch(); draw(); } }, i + 1); }))
         : h('p', { class: 'empty' }, 'No questions match this filter.'),
-      h('div', { class: 'test-palette-legend' }, h('span', {}, '● Answered'), h('span', {}, '○ Unanswered'), h('span', {}, '★ Marked for review')));
+      h('div', { class: 'test-palette-legend' }, h('span', {}, '● Answered'), h('span', {}, '○ Not visited'), h('span', {}, '◒ Unanswered'), h('span', {}, '★ Marked'), h('span', {}, '✓ Answered + marked')));
+    const sections = (blueprint.sections || []).filter(section => (section.questionIds || []).length);
+    if (realCbtMode && !timedSections.length && sections.length > 1) {
+      sectionNav.style.display = 'flex';
+      sectionNav.replaceChildren(...sections.map(section => {
+        const first = test.questions.findIndex(question => section.questionIds.some(id => String(id) === String(question.id)));
+        const count = section.questionIds.filter(id => st.answers[id] !== undefined).length;
+        return h('button', { class: 'chip' + (section.questionIds.some(id => String(id) === String(qn.id)) ? ' on' : ''), onclick: () => { if (first >= 0) { bank(); st.idx = first; st.visited.add(first); touch(); draw(); } } }, `${section.name} · ${count}/${section.questionIds.length}`);
+      }));
+    } else { sectionNav.style.display = 'none'; sectionNav.replaceChildren(); }
   }
-  function move(d) { bank(); const sec = timedSections.length ? currentSection() : null; const ix = indexesFor(sec); const lo = sec ? ix[0] : 0, hi = sec ? ix[ix.length - 1] : test.questions.length - 1; st.idx = Math.max(lo, Math.min(hi, st.idx + d)); touch(); draw(); }
+  function move(d) { bank(); const sec = timedSections.length ? currentSection() : null; const ix = indexesFor(sec); const lo = sec ? ix[0] : 0, hi = sec ? ix[ix.length - 1] : test.questions.length - 1; st.idx = Math.max(lo, Math.min(hi, st.idx + d)); st.visited.add(st.idx); touch(); draw(); }
   async function submit(auto) {
     if (st.submitting) return;
     if (!auto) {
@@ -1136,7 +1150,8 @@ async function pgTestTake(parts) {
   const provenanceNotice = h('div', { class: 'card stack', role: 'note' },
     h('b', {}, 'Question source transparency'),
     h('p', { class: 'muted', style: 'margin:0' }, `${verifiedPyqCount} verified PYQs · ${practiceCount} practice/pattern questions. Each question has its own source label. Practice questions are not verified previous-year questions.`));
-  root.append(provenanceNotice, h('div', { class: 'card row between test-sticky-header', style: 'position:sticky;top:60px;z-index:4' }, h('div', {}, h('b', {}, test.title), h('div', {}, saveEl)), timedSections.length ? h('div', { class: 'test-timers' }, h('span', { class: 'timer-caption' }, 'Section'), timerEl, h('span', { class: 'timer-caption' }, 'Overall'), overallTimerEl) : timerEl, h('button', { class: 'btn accent', id: 'submitBtn', onclick: () => submit(false) }, 'Submit Test')),
+  const fullscreenBtn = h('button', { class: 'btn sm ghost', type: 'button', onclick: async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else if (root.requestFullscreen) await root.requestFullscreen(); else toast('Fullscreen is not supported by this browser.'); } catch { toast('Fullscreen permission was not granted.'); } } }, '⛶ Fullscreen');
+  root.append(provenanceNotice, h('div', { class: 'card row between test-sticky-header', style: 'position:sticky;top:60px;z-index:4' }, h('div', {}, h('b', {}, test.title), h('div', {}, saveEl)), timedSections.length ? h('div', { class: 'test-timers' }, h('span', { class: 'timer-caption' }, 'Section'), timerEl, h('span', { class: 'timer-caption' }, 'Overall'), overallTimerEl) : timerEl, h('div', { class: 'row' }, realCbtMode ? fullscreenBtn : null, h('button', { class: 'btn accent', id: 'submitBtn', onclick: () => submit(false) }, 'Submit Test'))), sectionNav,
     h('div', { class: 'split' }, body, h('div', { class: 'card' }, h('h3', {}, 'Questions'), pal)));
   return root;
 }

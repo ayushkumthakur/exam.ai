@@ -106,7 +106,7 @@ label{display:block;font-weight:600;font-size:.9rem;margin:.9rem 0 .3rem}
 .msg.assistant{align-self:flex-start;background:var(--surface);border:1px solid var(--line)}
 .pal{display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));gap:6px}
 .pal button{height:38px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface);cursor:pointer;font-weight:700}
-.pal .ans{background:var(--ok-soft);border-color:var(--ok)}.pal .mk{background:var(--warn-soft);border-color:var(--accent)}.pal .cur{outline:3px solid var(--brand-2)}
+.pal .ans{background:var(--ok-soft);border-color:var(--ok)}.pal .mk{background:var(--warn-soft);border-color:var(--accent)}.pal .cur{outline:3px solid var(--brand-2)}.pal .not-visited{background:var(--surface);border-style:dashed;color:var(--muted)}.pal .ansmk{background:linear-gradient(135deg,var(--ok-soft) 0 50%,var(--warn-soft) 50%);border-color:var(--brand-2)}.cbt-section-nav{padding:.2rem 0 .6rem;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin}.cbt-section-nav .chip{flex:none}.test-palette-legend{display:flex;gap:.55rem;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin-top:.7rem}
 .timer{font-variant-numeric:tabular-nums;font-weight:800;font-size:1.2rem}.timer.low{color:var(--bad)}
 .split{display:grid;grid-template-columns:1fr 240px;gap:1rem}
 @media (max-width:820px){.split{grid-template-columns:1fr}}
