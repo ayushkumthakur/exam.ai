@@ -45,7 +45,7 @@ assert.match(profileUi, /This device remains signed in/);
 assert.match(profileUi, /other device sessions are signed out/);
 console.log('PASS account-security profile UI and authenticated password-change path audit.');
 
-const app = read('public/app.js');
+const app = read('public/app.js') + '\n' + read('public/app2.js');
 const styles = read('public/style.css');
 assert.match(app, /Vocabulary Lab/);
 assert.match(app, /vocabulary: pgVocabulary/);
