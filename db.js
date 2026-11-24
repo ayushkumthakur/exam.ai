@@ -167,6 +167,57 @@ if (examCount === 0) {
     .run(csat.name, csat.category);
 }
 
+// Additively refresh the RRB Group D syllabus on persistent databases.
+// Preserve admin-added subjects/topics while ensuring newly catalogued CEN 09/2025
+// sections and topics are visible to the question selector and question visibility filter.
+{
+  const target = EXAMS.find(exam => exam.id === 'RRB_GROUP_D');
+  const row = db.prepare("SELECT syllabus FROM exams WHERE id='RRB_GROUP_D'").get();
+  if (target && row) {
+    // Replace only the exact untouched legacy catalog default (25/30/45).
+    // Any administrator-customised RRB paper blueprint is left intact.
+    const savedPatternRow = db.prepare("SELECT pattern FROM exams WHERE id='RRB_GROUP_D'").get();
+    const savedPattern = JSON.parse(savedPatternRow.pattern || '{}');
+    const savedSections = (savedPattern.sections || []).map(section =>
+      [section.subject, section.questions, section.marks, Math.round(Number(section.negative || 0) * 1000) / 1000]
+    );
+    const legacyDefault = savedPattern.minutes === 90 &&
+      JSON.stringify(savedSections) === JSON.stringify([
+        ['Mathematics',25,1,0.333], ['Reasoning',30,1,0.333], ['General Awareness',45,1,0.333]
+      ]);
+    if (legacyDefault) {
+      db.prepare("UPDATE exams SET pattern=? WHERE id='RRB_GROUP_D'").run(JSON.stringify(target.pattern));
+    }
+    const { syllabusFor } = require('./data/catalog');
+    const current = Array.isArray(JSON.parse(row.syllabus || 'null')) ? JSON.parse(row.syllabus) : [];
+    const seeded = syllabusFor(target);
+    const merged = seeded.map(section => {
+      const existing = current.find(item => item.subject === section.subject);
+      return existing
+        ? { ...existing, topics: [...new Set([...(section.topics || []), ...(existing.topics || [])])] }
+        : section;
+    });
+    for (const extra of current) {
+      if (!merged.some(section => section.subject === extra.subject)) merged.push(extra);
+    }
+    if (JSON.stringify(current) !== JSON.stringify(merged)) {
+      db.prepare("UPDATE exams SET syllabus=? WHERE id='RRB_GROUP_D'").run(JSON.stringify(merged));
+    }
+  }
+  // Existing RRB Group D learners may have saved the old three-subject selection.
+  // Add the newly separated General Science section without removing their choices.
+  const learners = db.prepare("SELECT id, selected_subjects FROM users WHERE exam_id='RRB_GROUP_D'").all();
+  const updateLearner = db.prepare("UPDATE users SET selected_subjects=? WHERE id=?");
+  for (const learner of learners) {
+    let selected = [];
+    try { selected = JSON.parse(learner.selected_subjects || '[]'); } catch { selected = []; }
+    if (!Array.isArray(selected) || selected.length === 0) continue;
+    if (!selected.includes('General Science')) {
+      updateLearner.run(JSON.stringify([...selected, 'General Science']), learner.id);
+    }
+  }
+}
+
 // Priority-exam pattern audit migration. Update only untouched catalog defaults; preserve admin-customized patterns.
 {
   const catalogById = new Map(EXAMS.map(exam => [exam.id, exam]));
@@ -304,7 +355,7 @@ if (qCount === 0) {
 
 /*
  * Priority exam banks: deterministic, authored practice questions for UPSC CSE,
- * CSAT, SSC CGL Tier-I and RBI Grade B Phase-I. Idempotent on persistent Railway
+ * CSAT, SSC CGL Tier-I, RBI Grade B Phase-I and RRB Group D. Idempotent on persistent Railway
  * volumes and deliberately separate from source-verified PYQ records.
  */
 {
