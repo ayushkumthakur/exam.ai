@@ -329,7 +329,7 @@ if (qCount === 0) {
 
 /*
  * Priority exam banks: deterministic, authored practice questions for UPSC CSE,
- * CSAT, SSC CGL Tier-I and RBI Grade B Phase-I. Idempotent on persistent Railway
+ * CSAT, SSC CGL Tier-I, RBI Grade B Phase-I and RRB Group D. Idempotent on persistent Railway
  * volumes and deliberately separate from source-verified PYQ records.
  */
 {
