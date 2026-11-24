@@ -87,6 +87,74 @@ const FACTS = {
   ],
 };
 
+  RailwayPhysics: [
+    ["The SI unit of force is the newton.",true,"One newton produces an acceleration of one metre per second squared in a one-kilogram mass."],
+    ["The SI unit of electric current is the ampere.",true,"Electric current is measured in amperes."],
+    ["Sound cannot travel through a perfect vacuum.",true,"Sound is a mechanical wave and needs a material medium."],
+    ["A convex lens can converge parallel rays of light.",true,"A convex lens is a converging lens."],
+    ["The SI unit of power is the watt.",true,"One watt equals one joule per second."],
+    ["The resistance of an ohmic conductor is given by V divided by I at constant physical conditions.",true,"Ohm's law states V = IR."],
+    ["The image formed by a plane mirror is virtual and erect.",true,"A plane mirror forms a virtual, erect image of the same size."],
+    ["The approximate acceleration due to gravity near Earth's surface is 9.8 m/s².",true,"The value is approximately 9.8 metres per second squared."],
+    ["In a series circuit, the same current passes through each component.",true,"A series circuit has a single path for charge flow."],
+    ["The SI unit of frequency is hertz.",true,"One hertz means one cycle per second."],
+    ["A fuse is connected in series with the circuit it protects.",true,"A fuse melts and breaks the circuit when excessive current flows."],
+    ["The speed of light is greater in water than in vacuum.",false,"Light travels fastest in vacuum; it slows in material media."]
+  ],
+  RailwayChemistry: [
+    ["The chemical symbol of sodium is Na.",true,"Na comes from the Latin name natrium."],
+    ["The pH of a neutral aqueous solution at 25°C is approximately 7.",true,"At 25°C, neutral water has pH 7."],
+    ["Rusting of iron requires oxygen and moisture.",true,"Rusting is an electrochemical corrosion process involving oxygen and water."],
+    ["The chemical formula of common salt is NaCl.",true,"Sodium chloride is common table salt."],
+    ["Carbon dioxide turns limewater milky.",true,"CO₂ reacts with calcium hydroxide to form insoluble calcium carbonate."],
+    ["Graphite is an allotrope of carbon that conducts electricity.",true,"Delocalised electrons in graphite allow electrical conduction."],
+    ["The atomic number of an element equals the number of protons in its nucleus.",true,"The proton count defines the atomic number."],
+    ["Acids turn blue litmus paper red.",true,"This is a common indicator test for acids."],
+    ["The gas generally released at the cathode during electrolysis of acidified water is oxygen.",false,"Hydrogen is released at the cathode; oxygen is released at the anode."],
+    ["The chemical formula of baking soda is NaHCO₃.",true,"Sodium hydrogen carbonate is baking soda."],
+    ["Metals generally form positive ions by losing electrons.",true,"Metal atoms commonly lose valence electrons to form cations."],
+    ["The process of converting a liquid into vapour below its boiling point is evaporation.",true,"Evaporation occurs at the surface and can happen below boiling temperature."]
+  ],
+  RailwayLifeScience: [
+    ["The structural and functional unit of the human kidney is the nephron.",true,"Nephrons filter blood and help form urine."],
+    ["Photosynthesis in green plants mainly occurs in chloroplasts.",true,"Chlorophyll in chloroplasts captures light energy."],
+    ["The human heart has four chambers.",true,"It has two atria and two ventricles."],
+    ["Insulin is secreted by the pancreas.",true,"Beta cells in the pancreatic islets secrete insulin."],
+    ["Red blood cells transport oxygen mainly through haemoglobin.",true,"Haemoglobin binds oxygen in red blood cells."],
+    ["The largest organ of the human body is the skin.",true,"Skin is the body's largest organ by surface area and mass."],
+    ["The functional unit of the nervous system is the neuron.",true,"Neurons transmit nerve impulses."],
+    ["The human body normally has 46 chromosomes in a somatic cell.",true,"A typical human somatic cell contains 23 pairs of chromosomes."],
+    ["Plants absorb most of the water used in photosynthesis through their leaves.",false,"Most water is absorbed by roots and transported to leaves."],
+    ["The deficiency of vitamin C causes scurvy.",true,"Vitamin C deficiency can cause scurvy."],
+    ["Bile is produced by the liver and stored in the gall bladder.",true,"The liver produces bile; the gall bladder stores and concentrates it."],
+    ["The exchange of gases in human lungs occurs in the alveoli.",true,"Alveoli provide a large surface for gas exchange."]
+  ],
+  RailwayStaticGK: [
+    ["The Constitution of India came into force on 26 January 1950.",true,"The Constitution commenced on Republic Day, 26 January 1950."],
+    ["The national song of India is Vande Mataram.",true,"Vande Mataram is recognised as India's national song."],
+    ["The headquarters of the Reserve Bank of India is in Mumbai.",true,"The RBI's central office is in Mumbai."],
+    ["The Tropic of Cancer passes through eight Indian states.",true,"It crosses eight states in India."],
+    ["The largest Indian state by area is Rajasthan.",true,"Rajasthan is India's largest state by area."],
+    ["The first passenger train in India ran between Bombay and Thane in 1853.",true,"The first passenger train ran on 16 April 1853."],
+    ["The headquarters of Indian Railways is in New Delhi.",true,"The Railway Board is headquartered in New Delhi."],
+    ["The national animal of India is the tiger.",true,"The Bengal tiger is India's national animal."],
+    ["The Sanchi Stupa is located in Madhya Pradesh.",true,"Sanchi is a major Buddhist monument in Madhya Pradesh."],
+    ["The Dandi March took place in 1930.",true,"Gandhi's Salt March began in March 1930."],
+    ["The Indian Standard Meridian is 82°30′ east longitude.",true,"Indian Standard Time is based on 82°30′ E."],
+    ["The headquarters of UNESCO is in Geneva.",false,"UNESCO is headquartered in Paris, France."]
+  ],
+  RailwayCurrentAffairs: [
+    ["The 20th Asian Games in 2026 were hosted by Aichi-Nagoya in Japan.",true,"The 2026 Asian Games were held in Aichi-Nagoya, Japan."],
+    ["India's PM E-DRIVE scheme supports electric mobility and charging infrastructure.",true,"The scheme supports electric vehicle adoption and charging infrastructure."],
+    ["The National Supercomputing Mission is associated with expanding India's supercomputing capacity.",true,"The mission supports indigenous supercomputing infrastructure and capability."],
+    ["The India-New Zealand Free Trade Agreement entered into force on 20 October 2026.",true,"The agreement entered into force on 20 October 2026."],
+    ["The 2026 SAREX national maritime search and rescue exercise was conducted off Paradip.",true,"The Indian Coast Guard conducted SAREX-2026 off Paradip in October."],
+    ["Exercise KAZIND-2026 was a joint military exercise between India and Kazakhstan.",true,"KAZIND is the India-Kazakhstan joint military exercise."],
+    ["The 2026 India-UAE joint military exercise was named MOUNTAIN GUARDIAN.",true,"MOUNTAIN GUARDIAN 2026 commenced in Uttarakhand."],
+    ["The 2026 Global Fintech Fest was held in Mumbai.",true,"The 7th Global Fintech Fest 2026 took place in Mumbai."],
+    ["The 2026 Asian Games were hosted by New Delhi.",false,"The host was Aichi-Nagoya in Japan."],
+    ["The PM-SETU scheme focuses on modernising Industrial Training Institutes.",true,"PM-SETU supports ITI modernisation and industry-aligned training."]
+  ],
 const BANKING_FACTS = [
   ["The RBI regulates monetary policy in India.",true,"The RBI is responsible for monetary policy under India's statutory framework."],
   ["The Cash Reserve Ratio is the share of a bank's net demand and time liabilities kept as cash balance with the RBI.",true,"CRR requires banks to maintain a specified cash balance with the RBI."],
@@ -544,6 +612,15 @@ function buildPriorityQuestionBank(exams, topics) {
   addForExam("UPSC_CSAT","Quantitative Aptitude","Percentage",quantitativeQuestions("UPSC_CSAT","Quantitative Aptitude",180,2000));
   addForExam("UPSC_CSAT","Reasoning","Series",reasoningQuestions("UPSC_CSAT","Reasoning",180,3000));
   addForExam("UPSC_CSAT","English","Comprehension",englishQuestions("UPSC_CSAT","English",180,4000,"csat"));
+  // RRB Group D CEN 09/2025: current 2026 CBT syllabus coverage.
+  // All generated items remain ADMIN_PRACTICE, never claimed as official PYQs.
+  addForExam("RRB_GROUP_D","General Science","Physics",statementQuestions("RRB_GROUP_D","General Science","Physics",FACTS.RailwayPhysics,150,15000));
+  addForExam("RRB_GROUP_D","General Science","Chemistry",statementQuestions("RRB_GROUP_D","General Science","Chemistry",FACTS.RailwayChemistry,150,15200));
+  addForExam("RRB_GROUP_D","General Science","Life Science",statementQuestions("RRB_GROUP_D","General Science","Life Science",FACTS.RailwayLifeScience,150,15400));
+  addForExam("RRB_GROUP_D","Mathematics","Percentage",quantitativeQuestions("RRB_GROUP_D","Mathematics",180,16000));
+  addForExam("RRB_GROUP_D","Reasoning","Series",reasoningQuestions("RRB_GROUP_D","Reasoning",180,17000));
+  addForExam("RRB_GROUP_D","General Awareness","Static GK",statementQuestions("RRB_GROUP_D","General Awareness","Static GK",FACTS.RailwayStaticGK,150,18000));
+  addForExam("RRB_GROUP_D","General Awareness","Current Affairs",statementQuestions("RRB_GROUP_D","General Awareness","Current Affairs",FACTS.RailwayCurrentAffairs,100,18200));
   // SSC CGL Tier-I: speed/accuracy-oriented four-section banks.
   addForExam("SSC_CGL","Reasoning","Series",reasoningQuestions("SSC_CGL","Reasoning",150,5000));
   const sscGA = Object.values(FACTS).flatMap((facts,di) => statementQuestions("SSC_CGL","General Awareness",di === 5 ? "Science" : "Static GK",facts,25,6000+di*100)).slice(0,150);
