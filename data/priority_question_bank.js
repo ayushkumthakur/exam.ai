@@ -85,8 +85,6 @@ const FACTS = {
     ["The headquarters of the Reserve Bank of India is in Mumbai.",true,"The RBI's central office is in Mumbai."],
     ["UNESCO headquarters is located in Paris.",true,"UNESCO is headquartered in Paris, France."],
   ],
-};
-
   RailwayPhysics: [
     ["The SI unit of force is the newton.",true,"One newton produces an acceleration of one metre per second squared in a one-kilogram mass."],
     ["The SI unit of electric current is the ampere.",true,"Electric current is measured in amperes."],
@@ -155,6 +153,8 @@ const FACTS = {
     ["The 2026 Asian Games were hosted by New Delhi.",false,"The host was Aichi-Nagoya in Japan."],
     ["The PM-SETU scheme focuses on modernising Industrial Training Institutes.",true,"PM-SETU supports ITI modernisation and industry-aligned training."]
   ],
+};
+
 const BANKING_FACTS = [
   ["The RBI regulates monetary policy in India.",true,"The RBI is responsible for monetary policy under India's statutory framework."],
   ["The Cash Reserve Ratio is the share of a bank's net demand and time liabilities kept as cash balance with the RBI.",true,"CRR requires banks to maintain a specified cash balance with the RBI."],
