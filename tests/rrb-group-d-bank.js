@@ -18,8 +18,8 @@ const expected = [
   ['General Science','Physics',150],
   ['General Science','Chemistry',150],
   ['General Science','Life Science',150],
-  ['Mathematics','Percentage',180],
-  ['Reasoning','Series',180],
+  ['Mathematics','Percentage',18],
+  ['Reasoning','Series',72],
   ['General Awareness','Static GK',150],
   ['General Awareness','Current Affairs',100]
 ];
@@ -27,6 +27,8 @@ for (const [subject, topic, minimum] of expected) {
   const rows = bank.filter(q => q.subject === subject && q.topic === topic);
   assert.ok(rows.length >= minimum, subject + '/' + topic + ' should have at least ' + minimum + ' questions');
 }
+assert.equal(bank.filter(q => q.subject === 'Mathematics').length, 180, 'Maths bank should contain 180 questions across the mapped syllabus topics');
+assert.equal(bank.filter(q => q.subject === 'Reasoning').length, 180, 'Reasoning bank should contain 180 questions across the mapped syllabus topics');
 for (const q of bank) {
   assert.equal(q.source_type, 'ADMIN_PRACTICE', 'generated RRB questions must not be presented as verified PYQs');
   assert.equal(q.pyq_year ?? null, null);
