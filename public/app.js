@@ -23,8 +23,26 @@ const fmtDate = (t) => new Date(t).toLocaleDateString(undefined, { day: 'numeric
 
 async function api(method, url, body) {
   let r;
-  try { r = await fetch(url, { method, headers: body ? { 'content-type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined, credentials: 'same-origin' }); }
-  catch { throw Object.assign(new Error('Network problem. Check your connection and try again.'), { network: true, retry: true }); }
+  // A stalled read request should not leave a page spinner running forever. Keep
+  // writes un-aborted: retrying a timed-out POST could create duplicate attempts.
+  const controller = method === 'GET' && typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeout = controller ? setTimeout(() => controller.abort(), 20000) : null;
+  try {
+    r = await fetch(url, {
+      method,
+      headers: body ? { 'content-type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: 'same-origin',
+      ...(controller ? { signal: controller.signal } : {})
+    });
+  } catch (error) {
+    if (error && error.name === 'AbortError') {
+      throw Object.assign(new Error('This request took too long. Check your connection and try again.'), { network: true, retry: true, timeout: true });
+    }
+    throw Object.assign(new Error('Network problem. Check your connection and try again.'), { network: true, retry: true });
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
   const data = await r.json().catch(() => ({}));
   if (r.status === 401 && S.user) { S.user = null; location.hash = '#/'; renderAuth(); }
   if (!r.ok) throw Object.assign(new Error(data.error || 'Something went wrong.'), { status: r.status, data, retry: data.retry });
@@ -51,10 +69,20 @@ const srcBadge = (q) => { const [l, c] = SRC[q.source_type] || ['', 'adm']; retu
 function errBox(e, retryFn) {
   return h('div', { class: 'err', role: 'alert' }, h('div', {}, e.message || 'Something went wrong.'), retryFn && e.retry !== false ? h('button', { class: 'btn sm', style: 'margin-top:.5rem', onclick: retryFn }, 'Try Again') : null);
 }
-// Run an async loader into a container; failures stay local so the rest of the app keeps working.
+// Run an async loader into a container; ignore stale results after navigation/retry.
+const loadVersions = new WeakMap();
 async function load(box, fn) {
+  const version = (loadVersions.get(box) || 0) + 1;
+  loadVersions.set(box, version);
   box.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Loading…'));
-  try { const n = await fn(); box.replaceChildren(n); } catch (e) { box.replaceChildren(errBox(e, () => load(box, fn))); }
+  try {
+    const n = await fn();
+    if (loadVersions.get(box) !== version || !box.isConnected) return;
+    box.replaceChildren(n);
+  } catch (e) {
+    if (loadVersions.get(box) !== version || !box.isConnected) return;
+    box.replaceChildren(errBox(e, () => load(box, fn)));
+  }
 }
 const cleanups = [];
 const onLeave = (f) => cleanups.push(f);
