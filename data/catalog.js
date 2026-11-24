@@ -3,6 +3,15 @@
 // an admin must confirm them against the official notification.
 
 const TOPICS = {
+  'Ancient History': ['Prehistoric India','Indus Valley Civilisation','Vedic Age','Mahajanapadas','Buddhism and Jainism','Mauryan Empire','Post-Mauryan Period','Gupta Empire','Post-Gupta Period','Sangam Age','Ancient Literature and Science'],
+  'Medieval History': ['Early Medieval India','Delhi Sultanate','Vijayanagara and Bahmani Kingdoms','Mughal Empire','Maratha Confederacy','Bhakti Movement','Sufi Movement','Medieval Society and Economy'],
+  'Modern History': ['European Trading Companies','British Expansion','Revolt of 1857','Socio-Religious Reform Movements','Indian National Congress','Swadeshi Movement','Gandhian Era','Revolutionary Movement','Constitutional Developments','Partition and Independence'],
+  'Art & Culture': ['Indian Architecture','Sculpture','Paintings','Classical and Folk Dance','Music','Theatre and Puppetry','Literature','Religion and Philosophy','UNESCO Heritage'],
+  'Physical Geography': ['Geomorphology','Climatology','Oceanography','Biogeography','Earthquakes and Volcanoes'],
+  'Indian Geography': ['Physiography of India','Drainage System','Indian Climate','Soils','Natural Vegetation','Agriculture','Minerals and Energy','Industries','Transport and Population'],
+  'World Geography': ['Continents and Oceans','World Climate','Major Landforms','Resources and Industries','World Population and Settlements'],
+  'Environment & Ecology': ['Ecology and Ecosystems','Biodiversity','Protected Areas','Climate Change','Environmental Pollution','Environmental Laws and Conventions','Conservation'],
+  'Science & Technology': ['Space Technology','Biotechnology','Information Technology','Artificial Intelligence','Defence Technology','Nanotechnology','Health and Diseases','Emerging Technologies'],
   Science: ['Matter and Its Nature','Atoms and Molecules','Cell and Tissues','Life Processes','Motion','Force and Laws of Motion','Gravitation','Work Energy and Power','Sound','Light','Electricity','Magnetic Effects','Our Environment','Natural Resources'],
   'English Language & Literature': ['Reading','Grammar','Writing Skills','Literature'],
   'English Core': ['Reading Comprehension','Creative Writing','Literature'],
@@ -179,7 +188,16 @@ const EXAMS = [
 const SUBJECT_ALIASES = { Mathematics: 'Mathematics' };
 
 function syllabusFor(exam) {
-  return exam.pattern.sections.map(s => ({ subject: s.subject, topics: TOPICS[s.subject] || ['General'] }));
+  const base = exam.pattern.sections.map(s => ({ subject: s.subject, topics: TOPICS[s.subject] || ['General'] }));
+  if (exam.id !== 'UPSC_CSE') return base;
+  // Fine-grained UPSC GS Paper I subject filters. These are syllabus categories,
+  // not claims that the question bank already contains a complete set for each topic.
+  const focused = [
+    'Ancient History', 'Medieval History', 'Modern History', 'Art & Culture',
+    'Physical Geography', 'Indian Geography', 'World Geography',
+    'Environment & Ecology', 'Science & Technology'
+  ];
+  return [...base, ...focused.map(subject => ({ subject, topics: TOPICS[subject] }))];
 }
 
 // Static, hand-checked revision notes (other topics fall back to AI-generated notes when AI is configured)

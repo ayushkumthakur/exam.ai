@@ -316,7 +316,7 @@ async function buildTest(user, exam, b) {
   const testMode = kind === 'full_mock' ? requestedMode : 'practice';
   const count = Math.min(Math.max(+b.count || 20, 20), 100);
   const diff = realMode ? 'any' : (['easy', 'medium', 'hard'].includes(b.difficulty) ? b.difficulty : 'any');
-  const needSubject = () => { if (!exam.subjects.includes(b.subject)) throw bad('Please choose a subject from your exam.'); };
+  const needSubject = () => { if (!exam.syllabus.some(section => section.subject === b.subject)) throw bad('Please choose a subject from your exam syllabus.'); };
   const needTopic = () => { needSubject(); const s = exam.syllabus.find(x => x.subject === b.subject); if (!s.topics.includes(b.topic)) throw bad('Please choose a topic from your exam syllabus.'); };
   const practiceOnly = ['ADMIN_PRACTICE', 'AI_GENERATED', 'PYQ_PATTERN'];
 
