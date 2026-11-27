@@ -213,7 +213,7 @@ function statementQuestions(examId, subject, topic, facts, limit, startSeed) {
   // Priority banks deliberately use one ordering per fact triple to avoid
   // inflated near-duplicates. Broad catalogue banks retain variants so every
   // syllabus section has enough practice coverage while those banks are audited.
-  const variantsPerTriple = ['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B'].includes(examId) ? 1 : 6;
+  const variantsPerTriple = ['UPSC_CSE','UPSC_CSAT','SSC_CGL','SSC_CHSL','RBI_B'].includes(examId) ? 1 : 6;
   for (let a = 0; a < facts.length && rows.length < limit; a++) {
     for (let b = a + 1; b < facts.length && rows.length < limit; b++) {
       for (let d = b + 1; d < facts.length && rows.length < limit; d++) {
@@ -642,6 +642,13 @@ function buildPriorityQuestionBank(exams, topics) {
   addForExam("SSC_CGL","General Awareness","Static GK",sscGA.map(q => ({...q,topic:q.topic==="Science"?"Science":"Static GK"})));
   addForExam("SSC_CGL","Quantitative Aptitude","Percentage",quantitativeQuestions("SSC_CGL","Quantitative Aptitude",150,7000));
   addForExam("SSC_CGL","English","Grammar",englishQuestions("SSC_CGL","English",150,8000,"ssc"));
+  // SSC CHSL Tier-I: 10+2-level practice across all four objective sections.
+  // These are authored ADMIN_PRACTICE questions, not verified previous-year questions.
+  addForExam("SSC_CHSL","Quantitative Aptitude","Percentage",quantitativeQuestions("SSC_CHSL","Quantitative Aptitude",120,21000));
+  addForExam("SSC_CHSL","Reasoning","Series",reasoningQuestions("SSC_CHSL","Reasoning",120,22000));
+  addForExam("SSC_CHSL","English","Grammar",englishQuestions("SSC_CHSL","English",120,23000,"ssc"));
+  const chslFacts = Object.values(FACTS).flatMap((facts,di) => statementQuestions("SSC_CHSL","General Awareness",di === 5 ? "Science" : "Static GK",facts,24,24000+di*100)).slice(0,120);
+  addForExam("SSC_CHSL","General Awareness","Static GK",chslFacts.map(q => ({...q,topic:q.topic==="Science"?"Science":"Static GK"})));
   // RBI Grade B Phase-I: broad static/economy/financial awareness plus aptitude.
   const rbiFacts = Object.values(FACTS).concat([BANKING_FACTS]);
   const rbiGA = rbiFacts.flatMap((facts,di) => statementQuestions("RBI_B","General Awareness",di === 5 ? "Science" : "Static GK",facts,35,9000+di*100)).slice(0,240);
