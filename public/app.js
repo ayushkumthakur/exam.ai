@@ -741,14 +741,19 @@ async function pgPractice(parts, params) {
           h('b', {}, '80 questions · 120 minutes'), h('span', { class: 'btn primary' }, 'Practise CSAT →'))));
   }
   const examId = S.user.exam_id === 'UPSC_CSE' && ['UPSC_CSE','UPSC_CSAT'].includes(paperId) ? paperId : S.user.exam_id;
-  const ex = (await get('/api/exams/' + examId)).exam; const box = h('div', { class: 'stack' });
-  const sel = { subject: params.get('subject') || '', topic: params.get('topic') || '', difficulty: '', source: '', count: [10, 20, 30, 50].includes(Number(params.get('count'))) ? Number(params.get('count')) : 20 };
+  const [exData, pyqData] = await Promise.all([
+    get('/api/exams/' + examId),
+    get('/api/pyq/papers' + q({ exam_id: examId })).catch(() => ({ papers: [] }))
+  ]);
+  const ex = exData.exam, pyqPapers = pyqData.papers || [], box = h('div', { class: 'stack' });
+  const sel = { subject: params.get('subject') || '', topic: params.get('topic') || '', difficulty: '', source: params.get('source') || '', year: params.get('year') || '', paper: params.get('paper') || '', count: [10, 20, 30, 50].includes(Number(params.get('count'))) ? Number(params.get('count')) : 20 };
   async function start(src, titleOverride) {
     box.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Preparing questions…'));
     try {
-      const r = await get('/api/practice/questions' + q({ ...sel, source: src ?? sel.source, limit: sel.count, exam_id: examId }));
-      if (!r.questions.length) { setup(h('div', { class: 'note' }, 'No questions found for this selection yet. Try another topic, or generate questions with the AI Tutor.')); return; }
-      box.replaceChildren(runSession(r.questions, { mode: 'practice', title: titleOverride || sel.topic || sel.subject || 'Mixed practice', examId, onFinish: () => setup() }));
+      const selectedSource = src ?? sel.source;
+      const r = await get('/api/practice/questions' + q({ ...sel, source: selectedSource, year: selectedSource === 'VERIFIED_PYQ' ? sel.year : undefined, paper: selectedSource === 'VERIFIED_PYQ' ? sel.paper : undefined, limit: sel.count, exam_id: examId }));
+      if (!r.questions.length) { setup(h('div', { class: 'note' }, selectedSource === 'VERIFIED_PYQ' ? 'No verified PYQ questions are imported for this year/paper yet. Use PYQ Pattern questions for additional practice.' : 'No questions found for this selection yet. Try another topic, or generate questions with the AI Tutor.')); return; }
+      box.replaceChildren(runSession(r.questions, { mode: selectedSource === 'VERIFIED_PYQ' ? 'pyq' : 'practice', title: titleOverride || (selectedSource === 'VERIFIED_PYQ' ? sel.year + ' ' + sel.paper + ' Verified PYQ Practice' : sel.topic || sel.subject || 'Mixed practice'), examId, onFinish: () => setup() }));
     } catch (e) { setup(errBox(e, () => start(src, titleOverride))); }
   }
   async function startSmart() {
@@ -766,9 +771,18 @@ async function pgPractice(parts, params) {
     const topics = ex.syllabus.find(s => s.subject === sel.subject)?.topics || [];
     const top = h('select', { 'aria-label': 'Topic', disabled: !sel.subject, onchange: (e) => sel.topic = e.target.value }, h('option', { value: '' }, 'All topics'), topics.map(t => h('option', { value: t, selected: t === sel.topic }, t)));
     const dif = h('select', { 'aria-label': 'Difficulty', onchange: (e) => sel.difficulty = e.target.value }, [['', 'Any difficulty'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === sel.difficulty }, l)));
-    const count = h('select', { 'aria-label': 'Number of questions', onchange: (e) => sel.count = Number(e.target.value) }, [10, 20, 30, 50].map(n => h('option', { value: n, selected: n === sel.count }, `${n} questions`)));
-    box.replaceChildren(h('div', { class: 'row between' }, h('h1', {}, 'Practice'), S.user.exam_id === 'UPSC_CSE' ? h('a', { class: 'btn ghost sm', href: '#/practice' }, '← Choose paper') : null), h('p', { class: 'muted' }, `Questions for ${ex.name} only. Every question shows where it came from.`), examId === 'UPSC_CSAT' ? h('div', { class: 'info' }, 'CSAT is a qualifying paper. You need at least 33% to qualify.') : null, extra || null,
-      h('div', { class: 'card stack' }, h('div', { class: 'grid g3' }, h('div', {}, h('label', {}, 'Subject'), subj), h('div', {}, h('label', {}, 'Topic'), top), h('div', {}, h('label', {}, 'Difficulty'), dif), h('div', {}, h('label', {}, 'Number of questions'), count)),
+    const sourceOptions = [['', 'All question sources'], ['VERIFIED_PYQ', 'Verified Previous Year Questions'], ['PYQ_PATTERN', 'PYQ-pattern practice'], ['ADMIN_PRACTICE', 'Practice bank'], ['AI_GENERATED', 'AI-generated practice']];
+    const source = h('select', { 'aria-label': 'Question source', onchange: (e) => { sel.source = e.target.value; sel.year = ''; sel.paper = ''; setup(); } }, sourceOptions.map(([v,l]) => h('option', { value:v, selected:v===sel.source },l)));
+    const yearOptions = [...new Set(pyqPapers.map(p => String(p.year)))];
+    if (sel.source === 'VERIFIED_PYQ' && !yearOptions.includes(String(sel.year))) sel.year = yearOptions[0] || '';
+    const papersForYear = pyqPapers.filter(p => String(p.year) === String(sel.year));
+    if (sel.source === 'VERIFIED_PYQ' && !papersForYear.some(p => p.paper === sel.paper)) sel.paper = papersForYear[0]?.paper || '';
+    const year = h('select', { 'aria-label': 'PYQ year', disabled: !yearOptions.length, onchange: (e) => { sel.year=e.target.value; sel.paper=''; setup(); } }, yearOptions.map(y=>h('option',{value:y,selected:y===String(sel.year)},y)));
+    const paper = h('select', { 'aria-label': 'PYQ paper', disabled: !papersForYear.length, onchange: (e) => sel.paper=e.target.value }, papersForYear.map(p=>h('option',{value:p.paper,selected:p.paper===sel.paper},p.paper+(p.shift?' · '+p.shift:''))));
+    const count = h('select', { 'aria-label': 'Number of questions', onchange: (e) => sel.count = Number(e.target.value) }, [10, 20, 30, 50].map(n => h('option', { value: n, selected: n === sel.count }, n + ' questions')));
+    box.replaceChildren(h('div', { class: 'row between' }, h('h1', {}, 'Practice'), S.user.exam_id === 'UPSC_CSE' ? h('a', { class: 'btn ghost sm', href: '#/practice' }, '← Choose paper') : null), h('p', { class: 'muted' }, 'Questions for ' + ex.name + ' only. Every question shows where it came from.'), examId === 'UPSC_CSAT' ? h('div', { class: 'info' }, 'CSAT is a qualifying paper. You need at least 33% to qualify.') : null,
+      sel.source === 'VERIFIED_PYQ' && !pyqPapers.length ? h('div', { class: 'info' }, 'No verified PYQ papers have been imported yet. PYQ-pattern practice is separate.') : null, extra || null,
+      h('div', { class: 'card stack' }, h('div', { class: 'grid g3' }, h('div', {}, h('label', {}, 'Subject'), subj), h('div', {}, h('label', {}, 'Topic'), top), h('div', {}, h('label', {}, 'Difficulty'), dif), h('div', {}, h('label', {}, 'Question source'), source), sel.source === 'VERIFIED_PYQ' ? h('div', {}, h('label', {}, 'PYQ year'), year) : null, sel.source === 'VERIFIED_PYQ' ? h('div', {}, h('label', {}, 'Paper'), paper) : null, h('div', {}, h('label', {}, 'Number of questions'), count)),
         h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => start() }, 'Practice Now'), h('button', { class: 'btn', onclick: () => startSmart() }, '✨ Smart Practice'), h('a', { class: 'btn', href: '#/revision?mistakes=1' }, 'Revise My Mistakes'), S.config.ai_enabled ? h('button', { class: 'btn', onclick: () => genPanel() }, '✨ Generate AI questions') : null)));
   }
   function genPanel() {
