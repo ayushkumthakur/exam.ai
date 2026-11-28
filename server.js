@@ -1127,9 +1127,10 @@ route('GET', '/api/admin/ai-health', ADM, () => ({
     providers: {
       gemini: !!String(process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY_2 || process.env.GEMINI_API_KEY_3 || '').trim(),
       groq: !!String(process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2 || '').trim(),
-      anthropic: !!String(process.env.ANTHROPIC_API_KEY || '').trim()
+      anthropic: !!String(process.env.ANTHROPIC_API_KEY || '').trim(),
+      cloudflare: !!String(process.env.CLOUDFLARE_ACCOUNT_ID || '').trim() && !!String(process.env.CLOUDFLARE_API_TOKEN || '').trim()
     },
-    fallbackPolicy: 'Text requests use configured providers; Gemini grounded current affairs remain Gemini-only.'
+    fallbackPolicy: 'Text requests use configured providers; Gemini grounded current affairs and image/document inputs remain on compatible providers.'
   }
 }));
 route('GET', '/api/admin/backups', ADM, () => {
