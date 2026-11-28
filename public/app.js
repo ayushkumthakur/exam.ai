@@ -837,7 +837,8 @@ async function pgPyqs() {
     official.push(
       ['SSC CHSL 2025 Tier-I', 'Official SSC final answer key / response-sheet access (candidate login)', 'https://sscexams.cbexams.com/chsl2025finalkeylandingpagedh/LoginNew.aspx'],
       ['SSC CHSL 2024 Tier-I', 'SSC notice confirming final answer keys were uploaded with question papers', 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Final%20Answer%20Key%20and%20marks%20CHSLE%202024%20Tier-I161024.pdf'],
-      ['SSC official question-paper and answer-key notices', 'Use the SSC portal for older CHSL cycles; access to some response sheets is time-limited or candidate-login based', 'https://ssc.gov.in/']
+      ['SSC CHSL 2023 Tier-I', 'Official SSC notice for final answer keys with question papers; candidate response access was time-limited', 'https://ssc.nic.in/SSCFileServer/PortalManagement/UploadedFiles/CHSLE2023_Tier-I_answer_key_17102023.pdf'],
+      ['SSC CHSL 2019–2023 answer-key archive', 'Official SSC archive lists CHSL notices for 2019, 2020, 2021, 2022 and 2023; some papers require candidate login', 'https://ssc.nic.in/Portal/AnswerKey']
     );
   }
   official.push(['SSC official examination portal', 'Use the official SSC portal for current notices, answer keys and paper access', 'https://ssc.gov.in/']);
