@@ -241,7 +241,7 @@ assert.equal(new Set(statementTriples).size, statementTriples.length,
 
 
 const catalogBank = buildCatalogQuestionBank(EXAMS, TOPICS, BASE_QUESTION_SEED, EXPANDED_QUESTION_SEED);
-const prioritySet = new Set(['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B']);
+const prioritySet = new Set(['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B','RRB_GROUP_D']);
 for (const exam of EXAMS.filter(e => !prioritySet.has(e.id))) {
   const examRows = catalogBank.filter(q => q.exam_id === exam.id);
   assert.ok(examRows.length >= 500, exam.id + ' should have at least 500 practice questions');
