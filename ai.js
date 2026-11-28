@@ -17,7 +17,8 @@ function configuredProviders() {
   return [
     ...(GEMINI_KEY() ? ['gemini'] : []),
     ...(GROQ_KEY() ? ['groq'] : []),
-    ...(ANTHROPIC_KEY() ? ['anthropic'] : []),\n    ...(CLOUDFLARE_ACCOUNT_ID() && CLOUDFLARE_API_TOKEN() ? ['cloudflare'] : [])
+    ...(ANTHROPIC_KEY() ? ['anthropic'] : []),
+    ...(CLOUDFLARE_ACCOUNT_ID() && CLOUDFLARE_API_TOKEN() ? ['cloudflare'] : [])
   ];
 }
 function activeProvider() {
