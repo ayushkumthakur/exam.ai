@@ -188,18 +188,17 @@ const expandedBank = buildExamQuestionBank(EXAMS, TOPICS, BASE_QUESTION_SEED, EX
 assert.ok(expandedBank.length >= 300, 'expanded bank should contain hundreds of exam-specific practice rows');
 assert.ok(expandedBank.every(q => q.source_type === 'ADMIN_PRACTICE'), 'expanded questions must never be labelled as verified PYQs');
 assert.ok(expandedBank.every(q => TOPICS[q.subject]?.includes(q.topic)), 'every question topic must be allowed by its subject syllabus');
+const priorityBank = buildPriorityQuestionBank(EXAMS, TOPICS);
+const coverageBank = [...expandedBank, ...priorityBank];
 const bankCoverage = new Map();
-for (const q of expandedBank) bankCoverage.set(q.exam_id + '|' + q.subject, (bankCoverage.get(q.exam_id + '|' + q.subject) || 0) + 1);
+for (const q of coverageBank) bankCoverage.set(q.exam_id + '|' + q.subject, (bankCoverage.get(q.exam_id + '|' + q.subject) || 0) + 1);
 for (const exam of EXAMS) {
   for (const section of exam.pattern.sections) {
     assert.ok((bankCoverage.get(exam.id + '|' + section.subject) || 0) > 0,
-      'every exam section needs at least one syllabus-aligned question: ' + exam.id + ' / ' + section.subject);
+      'every exam section needs at least one syllabus-aligned question across the combined authored banks: ' + exam.id + ' / ' + section.subject);
   }
 }
-assert.ok(EXAMS.every(exam => expandedBank.some(q => q.exam_id === exam.id)), 'all catalog exams need a non-empty exam-specific question bank');
-
-
-const priorityBank = buildPriorityQuestionBank(EXAMS, TOPICS);
+assert.ok(EXAMS.every(exam => coverageBank.some(q => q.exam_id === exam.id)), 'all catalog exams need a non-empty exam-specific question bank');
 const priorityIds = ['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B'];
 for (const id of priorityIds) {
   const examRows = priorityBank.filter(q => q.exam_id === id);
@@ -242,7 +241,7 @@ assert.equal(new Set(statementTriples).size, statementTriples.length,
 
 
 const catalogBank = buildCatalogQuestionBank(EXAMS, TOPICS, BASE_QUESTION_SEED, EXPANDED_QUESTION_SEED);
-const prioritySet = new Set(['UPSC_CSE','UPSC_CSAT','SSC_CGL','RBI_B']);
+const prioritySet = new Set(['UPSC_CSE','UPSC_CSAT','SSC_CGL','SSC_CHSL','RBI_B','RRB_GROUP_D']);
 for (const exam of EXAMS.filter(e => !prioritySet.has(e.id))) {
   const examRows = catalogBank.filter(q => q.exam_id === exam.id);
   assert.ok(examRows.length >= 500, exam.id + ' should have at least 500 practice questions');

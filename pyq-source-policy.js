@@ -8,6 +8,7 @@ const OFFICIAL_SOURCE_HOSTS = Object.freeze({
   UPSC_CSE: ['upsc.gov.in', 'www.upsc.gov.in'],
   UPSC_CSAT: ['upsc.gov.in', 'www.upsc.gov.in'],
   SSC_CGL: ['ssc.gov.in', 'www.ssc.gov.in', 'ssc.nic.in', 'www.ssc.nic.in'],
+  SSC_CHSL: ['ssc.gov.in', 'www.ssc.gov.in', 'ssc.nic.in', 'www.ssc.nic.in'],
   RBI_B: ['rbi.org.in', 'www.rbi.org.in', 'm.rbi.org.in', 'opportunities.rbi.org.in']
 });
 

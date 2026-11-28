@@ -741,14 +741,19 @@ async function pgPractice(parts, params) {
           h('b', {}, '80 questions · 120 minutes'), h('span', { class: 'btn primary' }, 'Practise CSAT →'))));
   }
   const examId = S.user.exam_id === 'UPSC_CSE' && ['UPSC_CSE','UPSC_CSAT'].includes(paperId) ? paperId : S.user.exam_id;
-  const ex = (await get('/api/exams/' + examId)).exam; const box = h('div', { class: 'stack' });
-  const sel = { subject: params.get('subject') || '', topic: params.get('topic') || '', difficulty: '', source: '', count: [10, 20, 30, 50].includes(Number(params.get('count'))) ? Number(params.get('count')) : 20 };
+  const [exData, pyqData] = await Promise.all([
+    get('/api/exams/' + examId),
+    get('/api/pyq/papers' + q({ exam_id: examId })).catch(() => ({ papers: [] }))
+  ]);
+  const ex = exData.exam, pyqPapers = pyqData.papers || [], box = h('div', { class: 'stack' });
+  const sel = { subject: params.get('subject') || '', topic: params.get('topic') || '', difficulty: '', source: params.get('source') || '', year: params.get('year') || '', paper: params.get('paper') || '', count: [10, 20, 30, 50].includes(Number(params.get('count'))) ? Number(params.get('count')) : 20 };
   async function start(src, titleOverride) {
     box.replaceChildren(h('div', { class: 'empty' }, h('span', { class: 'spin' }), ' Preparing questions…'));
     try {
-      const r = await get('/api/practice/questions' + q({ ...sel, source: src ?? sel.source, limit: sel.count, exam_id: examId }));
-      if (!r.questions.length) { setup(h('div', { class: 'note' }, 'No questions found for this selection yet. Try another topic, or generate questions with the AI Tutor.')); return; }
-      box.replaceChildren(runSession(r.questions, { mode: 'practice', title: titleOverride || sel.topic || sel.subject || 'Mixed practice', examId, onFinish: () => setup() }));
+      const selectedSource = src ?? sel.source;
+      const r = await get('/api/practice/questions' + q({ ...sel, source: selectedSource, year: selectedSource === 'VERIFIED_PYQ' ? sel.year : undefined, paper: selectedSource === 'VERIFIED_PYQ' ? sel.paper : undefined, limit: sel.count, exam_id: examId }));
+      if (!r.questions.length) { setup(h('div', { class: 'note' }, selectedSource === 'VERIFIED_PYQ' ? 'No verified PYQ questions are imported for this year/paper yet. Use PYQ Pattern questions for additional practice.' : 'No questions found for this selection yet. Try another topic, or generate questions with the AI Tutor.')); return; }
+      box.replaceChildren(runSession(r.questions, { mode: selectedSource === 'VERIFIED_PYQ' ? 'pyq' : 'practice', title: titleOverride || (selectedSource === 'VERIFIED_PYQ' ? sel.year + ' ' + sel.paper + ' Verified PYQ Practice' : sel.topic || sel.subject || 'Mixed practice'), examId, onFinish: () => setup() }));
     } catch (e) { setup(errBox(e, () => start(src, titleOverride))); }
   }
   async function startSmart() {
@@ -766,9 +771,18 @@ async function pgPractice(parts, params) {
     const topics = ex.syllabus.find(s => s.subject === sel.subject)?.topics || [];
     const top = h('select', { 'aria-label': 'Topic', disabled: !sel.subject, onchange: (e) => sel.topic = e.target.value }, h('option', { value: '' }, 'All topics'), topics.map(t => h('option', { value: t, selected: t === sel.topic }, t)));
     const dif = h('select', { 'aria-label': 'Difficulty', onchange: (e) => sel.difficulty = e.target.value }, [['', 'Any difficulty'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === sel.difficulty }, l)));
-    const count = h('select', { 'aria-label': 'Number of questions', onchange: (e) => sel.count = Number(e.target.value) }, [10, 20, 30, 50].map(n => h('option', { value: n, selected: n === sel.count }, `${n} questions`)));
-    box.replaceChildren(h('div', { class: 'row between' }, h('h1', {}, 'Practice'), S.user.exam_id === 'UPSC_CSE' ? h('a', { class: 'btn ghost sm', href: '#/practice' }, '← Choose paper') : null), h('p', { class: 'muted' }, `Questions for ${ex.name} only. Every question shows where it came from.`), examId === 'UPSC_CSAT' ? h('div', { class: 'info' }, 'CSAT is a qualifying paper. You need at least 33% to qualify.') : null, extra || null,
-      h('div', { class: 'card stack' }, h('div', { class: 'grid g3' }, h('div', {}, h('label', {}, 'Subject'), subj), h('div', {}, h('label', {}, 'Topic'), top), h('div', {}, h('label', {}, 'Difficulty'), dif), h('div', {}, h('label', {}, 'Number of questions'), count)),
+    const sourceOptions = [['', 'All question sources'], ['VERIFIED_PYQ', 'Verified Previous Year Questions'], ['PYQ_PATTERN', 'PYQ-pattern practice'], ['ADMIN_PRACTICE', 'Practice bank'], ['AI_GENERATED', 'AI-generated practice']];
+    const source = h('select', { 'aria-label': 'Question source', onchange: (e) => { sel.source = e.target.value; sel.year = ''; sel.paper = ''; setup(); } }, sourceOptions.map(([v,l]) => h('option', { value:v, selected:v===sel.source },l)));
+    const yearOptions = [...new Set(pyqPapers.map(p => String(p.year)))];
+    if (sel.source === 'VERIFIED_PYQ' && !yearOptions.includes(String(sel.year))) sel.year = yearOptions[0] || '';
+    const papersForYear = pyqPapers.filter(p => String(p.year) === String(sel.year));
+    if (sel.source === 'VERIFIED_PYQ' && !papersForYear.some(p => p.paper === sel.paper)) sel.paper = papersForYear[0]?.paper || '';
+    const year = h('select', { 'aria-label': 'PYQ year', disabled: !yearOptions.length, onchange: (e) => { sel.year=e.target.value; sel.paper=''; setup(); } }, yearOptions.map(y=>h('option',{value:y,selected:y===String(sel.year)},y)));
+    const paper = h('select', { 'aria-label': 'PYQ paper', disabled: !papersForYear.length, onchange: (e) => sel.paper=e.target.value }, papersForYear.map(p=>h('option',{value:p.paper,selected:p.paper===sel.paper},p.paper+(p.shift?' · '+p.shift:''))));
+    const count = h('select', { 'aria-label': 'Number of questions', onchange: (e) => sel.count = Number(e.target.value) }, [10, 20, 30, 50].map(n => h('option', { value: n, selected: n === sel.count }, n + ' questions')));
+    box.replaceChildren(h('div', { class: 'row between' }, h('h1', {}, 'Practice'), S.user.exam_id === 'UPSC_CSE' ? h('a', { class: 'btn ghost sm', href: '#/practice' }, '← Choose paper') : null), h('p', { class: 'muted' }, 'Questions for ' + ex.name + ' only. Every question shows where it came from.'), examId === 'UPSC_CSAT' ? h('div', { class: 'info' }, 'CSAT is a qualifying paper. You need at least 33% to qualify.') : null,
+      sel.source === 'VERIFIED_PYQ' && !pyqPapers.length ? h('div', { class: 'info' }, 'No verified PYQ papers have been imported yet. PYQ-pattern practice is separate.') : null, extra || null,
+      h('div', { class: 'card stack' }, h('div', { class: 'grid g3' }, h('div', {}, h('label', {}, 'Subject'), subj), h('div', {}, h('label', {}, 'Topic'), top), h('div', {}, h('label', {}, 'Difficulty'), dif), h('div', {}, h('label', {}, 'Question source'), source), sel.source === 'VERIFIED_PYQ' ? h('div', {}, h('label', {}, 'PYQ year'), year) : null, sel.source === 'VERIFIED_PYQ' ? h('div', {}, h('label', {}, 'Paper'), paper) : null, h('div', {}, h('label', {}, 'Number of questions'), count)),
         h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => start() }, 'Practice Now'), h('button', { class: 'btn', onclick: () => startSmart() }, '✨ Smart Practice'), h('a', { class: 'btn', href: '#/revision?mistakes=1' }, 'Revise My Mistakes'), S.config.ai_enabled ? h('button', { class: 'btn', onclick: () => genPanel() }, '✨ Generate AI questions') : null)));
   }
   function genPanel() {
@@ -822,7 +836,9 @@ async function pgPyqs() {
   if (S.user.exam_id === 'SSC_CHSL') {
     official.push(
       ['SSC CHSL 2025 Tier-I', 'Official SSC final answer key / response-sheet access (candidate login)', 'https://sscexams.cbexams.com/chsl2025finalkeylandingpagedh/LoginNew.aspx'],
-      ['SSC CHSL 2024 Tier-I', 'SSC notice confirming final answer keys were uploaded with question papers', 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Final%20Answer%20Key%20and%20marks%20CHSLE%202024%20Tier-I161024.pdf']
+      ['SSC CHSL 2024 Tier-I', 'SSC notice confirming final answer keys were uploaded with question papers', 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Final%20Answer%20Key%20and%20marks%20CHSLE%202024%20Tier-I161024.pdf'],
+      ['SSC CHSL 2023 Tier-I', 'Official SSC notice for final answer keys with question papers; candidate response access was time-limited', 'https://ssc.nic.in/SSCFileServer/PortalManagement/UploadedFiles/CHSLE2023_Tier-I_answer_key_17102023.pdf'],
+      ['SSC CHSL 2019–2023 answer-key archive', 'Official SSC archive lists CHSL notices for 2019, 2020, 2021, 2022 and 2023; some papers require candidate login', 'https://ssc.nic.in/Portal/AnswerKey']
     );
   }
   official.push(['SSC official examination portal', 'Use the official SSC portal for current notices, answer keys and paper access', 'https://ssc.gov.in/']);
@@ -835,21 +851,31 @@ async function pgPyqs() {
       h('a', { class: 'btn sm', href: url, target: '_blank', rel: 'noopener' }, 'Open official source')
     )),
     h('div', { class: 'row' },
+      h('a', { class: 'btn sm', href: '#/practice?source=PYQ_PATTERN&count=50' }, 'Practice PYQ-pattern questions'),
       h('button', { class: 'btn sm primary', onclick: () => startTest({ kind: 'pyq_pattern', count: 20 }) }, '20-question PYQ Pattern Mock'),
       h('span', { class: 'small muted' }, 'Clearly labelled as PYQ Pattern — not an official PYQ.')
     )
   );
 
+  async function startVerifiedPractice(paper) {
+    try {
+      const data = await get('/api/practice/questions' + q({ exam_id: S.user.exam_id, source: 'VERIFIED_PYQ', year: paper.year, paper: paper.paper, limit: 50 }));
+      if (!data.questions.length) { toast('No verified questions found for this paper yet.'); return; }
+      box.replaceChildren(runSession(data.questions, { mode: 'pyq', title: paper.year + ' ' + paper.paper + ' Verified PYQ Practice', examId: S.user.exam_id, onFinish: () => pgPyqs().then(node => box.replaceChildren(node)) }));
+    } catch (e) { toast(e.message || 'Could not load this PYQ set.'); }
+  }
   const verifiedCard = h('div', { class: 'card' },
     h('h3', {}, 'Verified papers'),
     p.papers.length
       ? h('div', { class: 'list' }, p.papers.map(x => h('div', { class: 'row between' },
-          h('span', {}, h('b', {}, `${x.year} · ${x.paper}`), x.shift ? ` · ${x.shift}` : '',
-            h('span', { class: 'muted small' }, ` · ${x.questions}/${x.expected_questions} questions`),
-            h('span', { class: `badge ${x.complete ? 'good' : 'warn'}` }, x.complete ? 'Complete paper' : 'Incomplete · practice only')),
-          h('button', { class: `btn sm ${x.complete ? 'primary' : ''}`, disabled: !x.complete, title: x.complete ? 'Start verified paper' : 'Complete this paper before using real PYQ mode', onclick: () => startTest({ kind: 'pyq', year: x.year, paper: x.paper, shift: x.shift }) }, x.complete ? 'Take as test' : 'Not complete')
+          h('span', {}, h('b', {}, x.year + ' · ' + x.paper), x.shift ? ' · ' + x.shift : '',
+            h('span', { class: 'muted small' }, ' · ' + x.questions + '/' + x.expected_questions + ' questions'),
+            h('span', { class: 'badge ' + (x.complete ? 'good' : 'warn') }, x.complete ? 'Complete paper' : 'Incomplete · practice only')),
+          h('div', { class: 'row wrap' },
+            h('button', { class: 'btn sm', onclick: () => startVerifiedPractice(x) }, 'Practice set'),
+            h('button', { class: 'btn sm ' + (x.complete ? 'primary' : ''), disabled: !x.complete, title: x.complete ? 'Start verified paper' : 'Complete this paper before using real PYQ mode', onclick: () => startTest({ kind: 'pyq', year: x.year, paper: x.paper, shift: x.shift }) }, x.complete ? 'Take as test' : 'Not complete'))
         )))
-      : h('div', { class: 'empty' }, 'No verified PYQ papers have been imported for this exam yet. Official-source links are provided above.'));
+      : h('div', { class: 'empty' }, 'No item-verified CHSL PYQ sets are imported yet. Official-source links are provided above.'));
 
   const analysis = h('div', { class: 'card' },
     h('h3', {}, 'PYQ analysis'),
@@ -1022,14 +1048,23 @@ async function pgTests(parts, params) {
           h('div', { class: 'upsc-paper-footer' }, h('span', {}, 'Start CSAT Practice'), h('span', { class: 'upsc-paper-arrow' }, '▶')))));
   }
   const examId = S.user.exam_id === 'UPSC_CSE' && ['UPSC_CSE','UPSC_CSAT'].includes(paperId) ? paperId : S.user.exam_id;
-  const [list, ex] = await Promise.all([get('/api/tests' + q({ exam_id: examId })), get('/api/exams/' + examId)]); const exam = ex.exam;
+  const [list, ex, pyqData] = await Promise.all([
+    get('/api/tests' + q({ exam_id: examId })),
+    get('/api/exams/' + examId),
+    get('/api/pyq/papers' + q({ exam_id: examId })).catch(() => ({ papers: [] }))
+  ]); const exam = ex.exam;
+  const availablePyqPapers = (pyqData.papers || []).filter(p => p.complete);
   const availableSubjects = examId === 'RRB_GROUP_D' ? exam.syllabus.map(section => section.subject) : (Array.isArray(S.user.selected_subjects) && S.user.selected_subjects.length ? S.user.selected_subjects : exam.subjects);
-  const o = { kind: 'full_mock', subject: availableSubjects[0], topic: '', count: 20, difficulty: 'any', minutes: '', mode: 'real' }; const form = h('div', { class: 'card stack mock-builder' });
+  const o = { kind: 'full_mock', subject: availableSubjects[0], topic: '', count: 20, difficulty: 'any', minutes: '', mode: 'real', year: '', paper: '', shift: '' }; const form = h('div', { class: 'card stack mock-builder' });
   const KINDS = [['full_mock', 'Full Mock'], ['sectional', 'Sectional Mock'], ['subject', 'Subject Test'], ['topic', 'Topic Test'], ['pyq', 'PYQ Test'], ['pyq_pattern', 'PYQ Pattern Mock'], ['ai_mock', 'AI Generated Mock'], ['weak_topic', 'Weak Topic Test']];
   function draw() {
     const realMode = o.kind === 'full_mock' && o.mode === 'real';
     const needS = ['sectional', 'subject', 'topic'].includes(o.kind), needT = o.kind === 'topic', needN = ['subject', 'topic', 'weak_topic', 'pyq_pattern'].includes(o.kind), needD = ['subject', 'topic', 'sectional', 'ai_mock'].includes(o.kind) || (o.kind === 'full_mock' && !realMode);
     const topics = exam.syllabus.find(s => s.subject === o.subject)?.topics || []; if (needT && !topics.includes(o.topic)) o.topic = topics[0];
+    const pyqYears = [...new Set(availablePyqPapers.map(p => String(p.year)))];
+    if (o.kind === 'pyq' && !pyqYears.includes(String(o.year))) { o.year = pyqYears[0] || ''; o.paper = ''; }
+    const pyqPapersForYear = availablePyqPapers.filter(p => String(p.year) === String(o.year));
+    if (o.kind === 'pyq' && !pyqPapersForYear.some(p => p.paper === o.paper)) o.paper = pyqPapersForYear[0]?.paper || '';
     const f = (l, el) => h('div', {}, h('label', {}, l), el);
     form.replaceChildren(h('div', { class: 'row between' }, h('h2', {}, 'Create My Test'), S.user.exam_id === 'UPSC_CSE' ? h('a', { class: 'btn ghost sm', href: '#/tests' }, '← Choose paper') : null), h('div', { class: 'chips' }, KINDS.map(([k, l]) => h('button', { class: 'chip' + (o.kind === k ? ' on' : ''), onclick: () => { o.kind = k; draw(); } }, l))),
       o.kind === 'full_mock' ? h('div', { class: 'chips blueprint-mode-picker' },
@@ -1037,12 +1072,18 @@ async function pgTests(parts, params) {
         h('button', { class: 'chip' + (!realMode ? ' on' : ''), onclick: () => { o.mode = 'practice'; draw(); } }, 'Practice Mode')) : null,
       o.kind === 'full_mock' ? h('div', { class: 'info' }, `${exam.name} pattern: ${exam.pattern.sections.map(s => `${s.subject} ${s.questions} × ${s.marks} marks (−${s.negative})`).join(' · ')} · ${exam.pattern.minutes} min.` + (exam.pattern.audit?.sectionTimingMinutes && realMode ? ` Section timer: ${exam.pattern.audit.sectionTimingMinutes} minutes per section.` : '') + (exam.id === 'UPSC_CSAT' ? ' CSAT is qualifying (33% minimum).' : '') + (exam.verified ? '' : ' Subject splits are practice allocations where noted; confirm current details against the official notification.')) : null,
       realMode ? h('div', { class: 'blueprint-lock-note' }, `Full-length paper: ${exam.pattern.sections.reduce((n, section) => n + Number(section.questions || 0), 0)} questions · ${exam.pattern.minutes} minutes. Real Exam Mode fixes the configured paper length, section distribution, marking and duration. Difficulty targets are exam-style practice estimates, not official quotas; the result reports the actual question-bank mix.`) : (o.kind === 'ai_mock' ? h('div', { class: 'info' }, `AI Generated Mock targets the full configured exam length: ${exam.pattern.sections.reduce((n, section) => n + Number(section.questions || 0), 0)} questions. It will not silently start as a 20-question short mock.`) : null),
+      o.kind === 'pyq' ? h('div', { class: 'grid g2' },
+        f('PYQ year', h('select', { value: o.year, disabled: !pyqYears.length, onchange: (e) => { o.year = e.target.value; o.paper = ''; draw(); } },
+          pyqYears.map(y => h('option', { value: y, selected: y === String(o.year) }, y)))),
+        f('Paper / shift', h('select', { value: o.paper, disabled: !pyqPapersForYear.length, onchange: (e) => { o.paper = e.target.value; o.shift = pyqPapersForYear.find(p => p.paper === o.paper)?.shift || ''; draw(); } },
+          pyqPapersForYear.map(p => h('option', { value: p.paper, selected: p.paper === o.paper }, p.paper + (p.shift ? ' · ' + p.shift : '')))))) : null,
+      o.kind === 'pyq' && !availablePyqPapers.length ? h('div', { class: 'info' }, 'No complete, item-verified PYQ paper is imported yet. Use PYQ Pattern Mock for exam-style practice; partial verified questions can be practised from the PYQ hub.') : null,
       h('div', { class: 'grid g3' }, needS ? f('Subject', h('select', { onchange: (e) => { o.subject = e.target.value; draw(); } }, exam.syllabus.filter(s => availableSubjects.includes(s.subject)).map(s => h('option', { value: s.subject, selected: s.subject === o.subject }, s.subject)))) : null,
         needT ? f('Topic', h('select', { onchange: (e) => o.topic = e.target.value }, topics.map(t => h('option', { value: t, selected: t === o.topic }, t)))) : null,
         needN ? f('Number of questions', h('input', { type: 'number', min: 1, max: 100, value: o.count, oninput: (e) => o.count = +e.target.value })) : null,
         needD ? f('Difficulty', h('select', { onchange: (e) => o.difficulty = e.target.value }, [['any', 'Any'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === o.difficulty }, l)))) : null,
         !realMode ? f('Duration (minutes, optional)', h('input', { type: 'number', min: 1, max: 300, placeholder: 'Auto', value: o.minutes, oninput: (e) => o.minutes = e.target.value })) : null),
-      h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => { e.target.disabled = true; e.target.replaceChildren(h('span', { class: 'spin' }), ' Building…'); await startTest({ ...o, exam_id: examId, difficulty: realMode ? 'any' : o.difficulty, minutes: realMode ? undefined : (o.minutes || undefined) }); e.target.disabled = false; e.target.textContent = 'Start Test'; } }, 'Start Test'));
+      h('button', { class: 'btn primary', style: 'align-self:flex-start', disabled: o.kind === 'pyq' && (!o.year || !o.paper), onclick: async (e) => { if (o.kind === 'pyq' && (!o.year || !o.paper)) { toast('No complete verified PYQ paper is available yet.'); return; } e.target.disabled = true; e.target.replaceChildren(h('span', { class: 'spin' }), ' Building…'); await startTest({ ...o, exam_id: examId, difficulty: realMode ? 'any' : o.difficulty, minutes: realMode ? undefined : (o.minutes || undefined) }); e.target.disabled = false; e.target.textContent = 'Start Test'; } }, 'Start Test'));
   } draw();
   return h('div', { class: 'stack mock-hub' },
     h('section', { class: 'mock-brand-hero' },

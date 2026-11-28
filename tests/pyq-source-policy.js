@@ -17,6 +17,7 @@ for (const [exam, url] of [
   ['UPSC_CSE', 'https://upsc.gov.in/examinations/previous-question-papers'],
   ['UPSC_CSAT', 'https://www.upsc.gov.in/examinations/previous-question-papers'],
   ['SSC_CGL', 'https://ssc.gov.in/api/attachment/uploads/masterData/Syllabus/CGL-syllabus-169635-.pdf'],
+  ['SSC_CHSL', 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Final%20Answer%20Key%20and%20marks%20CHSLE%202024%20Tier-I161024.pdf'],
   ['RBI_B', 'https://opportunities.rbi.org.in/scripts/bs_viewcontent.aspx?Id=4758']
 ]) {
   const result = validateOfficialPyqSource(exam, url);

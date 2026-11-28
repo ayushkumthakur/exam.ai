@@ -24,6 +24,9 @@ for (const [field, value] of [
 assert.equal(isVerifiedPyq({ ...good, exam_id: 'SSC_CGL',
   source_ref: 'https://ssc.gov.in/paper.pdf',
   answer_source_ref: 'https://ssc.gov.in/answer-key.pdf' }), true);
+assert.equal(isVerifiedPyq({ ...good, exam_id: 'SSC_CHSL',
+  source_ref: 'https://ssc.nic.in/paper.pdf',
+  answer_source_ref: 'https://ssc.nic.in/answer-key.pdf' }), true);
 assert.equal(isVerifiedPyq({ ...good, exam_id: 'RBI_B',
   source_ref: 'https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5055',
   answer_source_ref: 'https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5055' }), true);

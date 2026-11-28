@@ -226,7 +226,7 @@ if (examCount === 0) {
     JSON.stringify((right.sections || []).map(s => [s.subject, s.questions, s.marks, s.negative, s.paper || null]));
   const select = db.prepare('SELECT pattern FROM exams WHERE id=?');
   const update = db.prepare('UPDATE exams SET pattern=? WHERE id=?');
-  for (const id of ['UPSC_CSE', 'UPSC_CSAT', 'SSC_CGL', 'RBI_B']) {
+  for (const id of ['UPSC_CSE', 'UPSC_CSAT', 'SSC_CGL', 'SSC_CHSL', 'RBI_B']) {
     const seeded = catalogById.get(id);
     const row = select.get(id);
     if (!seeded || !row) continue;

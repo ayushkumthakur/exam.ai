@@ -19,7 +19,7 @@ const VERIFIED_PYQ_WHERE = `source_type='VERIFIED_PYQ'
     (exam_id IN ('UPSC_CSE','UPSC_CSAT')
       AND (source_ref LIKE 'https://upsc.gov.in/%' OR source_ref LIKE 'https://www.upsc.gov.in/%')
       AND (answer_source_ref LIKE 'https://upsc.gov.in/%' OR answer_source_ref LIKE 'https://www.upsc.gov.in/%'))
-    OR (exam_id='SSC_CGL'
+    OR (exam_id IN ('SSC_CGL','SSC_CHSL')
       AND (source_ref LIKE 'https://ssc.gov.in/%' OR source_ref LIKE 'https://www.ssc.gov.in/%' OR source_ref LIKE 'https://ssc.nic.in/%' OR source_ref LIKE 'https://www.ssc.nic.in/%')
       AND (answer_source_ref LIKE 'https://ssc.gov.in/%' OR answer_source_ref LIKE 'https://www.ssc.gov.in/%' OR answer_source_ref LIKE 'https://ssc.nic.in/%' OR answer_source_ref LIKE 'https://www.ssc.nic.in/%'))
     OR (exam_id='RBI_B'
