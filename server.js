@@ -744,6 +744,18 @@ route('GET', '/api/practice/questions', ONB, (c) => {
   if (q.topic) { sql += ' AND q.topic=?'; p.push(q.topic); }
   if (['easy', 'medium', 'hard'].includes(q.difficulty)) { sql += ' AND q.difficulty=?'; p.push(q.difficulty); }
   if (['VERIFIED_PYQ', 'AI_GENERATED', 'PYQ_PATTERN', 'ADMIN_PRACTICE'].includes(q.source)) { sql += ' AND q.source_type=?'; p.push(q.source); }
+  // Optional year/paper filters are accepted only for strictly verified PYQ records.
+  if (q.year || q.paper) {
+    if (q.source !== 'VERIFIED_PYQ') throw bad('Year and paper filters are available only for verified PYQs.');
+    if (q.year) {
+      const year = Number.parseInt(q.year, 10);
+      if (!Number.isInteger(year) || year < 2000 || year > new Date().getFullYear() + 1) throw bad('Invalid PYQ year.');
+      sql += ' AND q.id IN (SELECT id FROM questions WHERE ' + VERIFIED_PYQ_WHERE + ' AND id=q.id AND pyq_year=?)'; p.push(year);
+    } else {
+      sql += ' AND q.id IN (SELECT id FROM questions WHERE ' + VERIFIED_PYQ_WHERE + ' AND id=q.id)';
+    }
+    if (q.paper) { sql += ' AND q.pyq_paper=?'; p.push(String(q.paper).slice(0,120)); }
+  }
   const requestedLimit = Number.parseInt(q.limit, 10);
   const limit = [10, 20, 30, 50, 100].includes(requestedLimit) ? requestedLimit : 20;
   const offset = Math.max(Number.parseInt(q.offset, 10) || 0, 0); // Practice serves unseen questions first.
