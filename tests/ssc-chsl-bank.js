@@ -1,5 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { EXAMS, TOPICS } = require('../data/catalog');
 const { buildPriorityQuestionBank } = require('../data/priority_question_bank');
 const exam = EXAMS.find(x => x.id === 'SSC_CHSL');
@@ -22,4 +24,19 @@ for (const q of bank) {
   assert.ok(q.answer>=0 && q.answer<q.options.length);
   assert.ok((TOPICS[q.subject]||[]).includes(q.topic),'topic must be in CHSL syllabus');
 }
+const app = fs.readFileSync(path.join(__dirname, '../public/app.js'), 'utf8');
+const server = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
+const sourcePolicy = require('../pyq-source-policy');
+const { VERIFIED_PYQ_WHERE } = require('../pyq-record-policy');
+assert.ok(sourcePolicy.OFFICIAL_SOURCE_HOSTS.SSC_CHSL.includes('ssc.gov.in'), 'SSC CHSL must accept official SSC question/answer sources');
+assert.match(VERIFIED_PYQ_WHERE, /exam_id IN \\('SSC_CGL','SSC_CHSL'\\)/, 'verified-PYQ SQL gate must include CHSL only on official SSC hosts');
+assert.match(server, /Year and paper filters are available only for verified PYQs/, 'practice API must restrict year/paper filters to verified PYQs');
+assert.match(server, /pyq_year=\?/);
+assert.match(server, /q\\.pyq_paper=\?/);
+assert.match(app, /Verified Previous Year Questions/);
+assert.match(app, /PYQ year/);
+assert.match(app, /PYQ Pattern Mock/);
+assert.match(app, /Practice set/);
+assert.match(app, /Take as test/);
+assert.match(app, /No complete, item-verified PYQ paper is imported yet/);
 console.log('SSC CHSL Tier-I pattern and question-bank audit passed ('+bank.length+' authored practice MCQs).');
