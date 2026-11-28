@@ -1,0 +1,15 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const app = fs.readFileSync('public/app.js', 'utf8');
+assert.match(app, /UPSC_PYQ_ARCHIVE_YEARS = Array\.from\(\{ length: 25 \}/, 'archive should cover 25 exam years');
+assert.match(app, /2026 - i/, 'archive should include 2026 back through 2002');
+assert.match(app, /General Studies Paper II · CSAT/, 'archive should include CSAT Paper II');
+assert.match(app, /UPSC_PYQ_OFFICIAL_ARCHIVE/, 'archive must link to official UPSC source');
+assert.match(app, /upscPyqArchiveCard\(\)/, 'archive card should be reusable');
+assert.match(app, /isUpsc \? upscPyqArchiveCard\(\) : null/, 'archive should appear in PYQ hub');
+assert.match(app, /examId === 'UPSC_CSE' \? upscPyqArchiveCard\(\) : null/, 'archive should appear in UPSC practice');
+assert.match(app, /Selected:.*paperNames\[paper\]/, 'year and paper selections update visible official archive instructions');
+assert.match(app, /updateSelection\(\)/, 'selection changes refresh the visible archive guidance');
+assert.match(app, /This is not an imported interactive question bank/, 'archive must not overclaim imported/verified PYQs');
+console.log('PASS UPSC 25-year official Prelims archive UI and provenance policy audit.');

@@ -722,6 +722,31 @@ function bookmarkBtn(kind, ref, title, body) {
   return b;
 }
 
+// Official UPSC CSE Prelims paper archive. This is a source index, not an imported item bank.
+const UPSC_PYQ_ARCHIVE_YEARS = Array.from({ length: 25 }, (_, i) => 2026 - i);
+const UPSC_PYQ_OFFICIAL_ARCHIVE = 'https://www.upsc.gov.in/examinations/previous-question-papers';
+function upscPyqArchiveCard() {
+  if (S.user.exam_id !== 'UPSC_CSE') return null;
+  let year = '2026', paper = 'GS Paper I';
+  const paperNames = { 'GS Paper I': 'General Studies Paper - I', CSAT: 'General Studies Paper - II (CSAT)' };
+  const selection = h('p', { class: 'small muted', 'aria-live': 'polite' });
+  const updateSelection = () => {
+    selection.textContent = `Selected: ${year} · ${paper}. On the official UPSC listing, find “Civil Services (Preliminary) Examination, ${year}” and open “${paperNames[paper]}”. Older years may be under Archives.`;
+  };
+  const yearSelect = h('select', { 'aria-label': 'UPSC PYQ year', onchange: (e) => { year = e.target.value; updateSelection(); } },
+    UPSC_PYQ_ARCHIVE_YEARS.map(y => h('option', { value: String(y), selected: String(y) === year }, String(y))));
+  const paperSelect = h('select', { 'aria-label': 'UPSC Prelims paper', onchange: (e) => { paper = e.target.value; updateSelection(); } },
+    [['GS Paper I', 'General Studies Paper I'], ['CSAT', 'General Studies Paper II · CSAT']].map(([v, label]) => h('option', { value: v, selected: v === paper }, label)));
+  updateSelection();
+  return h('div', { class: 'card stack' },
+    h('div', { class: 'row between wrap' }, h('div', {}, h('h3', {}, 'UPSC CSE · 25-year Prelims PYQ archive'), h('p', { class: 'small muted' }, '2002–2026 · GS Paper I and CSAT · Official UPSC source')),
+      h('span', { class: 'badge' }, 'Source archive')),
+    h('div', { class: 'grid g2' }, h('div', {}, h('label', {}, 'Year'), yearSelect), h('div', {}, h('label', {}, 'Paper'), paperSelect)),
+    selection,
+    h('a', { class: 'btn primary', href: UPSC_PYQ_OFFICIAL_ARCHIVE, target: '_blank', rel: 'noopener' }, 'Open official UPSC archive ↗'),
+    h('p', { class: 'small muted' }, 'This opens the official source index; the selected year and paper are shown above for you to locate there. This is not an imported interactive question bank. A question becomes a Verified PYQ only after its exact wording, options and authoritative answer are checked.'));
+}
+
 // ---------- practice ----------
 async function pgPractice(parts, params) {
   const paperId = params.get('paper') || '';
@@ -730,6 +755,7 @@ async function pgPractice(parts, params) {
     return h('div', { class: 'stack' },
       h('h1', {}, 'UPSC CSE Practice'),
       h('p', { class: 'muted' }, 'Choose which Prelims paper you want to practise. Your main exam remains UPSC CSE.'),
+      upscPyqArchiveCard(),
       h('div', { class: 'grid g2' },
         h('button', { class: 'card stack', style: 'text-align:left;cursor:pointer', onclick: () => choose('UPSC_CSE') },
           h('span', { class: 'badge' }, 'Paper I'), h('h2', {}, 'General Studies'),
@@ -769,7 +795,8 @@ async function pgPractice(parts, params) {
     const count = h('select', { 'aria-label': 'Number of questions', onchange: (e) => sel.count = Number(e.target.value) }, [10, 20, 30, 50].map(n => h('option', { value: n, selected: n === sel.count }, `${n} questions`)));
     box.replaceChildren(h('div', { class: 'row between' }, h('h1', {}, 'Practice'), S.user.exam_id === 'UPSC_CSE' ? h('a', { class: 'btn ghost sm', href: '#/practice' }, '← Choose paper') : null), h('p', { class: 'muted' }, `Questions for ${ex.name} only. Every question shows where it came from.`), examId === 'UPSC_CSAT' ? h('div', { class: 'info' }, 'CSAT is a qualifying paper. You need at least 33% to qualify.') : null, extra || null,
       h('div', { class: 'card stack' }, h('div', { class: 'grid g3' }, h('div', {}, h('label', {}, 'Subject'), subj), h('div', {}, h('label', {}, 'Topic'), top), h('div', {}, h('label', {}, 'Difficulty'), dif), h('div', {}, h('label', {}, 'Number of questions'), count)),
-        h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => start() }, 'Practice Now'), h('button', { class: 'btn', onclick: () => startSmart() }, '✨ Smart Practice'), h('a', { class: 'btn', href: '#/revision?mistakes=1' }, 'Revise My Mistakes'), S.config.ai_enabled ? h('button', { class: 'btn', onclick: () => genPanel() }, '✨ Generate AI questions') : null)));
+        h('div', { class: 'row' }, h('button', { class: 'btn primary', onclick: () => start() }, 'Practice Now'), h('button', { class: 'btn', onclick: () => startSmart() }, '✨ Smart Practice'), h('a', { class: 'btn', href: '#/revision?mistakes=1' }, 'Revise My Mistakes'), S.config.ai_enabled ? h('button', { class: 'btn', onclick: () => genPanel() }, '✨ Generate AI questions') : null),
+      examId === 'UPSC_CSE' ? upscPyqArchiveCard() : null));
   }
   function genPanel() {
     if (!sel.subject || !sel.topic) { toast('Pick a subject and topic first.'); return; }
@@ -895,7 +922,7 @@ async function pgPyqs() {
   return h('div', { class: 'stack' },
     h('div', { class: 'row between' }, h('h1', {}, 'Previous Year Questions')),
     h('div', { class: 'info' }, 'Only questions an admin has verified against an official source appear here as “Verified PYQ”. Real PYQ mode is enabled only when the selected year/paper has a complete question set. AI-written questions are never presented as PYQs.'),
-    sourceCard, verifiedCard, analysis, priorityCard, weightageGuide
+    isUpsc ? upscPyqArchiveCard() : null, sourceCard, verifiedCard, analysis, priorityCard, weightageGuide
   );
 }
 
@@ -1007,6 +1034,7 @@ async function pgTests(parts, params) {
           h('div', { class: 'upsc-mock-pills' }, h('span', {}, '⏱ Timed practice'), h('span', {}, '✓ Exam-style format'), h('span', {}, '↗ Track progress')))),
       h('div', { class: 'upsc-mock-section-head' }, h('div', {}, h('h2', {}, 'Choose your paper'), h('p', { class: 'muted' }, 'Both papers remain under your UPSC CSE account.')),
         h('span', { class: 'upsc-mock-count' }, '2 PAPERS')),
+      upscPyqArchiveCard(),
       h('div', { class: 'upsc-mock-grid' },
         h('button', { class: 'upsc-paper-card upsc-paper-gs', onclick: () => choose('UPSC_CSE') },
           h('div', { class: 'upsc-paper-card-top' }, h('span', { class: 'upsc-paper-icon' }, '📚'), h('span', { class: 'upsc-paper-tag' }, 'PAPER I')),
