@@ -294,7 +294,7 @@ async function callClaude(opts) {
   const hasNonTextContent = (opts.messages || []).some(m => Array.isArray(m.content) &&
     m.content.some(part => part && part.type !== 'text'));
   const providerOrder = [primary, ...['gemini', 'groq', 'anthropic', 'cloudflare'].filter(p => p !== primary && configuredProviders().includes(p))]
-    .filter(p => !(p === 'groq' && (opts.grounded || hasNonTextContent)));
+    .filter(p => !(['groq', 'cloudflare'].includes(p) && (opts.grounded || hasNonTextContent)));
   let firstError = null;
   for (let i = 0; i < providerOrder.length; i++) {
     const provider = providerOrder[i];
