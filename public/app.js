@@ -1022,14 +1022,23 @@ async function pgTests(parts, params) {
           h('div', { class: 'upsc-paper-footer' }, h('span', {}, 'Start CSAT Practice'), h('span', { class: 'upsc-paper-arrow' }, '▶')))));
   }
   const examId = S.user.exam_id === 'UPSC_CSE' && ['UPSC_CSE','UPSC_CSAT'].includes(paperId) ? paperId : S.user.exam_id;
-  const [list, ex] = await Promise.all([get('/api/tests' + q({ exam_id: examId })), get('/api/exams/' + examId)]); const exam = ex.exam;
+  const [list, ex, pyqData] = await Promise.all([
+    get('/api/tests' + q({ exam_id: examId })),
+    get('/api/exams/' + examId),
+    get('/api/pyq/papers' + q({ exam_id: examId })).catch(() => ({ papers: [] }))
+  ]); const exam = ex.exam;
+  const availablePyqPapers = (pyqData.papers || []).filter(p => p.complete);
   const availableSubjects = examId === 'RRB_GROUP_D' ? exam.syllabus.map(section => section.subject) : (Array.isArray(S.user.selected_subjects) && S.user.selected_subjects.length ? S.user.selected_subjects : exam.subjects);
-  const o = { kind: 'full_mock', subject: availableSubjects[0], topic: '', count: 20, difficulty: 'any', minutes: '', mode: 'real' }; const form = h('div', { class: 'card stack mock-builder' });
+  const o = { kind: 'full_mock', subject: availableSubjects[0], topic: '', count: 20, difficulty: 'any', minutes: '', mode: 'real', year: '', paper: '', shift: '' }; const form = h('div', { class: 'card stack mock-builder' });
   const KINDS = [['full_mock', 'Full Mock'], ['sectional', 'Sectional Mock'], ['subject', 'Subject Test'], ['topic', 'Topic Test'], ['pyq', 'PYQ Test'], ['pyq_pattern', 'PYQ Pattern Mock'], ['ai_mock', 'AI Generated Mock'], ['weak_topic', 'Weak Topic Test']];
   function draw() {
     const realMode = o.kind === 'full_mock' && o.mode === 'real';
     const needS = ['sectional', 'subject', 'topic'].includes(o.kind), needT = o.kind === 'topic', needN = ['subject', 'topic', 'weak_topic', 'pyq_pattern'].includes(o.kind), needD = ['subject', 'topic', 'sectional', 'ai_mock'].includes(o.kind) || (o.kind === 'full_mock' && !realMode);
     const topics = exam.syllabus.find(s => s.subject === o.subject)?.topics || []; if (needT && !topics.includes(o.topic)) o.topic = topics[0];
+    const pyqYears = [...new Set(availablePyqPapers.map(p => String(p.year)))];
+    if (o.kind === 'pyq' && !pyqYears.includes(String(o.year))) { o.year = pyqYears[0] || ''; o.paper = ''; }
+    const pyqPapersForYear = availablePyqPapers.filter(p => String(p.year) === String(o.year));
+    if (o.kind === 'pyq' && !pyqPapersForYear.some(p => p.paper === o.paper)) o.paper = pyqPapersForYear[0]?.paper || '';
     const f = (l, el) => h('div', {}, h('label', {}, l), el);
     form.replaceChildren(h('div', { class: 'row between' }, h('h2', {}, 'Create My Test'), S.user.exam_id === 'UPSC_CSE' ? h('a', { class: 'btn ghost sm', href: '#/tests' }, '← Choose paper') : null), h('div', { class: 'chips' }, KINDS.map(([k, l]) => h('button', { class: 'chip' + (o.kind === k ? ' on' : ''), onclick: () => { o.kind = k; draw(); } }, l))),
       o.kind === 'full_mock' ? h('div', { class: 'chips blueprint-mode-picker' },
@@ -1037,12 +1046,18 @@ async function pgTests(parts, params) {
         h('button', { class: 'chip' + (!realMode ? ' on' : ''), onclick: () => { o.mode = 'practice'; draw(); } }, 'Practice Mode')) : null,
       o.kind === 'full_mock' ? h('div', { class: 'info' }, `${exam.name} pattern: ${exam.pattern.sections.map(s => `${s.subject} ${s.questions} × ${s.marks} marks (−${s.negative})`).join(' · ')} · ${exam.pattern.minutes} min.` + (exam.pattern.audit?.sectionTimingMinutes && realMode ? ` Section timer: ${exam.pattern.audit.sectionTimingMinutes} minutes per section.` : '') + (exam.id === 'UPSC_CSAT' ? ' CSAT is qualifying (33% minimum).' : '') + (exam.verified ? '' : ' Subject splits are practice allocations where noted; confirm current details against the official notification.')) : null,
       realMode ? h('div', { class: 'blueprint-lock-note' }, `Full-length paper: ${exam.pattern.sections.reduce((n, section) => n + Number(section.questions || 0), 0)} questions · ${exam.pattern.minutes} minutes. Real Exam Mode fixes the configured paper length, section distribution, marking and duration. Difficulty targets are exam-style practice estimates, not official quotas; the result reports the actual question-bank mix.`) : (o.kind === 'ai_mock' ? h('div', { class: 'info' }, `AI Generated Mock targets the full configured exam length: ${exam.pattern.sections.reduce((n, section) => n + Number(section.questions || 0), 0)} questions. It will not silently start as a 20-question short mock.`) : null),
+      o.kind === 'pyq' ? h('div', { class: 'grid g2' },
+        f('PYQ year', h('select', { value: o.year, disabled: !pyqYears.length, onchange: (e) => { o.year = e.target.value; o.paper = ''; draw(); } },
+          pyqYears.map(y => h('option', { value: y, selected: y === String(o.year) }, y)))),
+        f('Paper / shift', h('select', { value: o.paper, disabled: !pyqPapersForYear.length, onchange: (e) => { o.paper = e.target.value; o.shift = pyqPapersForYear.find(p => p.paper === o.paper)?.shift || ''; draw(); } },
+          pyqPapersForYear.map(p => h('option', { value: p.paper, selected: p.paper === o.paper }, p.paper + (p.shift ? ' · ' + p.shift : '')))))) : null,
+      o.kind === 'pyq' && !availablePyqPapers.length ? h('div', { class: 'info' }, 'No complete, item-verified PYQ paper is imported yet. Use PYQ Pattern Mock for exam-style practice; partial verified questions can be practised from the PYQ hub.') : null,
       h('div', { class: 'grid g3' }, needS ? f('Subject', h('select', { onchange: (e) => { o.subject = e.target.value; draw(); } }, exam.syllabus.filter(s => availableSubjects.includes(s.subject)).map(s => h('option', { value: s.subject, selected: s.subject === o.subject }, s.subject)))) : null,
         needT ? f('Topic', h('select', { onchange: (e) => o.topic = e.target.value }, topics.map(t => h('option', { value: t, selected: t === o.topic }, t)))) : null,
         needN ? f('Number of questions', h('input', { type: 'number', min: 1, max: 100, value: o.count, oninput: (e) => o.count = +e.target.value })) : null,
         needD ? f('Difficulty', h('select', { onchange: (e) => o.difficulty = e.target.value }, [['any', 'Any'], ['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']].map(([v, l]) => h('option', { value: v, selected: v === o.difficulty }, l)))) : null,
         !realMode ? f('Duration (minutes, optional)', h('input', { type: 'number', min: 1, max: 300, placeholder: 'Auto', value: o.minutes, oninput: (e) => o.minutes = e.target.value })) : null),
-      h('button', { class: 'btn primary', style: 'align-self:flex-start', onclick: async (e) => { e.target.disabled = true; e.target.replaceChildren(h('span', { class: 'spin' }), ' Building…'); await startTest({ ...o, exam_id: examId, difficulty: realMode ? 'any' : o.difficulty, minutes: realMode ? undefined : (o.minutes || undefined) }); e.target.disabled = false; e.target.textContent = 'Start Test'; } }, 'Start Test'));
+      h('button', { class: 'btn primary', style: 'align-self:flex-start', disabled: o.kind === 'pyq' && (!o.year || !o.paper), onclick: async (e) => { if (o.kind === 'pyq' && (!o.year || !o.paper)) { toast('No complete verified PYQ paper is available yet.'); return; } e.target.disabled = true; e.target.replaceChildren(h('span', { class: 'spin' }), ' Building…'); await startTest({ ...o, exam_id: examId, difficulty: realMode ? 'any' : o.difficulty, minutes: realMode ? undefined : (o.minutes || undefined) }); e.target.disabled = false; e.target.textContent = 'Start Test'; } }, 'Start Test'));
   } draw();
   return h('div', { class: 'stack mock-hub' },
     h('section', { class: 'mock-brand-hero' },
