@@ -836,7 +836,8 @@ async function pgPyqs() {
   if (S.user.exam_id === 'SSC_CHSL') {
     official.push(
       ['SSC CHSL 2025 Tier-I', 'Official SSC final answer key / response-sheet access (candidate login)', 'https://sscexams.cbexams.com/chsl2025finalkeylandingpagedh/LoginNew.aspx'],
-      ['SSC CHSL 2024 Tier-I', 'SSC notice confirming final answer keys were uploaded with question papers', 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Final%20Answer%20Key%20and%20marks%20CHSLE%202024%20Tier-I161024.pdf']
+      ['SSC CHSL 2024 Tier-I', 'SSC notice confirming final answer keys were uploaded with question papers', 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Final%20Answer%20Key%20and%20marks%20CHSLE%202024%20Tier-I161024.pdf'],
+      ['SSC official question-paper and answer-key notices', 'Use the SSC portal for older CHSL cycles; access to some response sheets is time-limited or candidate-login based', 'https://ssc.gov.in/']
     );
   }
   official.push(['SSC official examination portal', 'Use the official SSC portal for current notices, answer keys and paper access', 'https://ssc.gov.in/']);
@@ -849,21 +850,31 @@ async function pgPyqs() {
       h('a', { class: 'btn sm', href: url, target: '_blank', rel: 'noopener' }, 'Open official source')
     )),
     h('div', { class: 'row' },
+      h('a', { class: 'btn sm', href: '#/practice?source=PYQ_PATTERN&count=50' }, 'Practice PYQ-pattern questions'),
       h('button', { class: 'btn sm primary', onclick: () => startTest({ kind: 'pyq_pattern', count: 20 }) }, '20-question PYQ Pattern Mock'),
       h('span', { class: 'small muted' }, 'Clearly labelled as PYQ Pattern — not an official PYQ.')
     )
   );
 
+  async function startVerifiedPractice(paper) {
+    try {
+      const data = await get('/api/practice/questions' + q({ exam_id: S.user.exam_id, source: 'VERIFIED_PYQ', year: paper.year, paper: paper.paper, limit: 50 }));
+      if (!data.questions.length) { toast('No verified questions found for this paper yet.'); return; }
+      box.replaceChildren(runSession(data.questions, { mode: 'pyq', title: paper.year + ' ' + paper.paper + ' Verified PYQ Practice', examId: S.user.exam_id, onFinish: () => pgPyqs().then(node => box.replaceChildren(node)) }));
+    } catch (e) { toast(e.message || 'Could not load this PYQ set.'); }
+  }
   const verifiedCard = h('div', { class: 'card' },
     h('h3', {}, 'Verified papers'),
     p.papers.length
       ? h('div', { class: 'list' }, p.papers.map(x => h('div', { class: 'row between' },
-          h('span', {}, h('b', {}, `${x.year} · ${x.paper}`), x.shift ? ` · ${x.shift}` : '',
-            h('span', { class: 'muted small' }, ` · ${x.questions}/${x.expected_questions} questions`),
-            h('span', { class: `badge ${x.complete ? 'good' : 'warn'}` }, x.complete ? 'Complete paper' : 'Incomplete · practice only')),
-          h('button', { class: `btn sm ${x.complete ? 'primary' : ''}`, disabled: !x.complete, title: x.complete ? 'Start verified paper' : 'Complete this paper before using real PYQ mode', onclick: () => startTest({ kind: 'pyq', year: x.year, paper: x.paper, shift: x.shift }) }, x.complete ? 'Take as test' : 'Not complete')
+          h('span', {}, h('b', {}, x.year + ' · ' + x.paper), x.shift ? ' · ' + x.shift : '',
+            h('span', { class: 'muted small' }, ' · ' + x.questions + '/' + x.expected_questions + ' questions'),
+            h('span', { class: 'badge ' + (x.complete ? 'good' : 'warn') }, x.complete ? 'Complete paper' : 'Incomplete · practice only')),
+          h('div', { class: 'row wrap' },
+            h('button', { class: 'btn sm', onclick: () => startVerifiedPractice(x) }, 'Practice set'),
+            h('button', { class: 'btn sm ' + (x.complete ? 'primary' : ''), disabled: !x.complete, title: x.complete ? 'Start verified paper' : 'Complete this paper before using real PYQ mode', onclick: () => startTest({ kind: 'pyq', year: x.year, paper: x.paper, shift: x.shift }) }, x.complete ? 'Take as test' : 'Not complete'))
         )))
-      : h('div', { class: 'empty' }, 'No verified PYQ papers have been imported for this exam yet. Official-source links are provided above.'));
+      : h('div', { class: 'empty' }, 'No item-verified CHSL PYQ sets are imported yet. Official-source links are provided above.'));
 
   const analysis = h('div', { class: 'card' },
     h('h3', {}, 'PYQ analysis'),
