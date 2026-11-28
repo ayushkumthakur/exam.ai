@@ -728,17 +728,23 @@ const UPSC_PYQ_OFFICIAL_ARCHIVE = 'https://www.upsc.gov.in/examinations/previous
 function upscPyqArchiveCard() {
   if (S.user.exam_id !== 'UPSC_CSE') return null;
   let year = '2026', paper = 'GS Paper I';
-  const yearSelect = h('select', { 'aria-label': 'UPSC PYQ year', onchange: (e) => { year = e.target.value; } },
+  const paperNames = { 'GS Paper I': 'General Studies Paper - I', CSAT: 'General Studies Paper - II (CSAT)' };
+  const selection = h('p', { class: 'small muted', 'aria-live': 'polite' });
+  const updateSelection = () => {
+    selection.textContent = `Selected: ${year} · ${paper}. On the official UPSC listing, find “Civil Services (Preliminary) Examination, ${year}” and open “${paperNames[paper]}”. Older years may be under Archives.`;
+  };
+  const yearSelect = h('select', { 'aria-label': 'UPSC PYQ year', onchange: (e) => { year = e.target.value; updateSelection(); } },
     UPSC_PYQ_ARCHIVE_YEARS.map(y => h('option', { value: String(y), selected: String(y) === year }, String(y))));
-  const paperSelect = h('select', { 'aria-label': 'UPSC Prelims paper', onchange: (e) => { paper = e.target.value; } },
+  const paperSelect = h('select', { 'aria-label': 'UPSC Prelims paper', onchange: (e) => { paper = e.target.value; updateSelection(); } },
     [['GS Paper I', 'General Studies Paper I'], ['CSAT', 'General Studies Paper II · CSAT']].map(([v, label]) => h('option', { value: v, selected: v === paper }, label)));
+  updateSelection();
   return h('div', { class: 'card stack' },
     h('div', { class: 'row between wrap' }, h('div', {}, h('h3', {}, 'UPSC CSE · 25-year Prelims PYQ archive'), h('p', { class: 'small muted' }, '2002–2026 · GS Paper I and CSAT · Official UPSC source')),
       h('span', { class: 'badge' }, 'Source archive')),
     h('div', { class: 'grid g2' }, h('div', {}, h('label', {}, 'Year'), yearSelect), h('div', {}, h('label', {}, 'Paper'), paperSelect)),
-    h('p', { class: 'small muted' }, 'Open the official UPSC paper listing and locate the selected year and paper. Older papers may be listed under Archives.'),
+    selection,
     h('a', { class: 'btn primary', href: UPSC_PYQ_OFFICIAL_ARCHIVE, target: '_blank', rel: 'noopener' }, 'Open official UPSC archive ↗'),
-    h('p', { class: 'small muted' }, 'Important: this archive link does not mean the questions are already imported into interactive tests. A question becomes a Verified PYQ only after its exact wording, options and official answer are checked.'));
+    h('p', { class: 'small muted' }, 'This opens the official source index; the selected year and paper are shown above for you to locate there. This is not an imported interactive question bank. A question becomes a Verified PYQ only after its exact wording, options and authoritative answer are checked.'));
 }
 
 // ---------- practice ----------
