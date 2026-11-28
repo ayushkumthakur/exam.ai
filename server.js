@@ -23,6 +23,10 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim
 // A logged-in user may self-promote to admin only by presenting this secret (set it in the host
 // environment, e.g. Railway variables). Leave unset to disable self-service admin claiming entirely.
 const ADMIN_SETUP_KEY = process.env.ADMIN_SETUP_KEY || '';
+// Lets someone locked out of their account set a new password without a logged-in session,
+// by presenting this server-side secret instead (there is no email-based reset flow yet).
+// Leave unset to disable self-service password reset entirely.
+const PASSWORD_RESET_KEY = process.env.PASSWORD_RESET_KEY || '';
 const DAY = 86400000;
 const REV_DAYS = [0, 1, 3, 7, 14];
 
@@ -656,6 +660,25 @@ route('POST', '/api/auth/claim-admin', A, (c) => {
   db.prepare("UPDATE users SET role='admin' WHERE id=?").run(c.user.id);
   const u = db.prepare('SELECT * FROM users WHERE id=?').get(c.user.id);
   return { user: meJson(u) };
+});
+// No account is logged in yet here (that is the whole point — this is for someone locked
+// out of their account), so this is gated only by the server-side secret, not a session.
+route('POST', '/api/auth/key-reset-password', {}, (c) => {
+  if (!PASSWORD_RESET_KEY) throw new HttpError(404, 'Password reset is not enabled on this server.');
+  rateLimit('pw-reset-ip:' + c.ip, 10, 3600000);
+  const email = String(c.body.email || '').trim().toLowerCase();
+  rateLimit('pw-reset-email:' + email, 5, 3600000);
+  const key = String(c.body.key || '');
+  const password = String(c.body.password || '');
+  if (!key || !safeEqual(key, PASSWORD_RESET_KEY)) throw new HttpError(401, 'Incorrect reset key.');
+  validatePassword(password, String(c.body.confirm_password || ''));
+  const u = db.prepare('SELECT * FROM users WHERE email=?').get(email);
+  if (!u) throw new HttpError(404, 'No account found with this email.');
+  db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hashPassword(password), u.id);
+  // A reset password should log every existing session out everywhere, including this one
+  // (there is none here to spare, unlike the logged-in set-password flow).
+  db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id);
+  return { ok: true };
 });
 route('POST', '/api/auth/logout', {}, (c) => {
   const m = /(?:^|;\s*)sid=([^;]+)/.exec(c.req.headers.cookie || '');
