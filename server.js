@@ -779,8 +779,7 @@ route('GET', '/api/practice/questions', ONB, (c) => {
   }
   const uniqueStems = new Set();
   const uniqueQuestions = candidates.filter(question => {
-    const stem = String(question.text || '').normalize('NFKC').toLowerCase()
-      .replace(/[^\\p{L}\\p{N}]+/gu, ' ').trim().replace(/\\s+/g, ' ');
+    const stem = normalizeQuestionStem(question.text);
     if (!stem || uniqueStems.has(stem)) return false;
     uniqueStems.add(stem);
     return true;
