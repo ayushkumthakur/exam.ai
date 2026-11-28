@@ -9,12 +9,15 @@ const ANTHROPIC_MODEL = () => process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5'
 const GROQ_KEY = () => [process.env.GROQ_API_KEY, process.env.GROQ_API_KEY_2]
   .map(key => typeof key === 'string' ? key.trim() : '').find(Boolean) || '';
 const GROQ_MODEL = () => process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+const CLOUDFLARE_ACCOUNT_ID = () => String(process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+const CLOUDFLARE_API_TOKEN = () => String(process.env.CLOUDFLARE_API_TOKEN || '').trim();
+const CLOUDFLARE_MODEL = () => process.env.CLOUDFLARE_MODEL || '@cf/meta/llama-3.1-8b-instruct';
 
 function configuredProviders() {
   return [
     ...(GEMINI_KEY() ? ['gemini'] : []),
     ...(GROQ_KEY() ? ['groq'] : []),
-    ...(ANTHROPIC_KEY() ? ['anthropic'] : [])
+    ...(ANTHROPIC_KEY() ? ['anthropic'] : []),\n    ...(CLOUDFLARE_ACCOUNT_ID() && CLOUDFLARE_API_TOKEN() ? ['cloudflare'] : [])
   ];
 }
 function activeProvider() {
@@ -26,7 +29,7 @@ const aiEnabled = () => !!activeProvider();
 const aiProvider = () => activeProvider() || PROVIDER();
 const aiModel = () => {
   const p = activeProvider();
-  return p === 'anthropic' ? ANTHROPIC_MODEL() : p === 'groq' ? GROQ_MODEL() : GEMINI_MODEL();
+  return p === 'anthropic' ? ANTHROPIC_MODEL() : p === 'groq' ? GROQ_MODEL() : p === 'cloudflare' ? CLOUDFLARE_MODEL() : GEMINI_MODEL();
 };
 
 function isValidISODate(value) {
@@ -230,16 +233,68 @@ async function callGroq({ system, messages, maxTokens = 1500, timeoutMs = 45000,
   } finally { clearTimeout(t); }
 }
 
+
+async function callCloudflare({ system, messages, maxTokens = 1500, timeoutMs = 45000, grounded = false }) {
+  if (!CLOUDFLARE_ACCOUNT_ID() || !CLOUDFLARE_API_TOKEN()) return { ok: false, error: 'AI_NOT_CONFIGURED' };
+  // Workers AI fallback is text-only and cannot provide Google Search grounding.
+  if (grounded || (messages || []).some(m => Array.isArray(m.content) &&
+    m.content.some(part => part && part.type !== 'text'))) {
+    return { ok: false, error: 'AI_UNSUPPORTED_CONTENT' };
+  }
+  const transcript = [];
+  if (String(system || '').trim()) transcript.push('System instructions:\\n' + String(system));
+  for (const m of messages || []) {
+    const role = m.role === 'assistant' || m.role === 'model' ? 'Assistant' : 'User';
+    const content = Array.isArray(m.content)
+      ? m.content.filter(part => part && part.type === 'text').map(part => String(part.text || '')).join('\\n')
+      : String(m.content ?? '');
+    transcript.push(role + ': ' + content);
+  }
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    aiMetrics.record({ type: 'request', provider: 'cloudflare', model: CLOUDFLARE_MODEL() });
+    const url = 'https://api.cloudflare.com/client/v4/accounts/' +
+      encodeURIComponent(CLOUDFLARE_ACCOUNT_ID()) + '/ai/run/' + encodeURIComponent(CLOUDFLARE_MODEL()).replace(/%2F/g, '/');
+    const r = await fetch(url, {
+      method: 'POST', signal: ctl.signal,
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + CLOUDFLARE_API_TOKEN() },
+      body: JSON.stringify({
+        prompt: transcript.join('\\n\\n'),
+        max_tokens: Math.min(12000, Math.max(256, +maxTokens || 1500)),
+        temperature: 0.15
+      })
+    });
+    if (!r.ok) {
+      const error = 'AI_HTTP_' + r.status;
+      aiMetrics.record({ type: 'error', provider: 'cloudflare', model: CLOUDFLARE_MODEL(), error });
+      return { ok: false, error };
+    }
+    const j = await r.json();
+    const text = String(j.result?.response || j.result?.output || '').trim();
+    if (!text) {
+      aiMetrics.record({ type: 'error', provider: 'cloudflare', model: CLOUDFLARE_MODEL(), error: 'AI_EMPTY' });
+      return { ok: false, error: 'AI_EMPTY' };
+    }
+    aiMetrics.record({ type: 'success', provider: 'cloudflare', model: CLOUDFLARE_MODEL() });
+    return { ok: true, text, provider: 'cloudflare', model: CLOUDFLARE_MODEL() };
+  } catch (e) {
+    const error = e.name === 'AbortError' ? 'AI_TIMEOUT' : 'AI_NETWORK';
+    aiMetrics.record({ type: 'error', provider: 'cloudflare', model: CLOUDFLARE_MODEL(), error });
+    return { ok: false, error };
+  } finally { clearTimeout(t); }
+}
+
 async function callClaude(opts) {
   const primary = activeProvider();
   if (!primary) return { ok: false, error: 'AI_NOT_CONFIGURED' };
-  const call = { gemini: callGemini, groq: callGroq, anthropic: callAnthropic };
+  const call = { gemini: callGemini, groq: callGroq, anthropic: callAnthropic, cloudflare: callCloudflare };
   const retryable = error => error === 'AI_TIMEOUT' || error === 'AI_NETWORK' ||
     ['AI_HTTP_401', 'AI_HTTP_403', 'AI_HTTP_429'].includes(error) || /^AI_HTTP_5\d\d$/.test(error || '');
   const hasNonTextContent = (opts.messages || []).some(m => Array.isArray(m.content) &&
     m.content.some(part => part && part.type !== 'text'));
-  const providerOrder = [primary, ...['gemini', 'groq', 'anthropic'].filter(p => p !== primary && configuredProviders().includes(p))]
-    .filter(p => !(p === 'groq' && (opts.grounded || hasNonTextContent)));
+  const providerOrder = [primary, ...['gemini', 'groq', 'anthropic', 'cloudflare'].filter(p => p !== primary && configuredProviders().includes(p))]
+    .filter(p => !(['groq', 'cloudflare'].includes(p) && (opts.grounded || hasNonTextContent)));
   let firstError = null;
   for (let i = 0; i < providerOrder.length; i++) {
     const provider = providerOrder[i];
@@ -252,14 +307,14 @@ async function callClaude(opts) {
 }
 
 const FRIENDLY = {
-  AI_NOT_CONFIGURED: 'AI is not configured on this server yet. Add GEMINI_API_KEY or GROQ_API_KEY in Railway.',
+  AI_NOT_CONFIGURED: 'AI is not configured on this server yet. Add a supported provider key in Railway.',
   AI_TIMEOUT: 'The AI took too long to respond. Please try again.',
   AI_NETWORK: 'Could not reach the AI service. Check the server connection and try again.',
   AI_EMPTY: 'The AI returned an empty answer. Please try again.',
   AI_INVALID: 'The AI returned an answer in an unexpected format. Please try again.',
   AI_HTTP_400: 'The AI request was rejected. Check the model name and request settings in Railway.',
-  AI_HTTP_401: 'The AI API key was rejected. Check the configured Gemini, Groq, or Anthropic key in Railway.',
-  AI_HTTP_403: 'The AI API key lacks permission or the API is disabled. Check the configured provider key and permissions in Railway.',
+  AI_HTTP_401: 'The AI API token was rejected. Check the configured provider credentials in Railway.',
+  AI_HTTP_403: 'The AI API token lacks permission or the provider is disabled. Check provider permissions in Railway.',
   AI_HTTP_404: 'The configured AI model was not found. Remove GEMINI_MODEL in Railway or set it to gemini-2.5-flash.',
   AI_HTTP_429: 'The AI provider rate limit or quota was reached. Wait and try again, or check your Gemini/Groq provider limits.',
   AI_VERIFY_UNAVAILABLE: 'The answer-key verification service is temporarily unavailable. No unverified generated questions were saved; please try again.',
@@ -564,4 +619,4 @@ Quality rules: exactly one defensible correct option; four distinct plausible op
   return { ok: true, questions: good, dropped: arr.length - good.length, verification: 'single-pass' };
 }
 
-module.exports = { callClaude, callGemini, callGroq, callAnthropic, aiEnabled, aiProvider, aiModel, friendlyError, buildTutorMessages, TUTOR_SYSTEM, ANSWER_EVAL_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, questionTextKey, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration };
+module.exports = { callClaude, callGemini, callGroq, callAnthropic, callCloudflare, aiEnabled, aiProvider, aiModel, friendlyError, buildTutorMessages, TUTOR_SYSTEM, ANSWER_EVAL_SYSTEM, generateQuestions, generateCurrentAffairs, extractJson, validateQuestion, isValidISODate, nonUpscExamCalibration, nonUpscDifficultyCalibration, questionTextKey, areDuplicateQuestions, priorityExamCalibration, priorityDifficultyCalibration };
