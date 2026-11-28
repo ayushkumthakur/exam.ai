@@ -64,3 +64,52 @@ A case-insensitive literal search was run across `data/priority_question_bank.js
 - **Production database:** not directly queried in this static source-code audit. Do not infer its contents or verified-PYQ count from this register.
 
 The next step for actual verified PYQs is to obtain an official paper/response sheet plus official answer evidence, then review and import each exact item with provenance. Do not bulk-convert exam-style practice questions into PYQs.
+
+
+## November 2026 monthly session audit
+
+**Verified PYQ additions: 0 for each exam.** The November verified-PYQ set size is therefore zero for UPSC CSE Prelims, SSC CGL Tier-I and RBI Grade B Phase-I. No ADMIN_PRACTICE or PYQ_PATTERN item was relabelled or used to pad these verified sets.
+
+### UPSC CSE Prelims
+
+Official sources checked:
+- [UPSC CSE Prelims 2026 exam page](https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026)
+- [UPSC previous question papers](https://www.upsc.gov.in/examinations/previous-question-papers)
+- [UPSC answer-key archives](https://www.upsc.gov.in/examinations/answer-key/archives)
+- [2026 GS-I provisional answer key](https://www.upsc.gov.in/sites/default/files/ProvAnsKey%E2%80%93GS-I-CSP-Exam-2026-270526.pdf)
+- [2026 CSAT provisional answer key](https://www.upsc.gov.in/sites/default/files/ProvAnsKey%E2%80%93GS-II-CSP-Exam-2026-270526.pdf)
+- [2026 GS-I official question paper](https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-I_25052026.pdf)
+- [2026 CSAT official question paper](https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-II_25052026.pdf)
+- [2025 GS-I official question paper](https://www.upsc.gov.in/sites/default/files/QP-CSP-25-GENERAL-STUDIES-PAPER-I-26052025.pdf)
+- [2025 GS-II official question paper](https://www.upsc.gov.in/sites/default/files/QP-CSP-25-GENERAL-STUDIES-PAPER-II-26052025.pdf)
+
+The official 2026 exam page lists both Prelims question papers. The 2026 provisional answer-key PDFs were retrieved, but the 2026 paper PDFs were too large for the available retrieval path (approximately 35.9 MB for GS-I and 27.7 MB for CSAT), so exact stem/options could not be compared to the keys. The 2025 GS-I paper PDF was also too large (approximately 29.2 MB), and its final-key PDF retrieval timed out. A readable key or a paper listing alone is not sufficient evidence. **Verified items added: 0.**
+
+### SSC CGL Tier-I
+
+Official sources checked:
+- [SSC answer-key portal](https://ssc.gov.in/home/answer-key)
+- [2024 Tier-I final answer-key notice](https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Writeup_Final_Anwerkey_CGLE_2024_T1_191224.pdf)
+- [2025 Tier-I final answer-key notice](https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/writeup_181225.pdf)
+- [Legacy SSC answer-key archive](https://ssc.nic.in/Portal/AnswerKey)
+
+The official 2024 notice confirms response sheets and final keys were time-limited and login-based. The 2025 notice confirms that final keys and papers would be hosted later; it is not itself item-level question evidence. No accessible, shift-specific official response sheet was matched to a bank item in this pass. **Verified items added: 0.**
+
+### RBI Grade B Phase-I
+
+Official sources checked:
+- [RBI recruitment and call-letter portal](https://opportunities.rbi.org.in/Scripts/CallLetters.aspx)
+- [2026 Grade B Phase-I General information handout](https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5055)
+- [2025 Grade B Phase-I information handout](https://opportunities.rbi.org.in/scripts/bs_viewcontent.aspx?Id=4758)
+
+The 2026 RBI page confirms the official Phase-I information handout and exam instructions. It is not an actual previous examination paper with an official item-level answer key. **Verified items added: 0.**
+
+### Import workflow and data safety
+
+The existing application supports question-level imports through `POST /api/admin/questions`. A `VERIFIED_PYQ` record requires exam ID, year, paper, official question-paper URL, official answer-source URL, explicit `review_confirmed: true`, and meaningful verification notes; the app records the authenticated reviewer and timestamp. The app exposes verified papers grouped by year/paper/shift, but it does **not** currently provide a separate monthly-session manifest importer.
+
+No production question endpoint was called and no production database was changed. The existing import path and persistent SQLite migration/seed workflow were reviewed; this audit did not execute a production import. Deployment is **not confirmed** and no live change is claimed.
+
+### November session disposition
+
+Because no item passed the complete evidence threshold, the verified-PYQ component of each monthly session is empty. Keep any existing or newly authored exam-style material under its existing `ADMIN_PRACTICE` or `PYQ_PATTERN` label. Do not represent those as verified PYQs. To make a balanced practice session available before verified items are obtainable, create a separately labelled practice-only session using approved bank questions; do not merge that count into the verified-PYQ total.

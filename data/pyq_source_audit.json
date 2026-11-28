@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "audit_date": "2026-10-11",
+  "audit_date": "2026-11-01",
   "policy": "A question is VERIFIED_PYQ only after its exact wording, options, exam/year/paper, and official answer are checked against authoritative evidence. An official portal URL alone is not per-question verification.",
   "verified_question_count_in_static_seed_banks": 0,
   "sources": [
@@ -21,23 +21,28 @@
           "year": 2026,
           "paper": "Civil Services (Preliminary) Examination - General Studies Paper I",
           "official_exam_page_url": "https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026",
-          "status": "official_question_paper_listed_content_not_item_audited",
-          "notes": "The official exam page lists both 2026 question papers uploaded on 25 May 2026. This confirms publication, not any individual question or answer."
+          "status": "official_paper_and_provisional_key_published_paper_pdf_too_large_not_item_audited",
+          "notes": "The official exam page lists the 2026 GS-I paper, and UPSC's official provisional key for Sets A-D was retrieved visually. The key states 100 total questions, 1 dropped, and 99 scored. The official paper PDF fetch returned a content-length-too-large error (35,853,695 bytes), so no exact stem/options could be checked against it in this run. The key is provisional, not final. No item was promoted to VERIFIED_PYQ.",
+          "question_paper_url": "https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-I_25052026.pdf",
+          "official_provisional_answer_key_url": "https://www.upsc.gov.in/sites/default/files/ProvAnsKey%E2%80%93GS-I-CSP-Exam-2026-270526.pdf"
         },
         {
           "year": 2026,
           "paper": "Civil Services (Preliminary) Examination - General Studies Paper II (CSAT)",
           "official_exam_page_url": "https://www.upsc.gov.in/examinations/Civil%20Services%20%28Preliminary%29%20Examination%2C%202026",
-          "status": "official_question_paper_listed_content_not_item_audited",
-          "notes": "The official exam page lists both 2026 question papers uploaded on 25 May 2026. This confirms publication, not any individual question or answer."
+          "status": "official_paper_and_provisional_key_published_paper_pdf_too_large_not_item_audited",
+          "notes": "The official exam page lists the 2026 CSAT paper, and UPSC's official provisional key for Sets A-D was retrieved visually. The key states 80 total questions, none dropped, and 80 scored. The official paper PDF fetch returned a content-length-too-large error (27,741,081 bytes), so no exact stem/options could be checked against it in this run. The key is provisional, not final. No item was promoted to VERIFIED_PYQ.",
+          "question_paper_url": "https://www.upsc.gov.in/sites/default/files/QP_CSP_2026_GENERAL_STUDIES_PAPER-II_25052026.pdf",
+          "official_provisional_answer_key_url": "https://www.upsc.gov.in/sites/default/files/ProvAnsKey%E2%80%93GS-II-CSP-Exam-2026-270526.pdf"
         },
         {
           "year": 2025,
           "paper": "Civil Services (Preliminary) Examination - General Studies Paper I",
           "question_paper_url": "https://www.upsc.gov.in/sites/default/files/QP-CSP-25-GENERAL-STUDIES-PAPER-I-26052025.pdf",
           "official_listing_url": "https://www.upsc.gov.in/examinations/previous-question-papers",
-          "status": "official_paper_listed_content_not_item_audited",
-          "notes": "The official listing publishes the paper. Exact question wording, options, and answers have not been compared item by item."
+          "status": "official_paper_and_final_key_link_resolved_content_not_item_audited",
+          "notes": "The official 2025 GS-I paper URL is listed by UPSC, and the official final-key link for Sets A-D resolves to the UPSC domain (published 13 May 2026). The paper PDF fetch returned a content-length-too-large error (29,154,058 bytes); the final-key PDF timed out during retrieval. The existence of both official links is not item-level verification. No stem/options/answer tuple was imported.",
+          "official_final_answer_key_url": "https://www.upsc.gov.in/sites/default/files/AnsKeyCivilServicesP-Exam-2025-GeneralStudies-I-130526.pdf"
         },
         {
           "year": 2025,
@@ -57,19 +62,23 @@
         }
       ],
       "official_answer_key_archive_url": "https://www.upsc.gov.in/examinations/answer-key/archives",
-      "answer_key_archive_status": "archive_found_2023_final_key_not_independently_retrieved",
-      "answer_key_archive_notes": "The official UPSC Answer Keys Archives page exists, but its JavaScript-driven examination filter did not expose the 2023 CSE Prelims answer-key document in this review. PIB states that publishing a provisional answer key soon after the exam was introduced for CSE Prelims 2026 for the first time (https://www.pib.gov.in/PressReleasePage.aspx?PRID=2265884&lang=1&reg=20). This 2026 policy does not by itself prove whether a final key for 2023 exists in the archive. No 2023 item is treated as answer-key verified until the relevant official document is retrieved and checked."
+      "answer_key_archive_status": "2026_official_provisional_keys_visually_retrieved_2025_gs1_final_key_link_resolved_2023_key_not_independently_retrieved",
+      "answer_key_archive_notes": "UPSC's official 2026 provisional keys for GS-I and CSAT were retrieved visually and show set-wise answers; GS-I records one dropped question (99 scored) and CSAT records no dropped questions (80 scored). The 2025 GS-I official final-key link was resolved from the official-key link on a secondary index page to the UPSC domain, but the PDF itself timed out in this retrieval run. The official paper PDFs for 2025/2026 were too large for the current text-retrieval path. No question has been checked end-to-end against both exact official paper text/options and official answer evidence. The 2026 keys are provisional. The 2023 key remains unresolved."
     },
     {
       "exam_id": "SSC_CGL",
       "official_listing_url": "https://ssc.gov.in/home/answer-key",
       "official_notice_2024_tier1_final_answer_keys": "https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Writeup_Final_Anwerkey_CGLE_2024_T1_191224.pdf",
       "official_notice_2025_tier1_answer_key_status": "https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/writeup_181225.pdf",
-      "status": "official_authority_and_notices_verified_item_level_records_not_audited",
-      "notes": "SSC's official notice confirms the 2024 Tier-I final answer keys and candidate response sheets were accessible from 19 December 2024 to 8 January 2025 via registered login and would not remain available afterward. The 2025 Tier-I notice says final answer keys and question papers would be published later; that notice is not itself an item-level question source. No static bank item has been matched to an SSC response sheet or final answer key in this audit. The legacy official SSC answer-key portal also lists the Combined Graduate Level Examination (Tier-I), 2023 final answer key along with candidate response sheets. Access to an individual candidate's response sheet may still be login-bound; no static-bank item has been matched to a specific official 2023 shift/question/answer in this pass.",
+      "status": "official_final_key_notice_verified_response_sheet_window_expired_item_level_records_not_audited",
+      "notes": "SSC's official 9 January 2026 notice confirms that CGL 2025 Tier-I final answer keys and candidate response sheets were login-accessible from 09.01.2026 18:00 to 08.02.2026 18:00 and would not remain available afterward. The official 16 October 2025 tentative-key notice states that question and option sequence in the challenge module may differ from each candidate's actual examination order; the candidate's response sheet is needed to map exact shift/order. The access window has expired, and no candidate response sheet or public shift paper was retrieved. No static-bank item was matched to an exact shift/stem/options/final answer.",
       "official_2023_tier1_final_answer_key_listing": "https://ssc.nic.in/Portal/AnswerKey",
       "official_2023_tier1_tentative_answer_key_notice": "https://ssc.nic.in/SSCFileServer/PortalManagement/UploadedFiles/Write_Up_Tentative_AnswerKey_T1_CGLE_2023_01082023.pdf",
-      "official_2023_tier1_tentative_answer_key_notice_notes": "Official notice states CGL Tier-I 2023 was held 14–27 July 2023 and candidate response sheets/tentative answer keys were login-accessible 1–4 August 2023, after which response sheets would not remain available. This confirms historical access limitations, not item-level matches."
+      "official_2023_tier1_tentative_answer_key_notice_notes": "Official notice states CGL Tier-I 2023 was held 14–27 July 2023 and candidate response sheets/tentative answer keys were login-accessible 1–4 August 2023, after which response sheets would not remain available. This confirms historical access limitations, not item-level matches.",
+      "official_notice_2025_tier1_final_answer_keys": "https://ssc.gov.in/api/attachment/uploads/masterData/AnswerKeys/Answer_key_09012025.pdf",
+      "official_2025_tier1_final_key_login_url": "https://sscexam.cbexams.com/cgl2025finalrespladingpagebcvfgr/loginNew.aspx",
+      "official_2025_tier1_tentative_answer_key_notice": "https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Writeup_AnswerKey_Tier-I_CGLE_25.pdf",
+      "official_2025_tier1_final_key_access_window": "2026-01-09 18:00 to 2026-02-08 18:00 IST"
     },
     {
       "exam_id": "RBI_B",
@@ -77,8 +86,8 @@
       "phase1_information_handout_2026": "https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=5055",
       "phase1_information_handout_2025": "https://opportunities.rbi.org.in/scripts/bs_viewcontent.aspx?Id=4758",
       "phase2_information_handouts_2025": "https://opportunities.rbi.org.in/Scripts/bs_viewcontent.aspx?Id=4791",
-      "status": "official_handouts_available_actual_question_paper_and_answer_key_not_established",
-      "notes": "The official RBI portal provides Grade B recruitment handouts, including the 2026 Phase-I handout and 2025 Phase-II handouts. Handouts establish exam instructions/format, not that an item appeared in an actual previous exam. No static bank item has been matched to an official past-paper record in this audit."
+      "status": "official_phase1_handouts_available_no_public_actual_question_paper_or_official_answer_key_established",
+      "notes": "RBI's official Call Letters page and 2025/2026 Grade B Phase-I handout pages were checked. They establish the examination date, instructions and format, but are not actual past question papers or official answer keys. No public item-level question-paper/answer-key source was established for RBI Grade B Phase-I. Sample items in a handout must not be relabelled as PYQs. No item was promoted to VERIFIED_PYQ."
     }
   ],
   "question_bank_audit": {
@@ -181,7 +190,7 @@
       }
     ]
   },
-  "last_progress_note": "New official-source discovery: UPSC has a separate official answer-key archive, but the 2023 CSE Prelims entry could not be resolved in its JS-driven text view. SSC official archive confirms CGL Tier-I 2023 response sheets/tentative keys were login-gated and time-limited (1–4 Aug 2023). No item-level verified count change.",
+  "last_progress_note": "2026-11-01: Official UPSC 2026 GS-I/CSAT provisional answer-key PDFs were visually retrieved; official question-paper PDFs were listed but too large for current retrieval. The UPSC 2025 GS-I final-key link was resolved but its PDF timed out, and the paper PDF was too large. SSC CGL 2025 Tier-I final-key/response-sheet access window (9 Jan–8 Feb 2026) is expired and was login-gated. RBI Grade B Phase-I public sources checked provide handouts, not actual question papers/official keys. Exact item-level verification count remains zero for all three exams.",
   "paper_coverage_check": {
     "paper": "UPSC CSE Prelims 2023 GS Paper I, Test Booklet Series A",
     "official_url": "https://www.upsc.gov.in/sites/default/files/QP_CS_Pre_Exam_2023_280523.pdf",
@@ -221,5 +230,24 @@
     "exact_literal_topic_hits_in_static_banks": 0,
     "interpretation": "None of the 30 literal topic terms probed was found in these six static bank/build files. This is a narrow coverage-gap check, not proof that every related concept is absent and not a substitute for exact stem/options/answer verification. These official-paper questions should be considered candidates for new provenance-backed records only after answer-key verification; do not label existing similar concepts as PYQs."
   },
-  "ssc_next_step": "Use the official 2023 Tier-I final-answer-key listing as the next accessible source target; extract actual item-level records only if the official linked response-sheet/question-paper content can be retrieved and tied to a shift and answer."
+  "ssc_next_step": "Use the official 2023 Tier-I final-answer-key listing as the next accessible source target; extract actual item-level records only if the official linked response-sheet/question-paper content can be retrieved and tied to a shift and answer.",
+  "verified_question_count_added_this_month": 0,
+  "monthly_session_audit": {
+    "month": "2026-11",
+    "status": "blocked_no_verified_items",
+    "verified_pyqs_added": {
+      "UPSC_CSE": 0,
+      "SSC_CGL": 0,
+      "RBI_B": 0
+    },
+    "set_sizes": {
+      "UPSC_CSE": 0,
+      "SSC_CGL": 0,
+      "RBI_B": 0
+    },
+    "practice_items_added": 0,
+    "production_database_modified": false,
+    "production_deployment_confirmed": false,
+    "note": "No question met the required end-to-end evidence check in this run. The monthly verified-PYQ sessions therefore contain zero items rather than being padded with ADMIN_PRACTICE or PYQ_PATTERN questions."
+  }
 }
